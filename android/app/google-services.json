@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "743590908369",
+    "project_id": "allo-dakar-b6a20",
+    "storage_bucket": "allo-dakar-b6a20.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:743590908369:android:cd3fd414ced552195cd0f0",
+        "android_client_info": {
+          "package_name": "com.allodakar.allo_dakar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgKZdHj-qCf9o8KBeEMzZwMFtOqwbeYaU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "743590908369-h7il5fll7lqogsp1kemjibt6iaf962nc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.alloDakar"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:743590908369:android:0977a33f9a146ebb5cd0f0",
+        "android_client_info": {
+          "package_name": "com.example.allo_dakar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgKZdHj-qCf9o8KBeEMzZwMFtOqwbeYaU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "743590908369-h7il5fll7lqogsp1kemjibt6iaf962nc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.alloDakar"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ===============================================================
+  FICHIER TEMPLATE — GoogleService-Info.plist pour Allô Dakar iOS
+  ===============================================================
+  
+  INSTRUCTIONS :
+  1. Allez sur https://console.firebase.google.com
+  2. Ouvrez votre projet "allo_dakar"
+  3. Cliquez sur "Paramètres du projet" (engrenage en haut à gauche)
+  4. Dans l'onglet "Vos applications", cliquez sur "Ajouter une application" → choisissez iOS
+  5. Entrez comme Bundle ID : com.allodakar.alloDakar
+  6. Téléchargez le fichier GoogleService-Info.plist généré par Firebase
+  7. REMPLACEZ ce fichier template par le vrai GoogleService-Info.plist téléchargé
+  8. Dans Xcode, glissez-déposez ce fichier dans Runner/ (cocher "Copy items if needed")
+  ===============================================================
+-->
+<plist version="1.0">
+<dict>
+
+  <!-- Identifiant du client OAuth2 iOS (généré par Firebase) -->
+  <key>CLIENT_ID</key>
+  <string>REMPLACER_PAR_VOTRE_CLIENT_ID.apps.googleusercontent.com</string>
+
+  <!-- Identifiant client inversé — utilisé pour les URL Schemes (OAuth redirect) -->
+  <key>REVERSED_CLIENT_ID</key>
+  <string>com.googleusercontent.apps.REMPLACER_PAR_VOTRE_CLIENT_ID</string>
+
+  <!-- Clé API Google pour iOS (peut être différente de la clé Android) -->
+  <key>API_KEY</key>
+  <string>AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE</string>
+
+  <!-- ID du projet Google Cloud -->
+  <key>GCM_SENDER_ID</key>
+  <string>REMPLACER_PAR_VOTRE_SENDER_ID</string>
+
+  <!-- Identifiant du bundle iOS -->
+  <key>BUNDLE_ID</key>
+  <string>com.allodakar.alloDakar</string>
+
+  <!-- Identifiant du projet Firebase -->
+  <key>PROJECT_ID</key>
+  <string>REMPLACER_PAR_VOTRE_PROJECT_ID</string>
+
+  <!-- URL de la base de données Firebase (si utilisé) -->
+  <key>DATABASE_URL</key>
+  <string>https://REMPLACER_PAR_VOTRE_PROJECT_ID-default-rtdb.firebaseio.com</string>
+
+  <!-- Identifiant de l'application Firebase -->
+  <key>GOOGLE_APP_ID</key>
+  <string>1:REMPLACER_PAR_SENDER_ID:ios:REMPLACER_PAR_APP_ID</string>
+
+  <!-- Activation des services Firebase -->
+  <key>IS_ADS_ENABLED</key>
+  <false/>
+  <key>IS_ANALYTICS_ENABLED</key>
+  <false/>
+  <key>IS_APPINVITE_ENABLED</key>
+  <true/>
+  <key>IS_GCM_ENABLED</key>
+  <true/>
+  <key>IS_SIGNIN_ENABLED</key>
+  <true/>
+
+  <!-- Identifiant de stockage Firebase -->
+  <key>STORAGE_BUCKET</key>
+  <string>REMPLACER_PAR_VOTRE_PROJECT_ID.appspot.com</string>
+
+</dict>
+</plist>
