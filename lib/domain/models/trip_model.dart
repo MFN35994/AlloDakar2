@@ -15,6 +15,7 @@ class TripModel {
   final String? baggageDescription;
   final String? clientName;
   final String? clientPhone;
+  final String? clientId;
   final String? driverId;
   final String? driverName;
   final String? driverPhone;
@@ -34,6 +35,7 @@ class TripModel {
     this.baggageDescription,
     this.clientName,
     this.clientPhone,
+    this.clientId,
     this.driverId,
     this.driverName,
     this.driverPhone,
@@ -56,6 +58,7 @@ class TripModel {
       baggageDescription: data['baggageDescription'],
       clientName: data['clientName'],
       clientPhone: data['clientPhone'],
+      clientId: data['clientId'],
       driverId: data['driverId'],
       driverName: data['driverName'],
       driverPhone: data['driverPhone'],
@@ -77,6 +80,7 @@ class TripModel {
       'baggageDescription': baggageDescription,
       'clientName': clientName,
       'clientPhone': clientPhone,
+      'clientId': clientId,
       'driverId': driverId,
       'driverName': driverName,
       'driverPhone': driverPhone,

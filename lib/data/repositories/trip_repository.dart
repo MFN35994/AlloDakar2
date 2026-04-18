@@ -167,7 +167,14 @@ class TripRepository {
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .map((snapshot) {
-          final trips = snapshot.docs.map((doc) => TripModel.fromFirestore(doc)).toList();
+          final trips = <TripModel>[];
+          for (var doc in snapshot.docs) {
+            try {
+              trips.add(TripModel.fromFirestore(doc));
+            } catch (e) {
+              debugPrint("Erreur parsing trip ${doc.id}: $e");
+            }
+          }
           
           // Filtrage manuel en Dart
           return trips.where((t) {

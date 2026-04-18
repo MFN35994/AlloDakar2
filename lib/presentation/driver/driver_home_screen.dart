@@ -15,10 +15,14 @@ import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import '../widgets/profile_drawer.dart';
 
-final pendingTripsProvider = StreamProvider.family<List<TripModel>, Map<String, String?>>((ref, filters) {
+final pendingTripsProvider = StreamProvider.family<List<TripModel>, String>((ref, filterStr) {
+  final parts = filterStr.split('|');
+  final dep = parts[0] == 'ANY' ? null : parts[0];
+  final dest = parts[1] == 'ANY' ? null : parts[1];
+  
   return ref.watch(tripRepositoryProvider).getPendingTrips(
-    departure: filters['departure'],
-    destination: filters['destination'],
+    departure: dep,
+    destination: dest,
   );
 });
 
@@ -502,10 +506,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 if (_isOnline)
                   Consumer(
                     builder: (context, ref, child) {
-                      final deliveriesAsync = ref.watch(pendingTripsProvider({
-                        'departure': _pubDeparture,
-                        'destination': _pubDestination,
-                      }));
+                      final deliveriesAsync = ref.watch(pendingTripsProvider(
+                        "${_pubDeparture ?? 'ANY'}|${_pubDestination ?? 'ANY'}"
+                      ));
 
                       return deliveriesAsync.when(
                         data: (trips) {
@@ -930,9 +933,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   delivery.type.split('(').last.replaceAll(')', ''),
                   style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                 ),
-                const Text(
-                  "10 000 F",
-                  style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 14),
+                Text(
+                  "${delivery.price.toInt()} F",
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 14),
                 ),
               ],
             ),
