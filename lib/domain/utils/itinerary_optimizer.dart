@@ -47,4 +47,24 @@ class ItineraryOptimizer {
           (1 - c((p2.longitude - p1.longitude) * p))/2;
     return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
   }
+
+  static LatLng? getRegionCoordinates(String regionName) {
+    final Map<String, LatLng> regions = {
+      'Dakar': const LatLng(14.7167, -17.4677),
+      'Thiès': const LatLng(14.791, -16.935),
+      'Saint-Louis': const LatLng(16.02, -16.48),
+      'Kaolack': const LatLng(14.14, -16.07),
+      'Ziguinchor': const LatLng(12.58, -16.27),
+      'Diourbel': const LatLng(14.65, -16.23),
+      'Louga': const LatLng(15.61, -16.22),
+      'Tambacounda': const LatLng(13.77, -13.67),
+      'Kolda': const LatLng(12.88, -14.94),
+      'Matam': const LatLng(15.65, -13.25),
+      'Fatick': const LatLng(14.35, -16.40),
+      'Kaffrine': const LatLng(14.10, -15.55),
+      'Kédougou': const LatLng(12.55, -12.18),
+      'Sédhiou': const LatLng(12.70, -15.55),
+    };
+    return regions[regionName];
+  }
 }

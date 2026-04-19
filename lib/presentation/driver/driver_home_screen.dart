@@ -262,10 +262,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                 // === NOUVEAU: COURSE EN COURS ===
-                if (_isOnline)
+                if (_isOnline) ...[
                   Consumer(builder: (context, ref, child) {
-                    final activeTripAsync = ref.watch(driverActivePoolProvider);
-                    return activeTripAsync.when(
+                    final activePoolAsync = ref.watch(driverActivePoolProvider);
+                    return activePoolAsync.when(
                       data: (pool) {
                         if (pool == null) return const SizedBox.shrink();
                         return _buildActiveDriverTripCard(context, pool);
@@ -274,6 +274,18 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       error: (_, __) => const SizedBox.shrink(),
                     );
                   }),
+                  Consumer(builder: (context, ref, child) {
+                    final activeTripAsync = ref.watch(driverActiveTripProvider);
+                    return activeTripAsync.when(
+                      data: (trip) {
+                        if (trip == null) return const SizedBox.shrink();
+                        return _buildActiveVtcTripCard(context, trip);
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    );
+                  }),
+                ],
 
                 // Bloc Route du Jour (Matching Intelligent)
                 if (_isOnline) ...[
@@ -507,19 +519,30 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   Consumer(
                     builder: (context, ref, child) {
                       final deliveriesAsync = ref.watch(pendingTripsProvider(
-                        "${_pubDeparture ?? 'ANY'}|${_pubDestination ?? 'ANY'}"
+                        "${_pubDeparture ?? 'ANY'}|ANY"
                       ));
 
                       return deliveriesAsync.when(
                         data: (trips) {
-                          // Filtrer pour ne garder que les colis/yobante
-                          final deliveries = trips.where((t) => 
-                            t.type.toLowerCase().contains('livraison') || 
-                            t.type.toLowerCase().contains('colis')
-                          ).toList();
+                          // 1. Filtrer pour ne garder que les colis/yobante
+                          final allDeliveries = trips.where((t) {
+                            final type = t.type.toLowerCase();
+                            return type.contains('livraison') || 
+                                   type.contains('colis') || 
+                                   type.contains('yobante');
+                          }).toList();
 
-                          debugPrint("[YOBANTE] Trips reçus: ${trips.length}, Filtrés (colis): ${deliveries.length}");
-                          if (deliveries.isEmpty) return const SizedBox.shrink();
+                          // 2. Filtrage par région de départ
+                          final deliveries = allDeliveries.where((t) {
+                            if (_pubDeparture != null && _pubDeparture != 'TOUTES LES RÉGIONS') {
+                              return t.departure == _pubDeparture;
+                            }
+                            return true; 
+                          }).toList();
+
+                          debugPrint("[YOBANTE] Trips totaux: ${trips.length}, Colis totaux: ${allDeliveries.length}, Filtrés: ${deliveries.length}");
+
+                          if (allDeliveries.isEmpty) return const SizedBox.shrink();
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,33 +553,56 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text(
-                                      "Livraisons Yobanté à proximité",
+                                      "Livraisons Yobanté",
                                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                     ),
                                     Text(
-                                      "${deliveries.length} dispo.",
+                                      "${deliveries.length} correspondances",
                                       style: const TextStyle(color: Colors.deepOrange, fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
                               ),
-                              SizedBox(
-                                height: 160,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
+                              
+                              if (deliveries.isEmpty && allDeliveries.isNotEmpty)
+                                Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  itemCount: deliveries.length,
-                                  itemBuilder: (context, index) {
-                                    final delivery = deliveries[index];
-                                    return _buildDeliverySmallCard(context, delivery);
-                                  },
+                                  child: Text(
+                                    "Il y a ${allDeliveries.length} livraisons disponibles dans d'autres régions.",
+                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic),
+                                  ),
+                                ),
+
+                              if (deliveries.isNotEmpty)
+                                SizedBox(
+                                  height: 160,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    itemCount: deliveries.length,
+                                    itemBuilder: (context, index) {
+                                      final delivery = deliveries[index];
+                                      return _buildDeliverySmallCard(context, delivery);
+                                    },
+                                  ),
+                                ),
+                              
+                              // PETIT BLOC DE DEBUG (Visible uniquement si _isOnline)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                                child: Text(
+                                  "DEBUG: ${_pubDeparture ?? 'Pas de région'} | Total: ${trips.length} | Colis: ${allDeliveries.length}",
+                                  style: const TextStyle(fontSize: 9, color: Colors.grey),
                                 ),
                               ),
                             ],
                           );
                         },
                         loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
+                        error: (e, s) => Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text("Erreur Yobanté: $e", style: const TextStyle(color: Colors.red, fontSize: 10)),
+                        ),
                       );
                     },
                   ),
@@ -807,6 +853,70 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveVtcTripCard(BuildContext context, TripModel trip) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade800, Colors.blue.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => TripDetailScreen(trip: trip)));
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.inventory_2, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        trip.type.contains('Livraison') ? "Livraison Active !" : "Course Active !",
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${trip.departure} ➔ ${trip.destination}",
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Client: ${trip.clientName ?? 'Anonyme'}",
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
+              ],
+            ),
+          ),
         ),
       ),
     );

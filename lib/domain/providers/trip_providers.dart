@@ -89,3 +89,19 @@ final driverActivePoolProvider = StreamProvider<PoolModel?>((ref) {
         return null;
       });
 });
+
+final driverActiveTripProvider = StreamProvider<TripModel?>((ref) {
+  final auth = ref.watch(authProvider);
+  if (auth == null || auth.userId.isEmpty) return Stream.value(null);
+  
+  return FirebaseFirestore.instance.collection('trips')
+      .where('driverId', isEqualTo: auth.userId)
+      .where('status', isEqualTo: 'accepted')
+      .snapshots()
+      .map((snapshot) {
+        if (snapshot.docs.isNotEmpty) {
+          return TripModel.fromFirestore(snapshot.docs.first);
+        }
+        return null;
+      });
+});

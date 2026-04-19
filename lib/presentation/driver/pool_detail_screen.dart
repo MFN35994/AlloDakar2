@@ -30,7 +30,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     super.initState();
     // Optimization simple : Part du centre de Dakar (ou position réelle du chauffeur)
     _optimizedPickups = ItineraryOptimizer.optimizePickupOrder(
-      const LatLng(14.7167, -17.4677), 
+      const LatLng(14.7167, -17.4677),
       widget.pool.passengerDetails,
     );
     _buildMarkers();
@@ -41,17 +41,17 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     try {
       Position pos = await Geolocator.getCurrentPosition();
       LatLng driverPos = LatLng(pos.latitude, pos.longitude);
-      
+
       if (mounted) {
         setState(() {
           _myPosition = driverPos;
           _optimizedPickups = ItineraryOptimizer.optimizePickupOrder(
-            driverPos, 
+            driverPos,
             widget.pool.passengerDetails,
           );
         });
       }
-      
+
       _getPolyline(driverPos);
     } catch (_) {}
   }
@@ -61,20 +61,20 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     _isRoutePlotted = true;
 
     List<PolylineWayPoint> waypoints = [];
-    if (_optimizedPickups.length > 1) {
-      for (int i = 0; i < _optimizedPickups.length - 1; i++) {
-        final wp = _optimizedPickups[i].value;
-        if (wp['lat'] != null && wp['lng'] != null) {
-          waypoints.add(PolylineWayPoint(location: "${wp['lat']},${wp['lng']}", stopOver: true));
-        }
+    for (var entry in _optimizedPickups) {
+      final wp = entry.value;
+      if (wp['lat'] != null && wp['lng'] != null) {
+        waypoints.add(PolylineWayPoint(
+            location: "${wp['lat']},${wp['lng']}", stopOver: true));
       }
     }
 
-    final lastPassenger = _optimizedPickups.last.value;
-    PointLatLng dest = const PointLatLng(14.7167, -17.4677);
-    if (lastPassenger['lat'] != null && lastPassenger['lng'] != null) {
-      dest = PointLatLng(lastPassenger['lat'], lastPassenger['lng']);
-    }
+    // Point d'arrivée final (Région de destination)
+    final destCoords =
+        ItineraryOptimizer.getRegionCoordinates(widget.pool.destination);
+    PointLatLng dest = destCoords != null
+        ? PointLatLng(destCoords.latitude, destCoords.longitude)
+        : const PointLatLng(14.7167, -17.4677);
 
     PolylinePoints polylinePoints = PolylinePoints(apiKey: "AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE");
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
@@ -91,7 +91,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
       for (var point in result.points) {
         polylineCoordinates.add(LatLng(point.latitude, point.longitude));
       }
-      
+
       if (mounted) {
         setState(() {
           _polylines.add(Polyline(
@@ -104,19 +104,27 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
       }
 
       if (_myPosition != null) {
-         _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-           LatLngBounds(
-             southwest: LatLng(
-               driverPos.latitude < dest.latitude ? driverPos.latitude : dest.latitude,
-               driverPos.longitude < dest.longitude ? driverPos.longitude : dest.longitude,
-             ),
-             northeast: LatLng(
-               driverPos.latitude > dest.latitude ? driverPos.latitude : dest.latitude,
-               driverPos.longitude > dest.longitude ? driverPos.longitude : dest.longitude,
-             ),
-           ),
-           50.0,
-         ));
+        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            southwest: LatLng(
+              driverPos.latitude < dest.latitude
+                  ? driverPos.latitude
+                  : dest.latitude,
+              driverPos.longitude < dest.longitude
+                  ? driverPos.longitude
+                  : dest.longitude,
+            ),
+            northeast: LatLng(
+              driverPos.latitude > dest.latitude
+                  ? driverPos.latitude
+                  : dest.latitude,
+              driverPos.longitude > dest.longitude
+                  ? driverPos.longitude
+                  : dest.longitude,
+            ),
+          ),
+          50.0,
+        ));
       }
     }
   }
@@ -133,7 +141,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
           markerId: MarkerId(passenger['phone'] ?? pName),
           position: LatLng(passenger['lat'], passenger['lng']),
           infoWindow: InfoWindow(title: pName, snippet: passenger['phone']),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
         ));
       }
     }
@@ -142,138 +151,155 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<PoolModel?>(
-      stream: ref.watch(tripRepositoryProvider).watchPool(widget.pool.id),
-      builder: (context, snapshot) {
-        final pool = snapshot.data ?? widget.pool;
-        
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Itinéraire Porte-à-Porte'),
-            backgroundColor: Colors.black87,
-            foregroundColor: Colors.white,
-          ),
-          body: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                color: Colors.orange.withValues(alpha: 0.1),
-                child: Row(
-                  children: [
-                    const Icon(Icons.route, color: Colors.orange),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "${pool.departure} ➔ ${pool.destination}",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          Text(
-                            "Status: ${pool.status.toUpperCase()} (${pool.currentFilling}/4 passagers)",
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                          ),
-                        ],
+        stream: ref.watch(tripRepositoryProvider).watchPool(widget.pool.id),
+        builder: (context, snapshot) {
+          final pool = snapshot.data ?? widget.pool;
+
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Itinéraire Porte-à-Porte'),
+              backgroundColor: Colors.black87,
+              foregroundColor: Colors.white,
+            ),
+            body: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.route, color: Colors.orange),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "${pool.departure} ➔ ${pool.destination}",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              "Status: ${pool.status.toUpperCase()} (${pool.currentFilling}/4 passagers)",
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 4,
-                child: GoogleMap(
-                  initialCameraPosition: const CameraPosition(target: LatLng(14.7167, -17.4677), zoom: 14),
-                  onMapCreated: (GoogleMapController controller) async {
-                    _mapController = controller;
-                    if (_myPosition != null && !_isRoutePlotted) {
-                      _mapController?.animateCamera(
-                        CameraUpdate.newLatLng(_myPosition!),
-                      );
-                    }
-                  },
-                  markers: _markers,
-                  polylines: _polylines,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                ),
-              ),
-              Expanded(
-                flex: 6,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))
                     ],
                   ),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _optimizedPickups.length,
-                    itemBuilder: (context, index) {
-                      final passenger = _optimizedPickups[index].value;
-                      final isLast = index == _optimizedPickups.length - 1;
-                      
-                      String pName = passenger['name'] ?? 'Passager';
-                      if (passenger['firstName'] != null && passenger['lastName'] != null) {
-                        pName = "${passenger['firstName']} ${passenger['lastName']}";
-                      }
-
-                      return Column(
-                        children: [
-                          _buildStepCard(
-                            index + 1,
-                            pName,
-                            passenger['phone'] ?? '',
-                            isLast ? "Dernier ramassage avant autoroute" : "Point de collecte",
-                          ),
-                          if (!isLast)
-                            const Icon(Icons.arrow_downward, color: Colors.grey, size: 20),
-                        ],
-                      );
-                    },
-                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final repo = ref.read(tripRepositoryProvider);
-                    if (pool.status == 'accepted') {
-                      await repo.departPool(pool.id);
-                      if (mounted) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Trajet démarré !"), backgroundColor: Colors.green),
+                Expanded(
+                  flex: 4,
+                  child: GoogleMap(
+                    initialCameraPosition: const CameraPosition(
+                        target: LatLng(14.7167, -17.4677), zoom: 14),
+                    onMapCreated: (GoogleMapController controller) async {
+                      _mapController = controller;
+                      if (_myPosition != null && !_isRoutePlotted) {
+                        _mapController?.animateCamera(
+                          CameraUpdate.newLatLng(_myPosition!),
                         );
                       }
-                    } else {
-                      await repo.completeTrip(pool.id);
-                      if (mounted) {
-                        if (!context.mounted) return;
-                        Navigator.pop(context);
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: pool.status == 'accepted' ? Colors.orange : Colors.black87,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    },
+                    markers: _markers,
+                    polylines: _polylines,
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: true,
                   ),
-                  child: Center(
-                    child: Text(
-                      pool.status == 'accepted' ? "DÉMARRER LE TRAJET" : "TERMINER LE TRAJET", 
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Expanded(
+                  flex: 6,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, -5))
+                      ],
+                    ),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: _optimizedPickups.length,
+                      itemBuilder: (context, index) {
+                        final passenger = _optimizedPickups[index].value;
+                        final isLast = index == _optimizedPickups.length - 1;
+
+                        String pName = passenger['name'] ?? 'Passager';
+                        if (passenger['firstName'] != null &&
+                            passenger['lastName'] != null) {
+                          pName =
+                              "${passenger['firstName']} ${passenger['lastName']}";
+                        }
+
+                        return Column(
+                          children: [
+                            _buildStepCard(
+                              index + 1,
+                              pName,
+                              passenger['phone'] ?? '',
+                              isLast
+                                  ? "Dernier ramassage avant autoroute"
+                                  : "Point de collecte",
+                            ),
+                            if (!isLast)
+                              const Icon(Icons.arrow_downward,
+                                  color: Colors.grey, size: 20),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        );
-      }
-    );
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final repo = ref.read(tripRepositoryProvider);
+                      if (pool.status == 'accepted') {
+                        await repo.departPool(pool.id);
+                        if (mounted) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text("Trajet démarré !"),
+                                backgroundColor: Colors.green),
+                          );
+                        }
+                      } else {
+                        await repo.completeTrip(pool.id);
+                        if (mounted) {
+                          if (!context.mounted) return;
+                          Navigator.pop(context);
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: pool.status == 'accepted'
+                          ? Colors.orange
+                          : Colors.black87,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        pool.status == 'accepted'
+                            ? "DÉMARRER LE TRAJET"
+                            : "TERMINER LE TRAJET",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
   }
 
   Widget _buildStepCard(int step, String name, String phone, String info) {
@@ -284,13 +310,18 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
         ],
       ),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Colors.black87,
-          child: Text("$step", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: Text("$step",
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(info, style: const TextStyle(fontSize: 12)),
@@ -299,7 +330,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.chat, color: Colors.green),
-              onPressed: () => launchUrl(Uri.parse("https://wa.me/221${phone.replaceAll(' ', '')}")),
+              onPressed: () => launchUrl(
+                  Uri.parse("https://wa.me/221${phone.replaceAll(' ', '')}")),
             ),
             IconButton(
               icon: const Icon(Icons.phone, color: Colors.blue),
