@@ -383,8 +383,9 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final data = snapshot.data!.data() as Map<String, dynamic>?;
-        if (data?['phone'] != null && (data?['phone'] as String).isNotEmpty)
+        if (data?['phone'] != null && (data?['phone'] as String).isNotEmpty) {
           return const SizedBox.shrink();
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
