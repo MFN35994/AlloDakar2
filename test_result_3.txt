@@ -1,0 +1,27 @@
+00:00 +0: loading /home/koparexpress/allo_dakar/test/widget_test.dart
+00:00 +0: App smoke test
+══╡ EXCEPTION CAUGHT BY IMAGE RESOURCE SERVICE ╞════════════════════════════════════════════════════
+The following NetworkImageLoadException was thrown resolving an image codec:
+HTTP request failed, statusCode: 400, https://img.icons8.com/color/48/000000/google-logo.png
+
+When the exception was thrown, this was the stack:
+#0      NetworkImage._loadAsync (package:flutter/src/painting/_network_image_io.dart:131:9)
+<asynchronous suspension>
+#1      MultiFrameImageStreamCompleter._handleCodecReady (package:flutter/src/painting/image_stream.dart:1021:3)
+<asynchronous suspension>
+
+Image provider: NetworkImage("https://img.icons8.com/color/48/000000/google-logo.png", scale: 1.0,
+  webHtmlElementStrategy: never, headers: null)
+Image key: NetworkImage("https://img.icons8.com/color/48/000000/google-logo.png", scale: 1.0,
+  webHtmlElementStrategy: never, headers: null)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:02 +0 -1: App smoke test [E]
+  Test failed. See exception logs above.
+  The test description was: App smoke test
+  
+Warning: At least one test in this suite creates an HttpClient. When running a test suite that uses
+TestWidgetsFlutterBinding, all HTTP requests will return status code 400, and no network request
+will actually be made. Any test expecting a real network connection and status code will fail.
+To test code that needs an HttpClient, provide your own HttpClient implementation to the code under
+test, so that your test can consistently provide a testable response to the code under test.
+00:02 +0 -1: Some tests failed.
