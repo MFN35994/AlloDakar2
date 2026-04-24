@@ -5,7 +5,6 @@ import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/referral_provider.dart';
 import '../../core/theme/transen_colors.dart';
 
-
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -13,7 +12,8 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -22,10 +22,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _referralController = TextEditingController();
-  
-  String? _verificationId;
+
   bool _otpSent = false;
-  bool _isLoading = false;
   bool _isLogin = true;
 
   @override
@@ -47,6 +45,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     super.dispose();
   }
 
+  // --- LOGIQUE D'AUTHENTIFICATION ---
+
   Future<void> _handleAuth() async {
     if (_isLogin) {
       await _signInWithEmail();
@@ -56,16 +56,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   }
 
   Future<void> _signInWithEmail() async {
-    setState(() => _isLoading = true);
     try {
       await ref.read(authRepositoryProvider).signInWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          );
     } catch (e) {
       _showError("Erreur de connexion : Vérifiez vos identifiants");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -74,93 +71,76 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       _showError("Veuillez remplir votre nom et prénom");
       return;
     }
-    setState(() => _isLoading = true);
     try {
       await ref.read(authRepositoryProvider).signUpWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-      // Après inscription, on met à jour les données utilisateur
-      await ref.read(authProvider.notifier).updateUserData(
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        email: _emailController.text.trim(),
-      );
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          );
 
-      // Handle Referral
+      await ref.read(authProvider.notifier).updateUserData(
+            firstName: _firstNameController.text.trim(),
+            lastName: _lastNameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            email: _emailController.text.trim(),
+          );
+
       if (_referralController.text.isNotEmpty) {
         final auth = ref.read(authProvider);
         if (auth != null) {
           await ref.read(referralProvider.notifier).validateAndApply(
-            _referralController.text.trim(),
-            auth.userId,
-          );
+                _referralController.text.trim(),
+                auth.userId,
+              );
         }
       }
     } catch (e) {
       _showError("Erreur d'inscription : ${e.toString()}");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
     } catch (e) {
       _showError("Connexion Google annulée ou échouée");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // LOGIQUE SMS (Connectée au Provider)
   Future<void> _verifyPhone() async {
-    setState(() => _isLoading = true);
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty || !phone.startsWith('+')) {
+      _showError(
+          "Format invalide. Utilisez le format international (ex: +221...)");
+      return;
+    }
+
     try {
-      await ref.read(authRepositoryProvider).verifyPhoneNumber(
-        phoneNumber: _phoneController.text.trim(),
-        verificationCompleted: (credential) async {
-          await ref.read(authRepositoryProvider).signInWithSmsCode(credential.verificationId!, credential.smsCode!);
-        },
-        verificationFailed: (e) {
-          _showError(e.message ?? "Erreur de vérification");
-          setState(() => _isLoading = false);
-        },
-        codeSent: (verificationId, resendToken) {
-          setState(() {
-            _verificationId = verificationId;
-            _otpSent = true;
-            _isLoading = false;
-          });
-        },
-        codeAutoRetrievalTimeout: (verificationId) {
-          _verificationId = verificationId;
-        },
-      );
+      await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
+      setState(() => _otpSent = true);
     } catch (e) {
-      _showError("Numéro invalide");
-      setState(() => _isLoading = false);
+      _showError("Erreur d'envoi : ${e.toString()}");
     }
   }
 
   Future<void> _signInWithOtp() async {
-    if (_verificationId == null) return;
-    setState(() => _isLoading = true);
+    final code = _otpController.text.trim();
+    if (code.length < 6) {
+      _showError("Le code doit comporter 6 chiffres");
+      return;
+    }
+
     try {
-      await ref.read(authRepositoryProvider).signInWithSmsCode(_verificationId!, _otpController.text.trim());
+      await ref.read(authProvider.notifier).verifySmsCode(code);
     } catch (e) {
-      _showError("Code incorrect");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _showError("Code incorrect ou expiré");
     }
   }
 
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message), 
+      content: Text(message),
       backgroundColor: Colors.redAccent,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -169,9 +149,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    // AuthGate gère la navigation automatique
-    
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final authState = ref.watch(authProvider);
+    final isLoading = authState?.isLoading ?? false;
 
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
@@ -184,13 +164,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             const SizedBox(height: 10),
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              height: _otpSent ? 200 : (_tabController.index == 0 ? (_isLogin ? 250 : 470) : 150),
+              height: _otpSent
+                  ? 220
+                  : (_tabController.index == 0 ? (_isLogin ? 250 : 470) : 160),
               child: TabBarView(
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _buildEmailForm(isDarkMode),
-                  _buildPhoneForm(isDarkMode),
+                  _buildEmailForm(isDarkMode, isLoading),
+                  _buildPhoneForm(isDarkMode, isLoading),
                 ],
               ),
             ),
@@ -199,7 +181,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
               child: Row(
                 children: [
                   Expanded(child: Divider()),
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Text("OU", style: TextStyle(color: Colors.grey))),
+                  Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10),
+                      child: Text("OU", style: TextStyle(color: Colors.grey))),
                   Expanded(child: Divider()),
                 ],
               ),
@@ -209,9 +193,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             TextButton(
               onPressed: () => setState(() => _isLogin = !_isLogin),
               child: Text(
-                _isLogin ? "Pas de compte ? Inscrivez-vous" : "Déjà inscrit ? Connectez-vous",
-                style: const TextStyle(color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold),
-
+                _isLogin
+                    ? "Pas de compte ? Inscrivez-vous"
+                    : "Déjà inscrit ? Connectez-vous",
+                style: const TextStyle(
+                    color: TranSenColors.primaryGreen,
+                    fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 30),
@@ -220,6 +207,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       ),
     );
   }
+
+  // --- RESTAURATION DE TES WIDGETS ORIGINAUX ---
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
@@ -234,25 +223,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
         borderRadius: BorderRadius.only(bottomLeft: Radius.circular(80)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black26,
-            blurRadius: 20,
-            offset: Offset(0, 10),
-          )
+              color: Colors.black26, blurRadius: 20, offset: Offset(0, 10))
         ],
       ),
       child: Column(
         children: [
-            Image.asset('assets/images/logo.png', height: 100),
-
+          Image.asset('assets/images/logo.png',
+              height: 100,
+              errorBuilder: (c, e, s) => const Icon(Icons.directions_car,
+                  size: 80, color: Colors.white)),
           const SizedBox(height: 15),
-          const Text(
-            "Bienvenue sur TranSen",
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const Text(
-            "LE TRANSPORT 5 ÉTOILES AU SÉNÉGAL",
-            style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2),
-          ),
+          const Text("Bienvenue sur TranSen",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold)),
+          const Text("LE TRANSPORT 5 ÉTOILES AU SÉNÉGAL",
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2)),
         ],
       ),
     );
@@ -272,50 +263,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          color: TranSenColors.primaryGreen,
-        ),
+            borderRadius: BorderRadius.circular(30),
+            color: TranSenColors.primaryGreen),
         onTap: (index) => setState(() {}),
-        tabs: const [
-          Tab(text: "E-mail"),
-          Tab(text: "Téléphone"),
-        ],
+        tabs: const [Tab(text: "E-mail"), Tab(text: "Téléphone")],
       ),
     );
   }
 
-  Widget _buildEmailForm(bool isDarkMode) {
+  Widget _buildEmailForm(bool isDarkMode, bool isLoading) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Column(
         children: [
           if (!_isLogin) ...[
-            _buildTextField(controller: _firstNameController, label: "Prénom", icon: Icons.person_outline, isDarkMode: isDarkMode),
+            _buildTextField(
+                controller: _firstNameController,
+                label: "Prénom",
+                icon: Icons.person_outline,
+                isDarkMode: isDarkMode),
             const SizedBox(height: 10),
-            _buildTextField(controller: _lastNameController, label: "Nom", icon: Icons.person_outline, isDarkMode: isDarkMode),
+            _buildTextField(
+                controller: _lastNameController,
+                label: "Nom",
+                icon: Icons.person_outline,
+                isDarkMode: isDarkMode),
             const SizedBox(height: 10),
           ],
-          _buildTextField(controller: _emailController, label: "Email", icon: Icons.email_outlined, isDarkMode: isDarkMode),
+          _buildTextField(
+              controller: _emailController,
+              label: "Email",
+              icon: Icons.email_outlined,
+              isDarkMode: isDarkMode),
           const SizedBox(height: 10),
           if (!_isLogin) ...[
-            _buildTextField(controller: _phoneController, label: "Téléphone", icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone, isDarkMode: isDarkMode),
+            _buildTextField(
+                controller: _phoneController,
+                label: "Téléphone",
+                icon: Icons.phone_android_outlined,
+                keyboardType: TextInputType.phone,
+                isDarkMode: isDarkMode),
             const SizedBox(height: 10),
           ],
-          _buildTextField(controller: _passwordController, label: "Mot de passe", icon: Icons.lock_outline, isPassword: true, isDarkMode: isDarkMode),
+          _buildTextField(
+              controller: _passwordController,
+              label: "Mot de passe",
+              icon: Icons.lock_outline,
+              isPassword: true,
+              isDarkMode: isDarkMode),
           if (!_isLogin) ...[
             const SizedBox(height: 10),
             _buildTextField(
-              controller: _referralController, 
-              label: "Code parrainage (optionnel)", 
-              icon: Icons.card_giftcard, 
+              controller: _referralController,
+              label: "Code parrainage (optionnel)",
+              icon: Icons.card_giftcard,
               isDarkMode: isDarkMode,
               textCapitalization: TextCapitalization.characters,
             ),
           ],
           const SizedBox(height: 25),
-          if (_isLoading)
+          if (isLoading)
             const CircularProgressIndicator(color: TranSenColors.primaryGreen)
-
           else
             SizedBox(
               width: double.infinity,
@@ -323,13 +331,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                 onPressed: _handleAuth,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: TranSenColors.primaryGreen,
-
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
                   elevation: 5,
                 ),
-                child: Text(_isLogin ? "SE CONNECTER" : "S'INSCRIRE", style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(_isLogin ? "SE CONNECTER" : "S'INSCRIRE",
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
         ],
@@ -337,30 +346,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildPhoneForm(bool isDarkMode) {
+  Widget _buildPhoneForm(bool isDarkMode, bool isLoading) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Column(
         children: [
           if (!_otpSent)
-            _buildTextField(controller: _phoneController, label: "Numéro de téléphone (ex: +221...)", icon: Icons.phone_android, keyboardType: TextInputType.phone, isDarkMode: isDarkMode)
+            _buildTextField(
+                controller: _phoneController,
+                label: "Numéro (ex: +221...)",
+                icon: Icons.phone_android,
+                keyboardType: TextInputType.phone,
+                isDarkMode: isDarkMode)
           else
-            _buildTextField(controller: _otpController, label: "Code OTP", icon: Icons.vibration, keyboardType: TextInputType.number, isDarkMode: isDarkMode),
-          
+            _buildTextField(
+                controller: _otpController,
+                label: "Code OTP",
+                icon: Icons.vibration,
+                keyboardType: TextInputType.number,
+                isDarkMode: isDarkMode),
           if (!_isLogin && !_otpSent) ...[
             const SizedBox(height: 10),
             _buildTextField(
-              controller: _referralController, 
-              label: "Code parrainage (optionnel)", 
-              icon: Icons.card_giftcard, 
-              isDarkMode: isDarkMode,
-              textCapitalization: TextCapitalization.characters,
-            ),
+                controller: _referralController,
+                label: "Code parrainage (optionnel)",
+                icon: Icons.card_giftcard,
+                isDarkMode: isDarkMode,
+                textCapitalization: TextCapitalization.characters),
           ],
-          const SizedBox(height: 25),
-          if (_isLoading)
+          if (_otpSent)
+            TextButton(
+                onPressed: () => setState(() => _otpSent = false),
+                child: const Text("Changer de numéro",
+                    style: TextStyle(color: Colors.grey, fontSize: 12))),
+          const SizedBox(height: 15),
+          if (isLoading)
             const CircularProgressIndicator(color: TranSenColors.primaryGreen)
-
           else
             SizedBox(
               width: double.infinity,
@@ -370,9 +391,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                   backgroundColor: isDarkMode ? Colors.white : Colors.black87,
                   foregroundColor: isDarkMode ? Colors.black : Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
                 ),
-                child: Text(_otpSent ? "VÉRIFIER LE CODE" : "RECEVOIR LE CODE", style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(_otpSent ? "VÉRIFIER LE CODE" : "RECEVOIR LE CODE",
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
         ],
@@ -399,11 +422,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey.shade600),
         prefixIcon: Icon(icon, color: TranSenColors.primaryGreen),
-
         filled: true,
-        fillColor: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        fillColor: isDarkMode
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.grey.shade100,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
       ),
     );
   }
@@ -415,18 +442,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
         onPressed: _signInWithGoogle,
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          side: BorderSide(color: isDarkMode ? Colors.white24 : Colors.grey.shade300),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          side: BorderSide(
+              color: isDarkMode ? Colors.white24 : Colors.grey.shade300),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.network("https://img.icons8.com/color/48/000000/google-logo.png", height: 24),
+            Image.network(
+                "https://img.icons8.com/color/48/000000/google-logo.png",
+                height: 24),
             const SizedBox(width: 12),
-            Text(
-              "Continuer avec Google",
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
-            ),
+            Text("Continuer avec Google",
+                style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),

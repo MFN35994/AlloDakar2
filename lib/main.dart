@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'presentation/splash/splash_screen.dart';
 import 'data/services/notification_service.dart';
@@ -21,13 +22,16 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').settings =
-        const Settings(persistenceEnabled: true);
 
-    // Configurer le gestionnaire de messages en arrière-plan
+// 1. Initialisation de App Check (Optimisée avec const)
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid: const AndroidDebugProvider(),
+      providerApple: const AppleDebugProvider(),
+    );
+    FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+        .settings = const Settings(persistenceEnabled: true);
+
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-    // Écouter les messages au premier plan
     NotificationService.listenToMessages();
   } catch (e) {
     debugPrint("Firebase init failed: $e");
@@ -90,22 +94,39 @@ class AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authProvider);
+    // On écoute le provider d'authentification
+    final authState = ref.watch(authProvider);
 
-    if (auth == null) {
+    // Cas 1 : L'état est nul (Utilisateur non connecté)
+    if (authState == null) {
       return const LoginScreen();
     }
 
-    if (auth.isLoading) {
-      return const SplashScreen();
-    }
-
-    if (auth.role == 'none') {
-      return const RoleSelectionScreen();
-    } else if (auth.role == 'driver') {
-      return const DriverHomeScreen();
-    } else {
-      return const HomeScreen();
-    }
+    // Cas 2 : On utilise notre méthode .when() personnalisée de AuthState
+    return authState.when(
+      // Si les données sont prêtes (isLoading est false)
+      data: (auth) {
+        // Redirection selon le rôle stocké dans Firestore
+        if (auth.role == 'driver') {
+          return const DriverHomeScreen();
+        } else if (auth.role == 'client') {
+          return const HomeScreen();
+        } else {
+          // Si le rôle n'est pas encore défini (première connexion)
+          return const RoleSelectionScreen();
+        }
+      },
+      // Si le notifier est en train de fetch le rôle ou d'envoyer un code
+      loading: () => const SplashScreen(),
+      // En cas d'erreur critique
+      error: (e, stack) => Scaffold(
+        body: Center(
+          child: Text(
+            "Erreur d'authentification : $e",
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
+      ),
+    );
   }
 }
