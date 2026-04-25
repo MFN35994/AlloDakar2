@@ -15,6 +15,7 @@ import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import '../widgets/profile_drawer.dart';
+import '../widgets/skeleton_loader.dart';
 import '../../core/theme/transen_colors.dart';
 
 
@@ -673,7 +674,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 },
                               );
                             },
-                            loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
+                            loading: () => Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              child: Column(
+                                children: List.generate(3, (index) => const Padding(
+                                  padding: EdgeInsets.only(bottom: 15),
+                                  child: SkeletonLoader(width: double.infinity, height: 180, borderRadius: 24),
+                                )),
+                              ),
+                            ),
                             error: (err, stack) => Center(child: Text('Erreur: $err')),
                           );
                         },

@@ -4,6 +4,8 @@ import '../../data/repositories/auth_repository.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/referral_provider.dart';
 import '../../core/theme/transen_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -22,6 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _referralController = TextEditingController();
+  final _phoneMaskFormatter = MaskTextInputFormatter(mask: '## ### ## ##', filter: { "#": RegExp(r'[0-9]') });
 
   bool _otpSent = false;
   bool _isLogin = true;
@@ -108,8 +111,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   // LOGIQUE SMS (Connectée au Provider)
   Future<void> _verifyPhone() async {
-    String phone = _phoneController.text.trim();
+    String phone = _phoneController.text.trim().replaceAll(' ', '');
     if (phone.isEmpty) {
+      HapticFeedback.heavyImpact();
       _showError("Veuillez entrer un numéro de téléphone");
       return;
     }
@@ -120,9 +124,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
 
     try {
+      HapticFeedback.lightImpact();
       await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
       setState(() => _otpSent = true);
     } catch (e) {
+      HapticFeedback.heavyImpact();
       _showError("Erreur d'envoi : ${e.toString()}");
     }
   }
@@ -130,13 +136,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _signInWithOtp() async {
     final code = _otpController.text.trim();
     if (code.length < 6) {
+      HapticFeedback.heavyImpact();
       _showError("Le code doit comporter 6 chiffres");
       return;
     }
 
     try {
+      HapticFeedback.lightImpact();
       await ref.read(authProvider.notifier).verifySmsCode(code);
     } catch (e) {
+      HapticFeedback.heavyImpact();
       _showError("Code incorrect ou expiré");
     }
   }
@@ -306,6 +315,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 label: "Téléphone",
                 icon: Icons.phone_android_outlined,
                 keyboardType: TextInputType.phone,
+                inputFormatters: [_phoneMaskFormatter],
                 isDarkMode: isDarkMode),
             const SizedBox(height: 10),
           ],
@@ -353,31 +363,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildPhoneForm(bool isDarkMode, bool isLoading) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: Column(
-        children: [
-          if (!_otpSent)
-            _buildTextField(
-                controller: _phoneController,
-                label: "Numéro (ex: +221...)",
-                icon: Icons.phone_android,
-                keyboardType: TextInputType.phone,
-                isDarkMode: isDarkMode)
-          else
-            _buildTextField(
-                controller: _otpController,
-                label: "Code OTP",
-                icon: Icons.vibration,
-                keyboardType: TextInputType.number,
-                isDarkMode: isDarkMode),
-          if (!_isLogin && !_otpSent) ...[
-            const SizedBox(height: 10),
-            _buildTextField(
-                controller: _referralController,
-                label: "Code parrainage (optionnel)",
-                icon: Icons.card_giftcard,
-                isDarkMode: isDarkMode,
-                textCapitalization: TextCapitalization.characters),
-          ],
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.0, 0.2),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: Column(
+          key: ValueKey<bool>(_otpSent),
+          children: [
+            if (!_otpSent)
+              _buildTextField(
+                  controller: _phoneController,
+                  label: "Numéro (ex: 77 123 45 67)",
+                  icon: Icons.phone_android,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [_phoneMaskFormatter],
+                  isDarkMode: isDarkMode)
+            else
+              _buildTextField(
+                  controller: _otpController,
+                  label: "Code OTP",
+                  icon: Icons.vibration,
+                  keyboardType: TextInputType.number,
+                  isDarkMode: isDarkMode),
+            if (!_isLogin && !_otpSent) ...[
+              const SizedBox(height: 10),
+              _buildTextField(
+                  controller: _referralController,
+                  label: "Code parrainage (optionnel)",
+                  icon: Icons.card_giftcard,
+                  isDarkMode: isDarkMode,
+                  textCapitalization: TextCapitalization.characters),
+            ],
           if (_otpSent)
             TextButton(
                 onPressed: () => setState(() => _otpSent = false),
@@ -404,6 +432,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ),
         ],
       ),
+      ),
     );
   }
 
@@ -414,6 +443,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
+    List<TextInputFormatter>? inputFormatters,
     required bool isDarkMode,
   }) {
     return TextField(
@@ -421,6 +451,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       obscureText: isPassword,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
+      inputFormatters: inputFormatters,
       style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         labelText: label,

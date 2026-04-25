@@ -59,7 +59,12 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      // Sur le web, _googleSignIn.signOut() peut lancer une exception 
+      // si l'utilisateur ne s'était pas connecté via Google. On l'ignore.
+    }
     await _auth.signOut();
   }
 }

@@ -1,15 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permettre l'accès aux utilisateurs authentifiés
-    match /{document=**} {
+    // --- COLLECTION USERS ---
+    match /users/{userId} {
+      // 1. Tout utilisateur connecté peut LIRE le profil d'un autre (Nom, Photo, Note)
+      // Utile pour que le client voie son chauffeur et vice-versa.
+      allow read: if request.auth != null;
+
+      // 2. Seul l'utilisateur peut CRÉER son propre document
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+      // 3. Seul l'utilisateur peut MODIFIER ses propres infos
+      // On interdit de changer son propre rôle si un rôle est déjà défini (pour éviter de se nommer ADMIN).
+      // MAIS on l'autorise si l'utilisateur n'a pas encore de rôle (ex: 1ère connexion sur RoleSelectionScreen).
+      allow update: if request.auth != null 
+                    && request.auth.uid == userId 
+                    && (
+                      !('role' in resource.data) || 
+                      request.resource.data.role == resource.data.role
+                    );
+    }
+
+    // --- COLLECTIONS DE COURSES (VTC & Covoiturage) ---
+    // Dans ton code (trip_repository.dart), les collections s'appellent "pools" et "trips", pas "serviceRequests" !
+    match /pools/{poolId} {
+      // Les clients doivent pouvoir rejoindre un pool existant, donc ils doivent pouvoir modifier le document
       allow read, write: if request.auth != null;
     }
     
-    // Règle spécifique pour la création de compte (si pas encore de doc user)
-    match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+    match /trips/{tripId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /active_drivers/{driverId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /driver_routes/{driverId} {
+      allow read, write: if request.auth != null;
     }
   }
 }

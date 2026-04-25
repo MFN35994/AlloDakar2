@@ -13,6 +13,7 @@ import '../../domain/models/trip_model.dart';
 import '../widgets/profile_drawer.dart';
 import './trip_tracking_screen.dart';
 import '../widgets/driver_reviews_sheet.dart';
+import '../widgets/skeleton_loader.dart';
 
 final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
   return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
@@ -347,7 +348,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
+                      loading: () => ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: 3,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            margin: const EdgeInsets.only(right: 15),
+                            child: const SkeletonLoader(width: 200, height: 110, borderRadius: 20),
+                          );
+                        },
+                      ),
                       error: (_, __) => const SizedBox.shrink(),
                     ),
                   ),
