@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/services/notification_service.dart';
@@ -114,39 +116,73 @@ class AuthNotifier extends StateNotifier<AuthState?> {
 
 // Variable pour stocker l'ID de vérification du SMS en mémoire
   String? _verificationId;
+  ConfirmationResult? _webConfirmationResult;
 
   // 1. Déclencher l'envoi du SMS
   Future<void> sendPhoneVerificationCode(String phoneNumber) async {
     state = state?.copyWith(isLoading: true) ??
         AuthState(userId: '', role: 'none', isLoading: true);
 
+    if (kIsWeb) {
+      try {
+        _webConfirmationResult = await FirebaseAuth.instance.signInWithPhoneNumber(phoneNumber);
+        state = state?.copyWith(isLoading: false, codeSent: true);
+      } catch (e) {
+        state = state?.copyWith(isLoading: false);
+        throw Exception(e.toString());
+      }
+      return;
+    }
+
+    final completer = Completer<void>();
+
     await _repository.verifyPhoneNumber(
       phoneNumber: phoneNumber,
       verificationCompleted: (PhoneAuthCredential credential) async {
         await FirebaseAuth.instance.signInWithCredential(credential);
+        if (!completer.isCompleted) completer.complete();
       },
       verificationFailed: (FirebaseAuthException e) {
         state = state?.copyWith(isLoading: false);
-        throw Exception(e.message);
+        if (!completer.isCompleted) completer.completeError(Exception(e.message));
       },
       codeSent: (String verificationId, int? resendToken) {
         _verificationId = verificationId;
         // On active codeSent pour basculer l'UI vers le champ OTP
         state = state?.copyWith(isLoading: false, codeSent: true);
+        if (!completer.isCompleted) completer.complete();
       },
       codeAutoRetrievalTimeout: (String verificationId) {
         _verificationId = verificationId;
       },
     );
+
+    return completer.future;
   }
 
   // 2. Valider le code OTP tapé par l'utilisateur
   Future<void> verifySmsCode(String smsCode) async {
+    state = state?.copyWith(isLoading: true);
+    
+    if (kIsWeb) {
+      if (_webConfirmationResult == null) {
+        state = state?.copyWith(isLoading: false);
+        throw Exception("Demandez d'abord un code SMS.");
+      }
+      try {
+        await _webConfirmationResult!.confirm(smsCode);
+      } catch (e) {
+        state = state?.copyWith(isLoading: false);
+        throw Exception("Code incorrect.");
+      }
+      return;
+    }
+
     if (_verificationId == null) {
+      state = state?.copyWith(isLoading: false);
       throw Exception("Demandez d'abord un code SMS.");
     }
 
-    state = state?.copyWith(isLoading: true);
     try {
       await _repository.signInWithSmsCode(_verificationId!, smsCode);
     } catch (e) {

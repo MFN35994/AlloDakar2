@@ -108,11 +108,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   // LOGIQUE SMS (Connectée au Provider)
   Future<void> _verifyPhone() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty || !phone.startsWith('+')) {
-      _showError(
-          "Format invalide. Utilisez le format international (ex: +221...)");
+    String phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      _showError("Veuillez entrer un numéro de téléphone");
       return;
+    }
+
+    // Ajout automatique de l'indicatif +221 si l'utilisateur l'omet
+    if (!phone.startsWith('+')) {
+      phone = '+221$phone';
     }
 
     try {
