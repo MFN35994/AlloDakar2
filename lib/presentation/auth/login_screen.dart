@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/auth_repository.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/referral_provider.dart';
 import '../../core/theme/transen_colors.dart';
+import '../legal/legal_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
@@ -14,11 +14,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -30,16 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   bool _isLogin = true;
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
   void dispose() {
-    _tabController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _phoneController.dispose();
@@ -48,69 +35,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.dispose();
   }
 
-  // --- LOGIQUE D'AUTHENTIFICATION ---
-
-  Future<void> _handleAuth() async {
-    if (_isLogin) {
-      await _signInWithEmail();
-    } else {
-      await _signUpWithEmail();
-    }
-  }
-
-  Future<void> _signInWithEmail() async {
-    try {
-      await ref.read(authRepositoryProvider).signInWithEmail(
-            _emailController.text.trim(),
-            _passwordController.text.trim(),
-          );
-    } catch (e) {
-      _showError("Erreur de connexion : Vérifiez vos identifiants");
-    }
-  }
-
-  Future<void> _signUpWithEmail() async {
-    if (_firstNameController.text.isEmpty || _lastNameController.text.isEmpty) {
-      _showError("Veuillez remplir votre nom et prénom");
-      return;
-    }
-    try {
-      await ref.read(authRepositoryProvider).signUpWithEmail(
-            _emailController.text.trim(),
-            _passwordController.text.trim(),
-          );
-
-      await ref.read(authProvider.notifier).updateUserData(
-            firstName: _firstNameController.text.trim(),
-            lastName: _lastNameController.text.trim(),
-            phone: _phoneController.text.trim(),
-            email: _emailController.text.trim(),
-          );
-
-      if (_referralController.text.isNotEmpty) {
-        final auth = ref.read(authProvider);
-        if (auth != null) {
-          await ref.read(referralProvider.notifier).validateAndApply(
-                _referralController.text.trim(),
-                auth.userId,
-              );
-        }
-      }
-    } catch (e) {
-      _showError("Erreur d'inscription : ${e.toString()}");
-    }
-  }
-
-  Future<void> _signInWithGoogle() async {
-    try {
-      await ref.read(authRepositoryProvider).signInWithGoogle();
-    } catch (e) {
-      _showError("Connexion Google annulée ou échouée");
-    }
-  }
-
   // LOGIQUE SMS (Connectée au Provider)
   Future<void> _verifyPhone() async {
+    if (!_isLogin) {
+      if (_firstNameController.text.isEmpty || _lastNameController.text.isEmpty) {
+        HapticFeedback.heavyImpact();
+        _showError("Veuillez entrer votre prénom et votre nom");
+        return;
+      }
+    }
+
     String phone = _phoneController.text.trim().replaceAll(' ', '');
     if (phone.isEmpty) {
       HapticFeedback.heavyImpact();
@@ -144,6 +78,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     try {
       HapticFeedback.lightImpact();
       await ref.read(authProvider.notifier).verifySmsCode(code);
+      
+      if (!_isLogin) {
+        String phone = _phoneController.text.trim().replaceAll(' ', '');
+        if (!phone.startsWith('+')) phone = '+221$phone';
+
+        await ref.read(authProvider.notifier).updateUserData(
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          phone: phone,
+        );
+
+        if (_referralController.text.isNotEmpty) {
+          final auth = ref.read(authProvider);
+          if (auth != null) {
+            await ref.read(referralProvider.notifier).validateAndApply(
+                  _referralController.text.trim(),
+                  auth.userId,
+                );
+          }
+        }
+      }
     } catch (e) {
       HapticFeedback.heavyImpact();
       _showError("Code incorrect ou expiré");
@@ -172,39 +127,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         child: Column(
           children: [
             _buildHeader(isDarkMode),
-            const SizedBox(height: 10),
-            _buildTabs(isDarkMode),
-            const SizedBox(height: 10),
+            const SizedBox(height: 30),
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              height: _otpSent
-                  ? 220
-                  : (_tabController.index == 0 ? (_isLogin ? 250 : 470) : 160),
-              child: TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildEmailForm(isDarkMode, isLoading),
-                  _buildPhoneForm(isDarkMode, isLoading),
-                ],
-              ),
+              // Ajuste la hauteur de manière fluide en fonction des champs affichés
+              height: _otpSent ? 200 : (_isLogin ? 200 : 450),
+              child: _buildPhoneForm(isDarkMode, isLoading),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10),
-                      child: Text("OU", style: TextStyle(color: Colors.grey))),
-                  Expanded(child: Divider()),
-                ],
-              ),
-            ),
-            _buildGoogleButton(isDarkMode),
             const SizedBox(height: 20),
             TextButton(
-              onPressed: () => setState(() => _isLogin = !_isLogin),
+              onPressed: () {
+                setState(() {
+                  _isLogin = !_isLogin;
+                  _otpSent = false;
+                });
+              },
               child: Text(
                 _isLogin
                     ? "Pas de compte ? Inscrivez-vous"
@@ -220,8 +157,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ),
     );
   }
-
-  // --- RESTAURATION DE TES WIDGETS ORIGINAUX ---
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
@@ -262,176 +197,207 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildTabs(bool isDarkMode) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 30),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.white10 : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.grey,
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        indicator: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            color: TranSenColors.primaryGreen),
-        onTap: (index) => setState(() {}),
-        tabs: const [Tab(text: "E-mail"), Tab(text: "Téléphone")],
-      ),
-    );
-  }
-
-  Widget _buildEmailForm(bool isDarkMode, bool isLoading) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: Column(
-        children: [
-          if (!_isLogin) ...[
-            _buildTextField(
-                controller: _firstNameController,
-                label: "Prénom",
-                icon: Icons.person_outline,
-                isDarkMode: isDarkMode),
-            const SizedBox(height: 10),
-            _buildTextField(
-                controller: _lastNameController,
-                label: "Nom",
-                icon: Icons.person_outline,
-                isDarkMode: isDarkMode),
-            const SizedBox(height: 10),
-          ],
-          _buildTextField(
-              controller: _emailController,
-              label: "Email",
-              icon: Icons.email_outlined,
-              isDarkMode: isDarkMode),
-          const SizedBox(height: 10),
-          if (!_isLogin) ...[
-            _buildTextField(
-                controller: _phoneController,
-                label: "Téléphone",
-                icon: Icons.phone_android_outlined,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [_phoneMaskFormatter],
-                isDarkMode: isDarkMode),
-            const SizedBox(height: 10),
-          ],
-          _buildTextField(
-              controller: _passwordController,
-              label: "Mot de passe",
-              icon: Icons.lock_outline,
-              isPassword: true,
-              isDarkMode: isDarkMode),
-          if (!_isLogin) ...[
-            const SizedBox(height: 10),
-            _buildTextField(
-              controller: _referralController,
-              label: "Code parrainage (optionnel)",
-              icon: Icons.card_giftcard,
-              isDarkMode: isDarkMode,
-              textCapitalization: TextCapitalization.characters,
-            ),
-          ],
-          const SizedBox(height: 25),
-          if (isLoading)
-            const CircularProgressIndicator(color: TranSenColors.primaryGreen)
-          else
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _handleAuth,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: TranSenColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15)),
-                  elevation: 5,
-                ),
-                child: Text(_isLogin ? "SE CONNECTER" : "S'INSCRIRE",
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPhoneForm(bool isDarkMode, bool isLoading) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 500),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.0, 0.2),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
-          );
-        },
-        child: Column(
-          key: ValueKey<bool>(_otpSent),
-          children: [
-            if (!_otpSent)
-              _buildTextField(
-                  controller: _phoneController,
-                  label: "Numéro (ex: 77 123 45 67)",
-                  icon: Icons.phone_android,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [_phoneMaskFormatter],
-                  isDarkMode: isDarkMode)
-            else
-              _buildTextField(
-                  controller: _otpController,
-                  label: "Code OTP",
-                  icon: Icons.vibration,
-                  keyboardType: TextInputType.number,
-                  isDarkMode: isDarkMode),
-            if (!_isLogin && !_otpSent) ...[
-              const SizedBox(height: 10),
-              _buildTextField(
-                  controller: _referralController,
-                  label: "Code parrainage (optionnel)",
-                  icon: Icons.card_giftcard,
-                  isDarkMode: isDarkMode,
-                  textCapitalization: TextCapitalization.characters),
-            ],
-          if (_otpSent)
-            TextButton(
-                onPressed: () => setState(() => _otpSent = false),
-                child: const Text("Changer de numéro",
-                    style: TextStyle(color: Colors.grey, fontSize: 12))),
-          const SizedBox(height: 15),
-          if (isLoading)
-            const CircularProgressIndicator(color: TranSenColors.primaryGreen)
-          else
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _otpSent ? _signInWithOtp : _verifyPhone,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode ? Colors.white : Colors.black87,
-                  foregroundColor: isDarkMode ? Colors.black : Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15)),
-                ),
-                child: Text(_otpSent ? "VÉRIFIER LE CODE" : "RECEVOIR LE CODE",
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 500),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 0.2),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
               ),
-            ),
-        ],
-      ),
+            );
+          },
+          child: Column(
+            key: ValueKey<String>('$_otpSent-$_isLogin'),
+            children: [
+              if (!_isLogin && !_otpSent) ...[
+                _buildTextField(
+                    controller: _firstNameController,
+                    label: "Prénom",
+                    icon: Icons.person_outline,
+                    isDarkMode: isDarkMode),
+                const SizedBox(height: 10),
+                _buildTextField(
+                    controller: _lastNameController,
+                    label: "Nom",
+                    icon: Icons.person_outline,
+                    isDarkMode: isDarkMode),
+                const SizedBox(height: 10),
+              ],
+              if (!_otpSent)
+                _buildTextField(
+                    controller: _phoneController,
+                    label: "Numéro (ex: 77 123 45 67)",
+                    icon: Icons.phone_android,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [_phoneMaskFormatter],
+                    isDarkMode: isDarkMode)
+              else
+                _buildTextField(
+                    controller: _otpController,
+                    label: "Code OTP",
+                    icon: Icons.vibration,
+                    keyboardType: TextInputType.number,
+                    isDarkMode: isDarkMode),
+              if (!_isLogin && !_otpSent) ...[
+                const SizedBox(height: 10),
+                _buildTextField(
+                    controller: _referralController,
+                    label: "Code parrainage (optionnel)",
+                    icon: Icons.card_giftcard,
+                    isDarkMode: isDarkMode,
+                    textCapitalization: TextCapitalization.characters),
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    const Text(
+                      "En vous inscrivant, vous acceptez nos ",
+                      style: TextStyle(fontSize: 11),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LegalScreen(
+                            title: 'Conditions Générales',
+                            assetPath: 'assets/legal/cgu.md',
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        "CGU",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: TranSenColors.primaryGreen,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                          decorationColor: TranSenColors.primaryGreen,
+                        ),
+                      ),
+                    ),
+                    const Text(" et notre ", style: TextStyle(fontSize: 11)),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LegalScreen(
+                            title: 'Politique de Confidentialité',
+                            assetPath: 'assets/legal/politique_confidentialite.md',
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        "Politique de Confidentialité",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: TranSenColors.primaryGreen,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                          decorationColor: TranSenColors.primaryGreen,
+                        ),
+                      ),
+                    ),
+                    const Text(".", style: TextStyle(fontSize: 11)),
+                  ],
+                                ),
+              ],
+              if (_otpSent)
+                TextButton(
+                    onPressed: () => setState(() => _otpSent = false),
+                    child: const Text("Changer de numéro",
+                        style: TextStyle(color: Colors.grey, fontSize: 12))),
+              const SizedBox(height: 15),
+              if (isLoading)
+                const CircularProgressIndicator(color: TranSenColors.primaryGreen)
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _otpSent ? _signInWithOtp : _verifyPhone,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDarkMode ? Colors.white : Colors.black87,
+                      foregroundColor: isDarkMode ? Colors.black : Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: Text(_otpSent ? "VÉRIFIER LE CODE" : "RECEVOIR LE CODE",
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              // Mention légale pour la CONNEXION
+              if (_isLogin && !_otpSent) ...
+                [
+                  const SizedBox(height: 12),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    children: [
+                      Text(
+                        'En vous connectant, vous acceptez nos ',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LegalScreen(
+                              title: 'Conditions Générales',
+                              assetPath: 'assets/legal/cgu.md',
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'CGU',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: TranSenColors.primaryGreen,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                            decorationColor: TranSenColors.primaryGreen,
+                          ),
+                        ),
+                      ),
+                      Text(' et notre ', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LegalScreen(
+                              title: 'Politique de Confidentialité',
+                              assetPath: 'assets/legal/politique_confidentialite.md',
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Politique de Confidentialité',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: TranSenColors.primaryGreen,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                            decorationColor: TranSenColors.primaryGreen,
+                          ),
+                        ),
+                      ),
+                      Text('.', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                    ],
+                  ),
+                ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -440,7 +406,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     required TextEditingController controller,
     required String label,
     required IconData icon,
-    bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
     List<TextInputFormatter>? inputFormatters,
@@ -448,7 +413,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }) {
     return TextField(
       controller: controller,
-      obscureText: isPassword,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
@@ -466,35 +430,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             borderSide: BorderSide.none),
         contentPadding:
             const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-      ),
-    );
-  }
-
-  Widget _buildGoogleButton(bool isDarkMode) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: OutlinedButton(
-        onPressed: _signInWithGoogle,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          side: BorderSide(
-              color: isDarkMode ? Colors.white24 : Colors.grey.shade300),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.network(
-                "https://img.icons8.com/color/48/000000/google-logo.png",
-                height: 24),
-            const SizedBox(width: 12),
-            Text("Continuer avec Google",
-                style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                    fontWeight: FontWeight.bold)),
-          ],
-        ),
       ),
     );
   }
