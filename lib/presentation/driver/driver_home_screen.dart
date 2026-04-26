@@ -210,7 +210,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       body: Column(
         children: [
           Expanded(
-            flex: 3,
+            flex: 2, // Réduit de 3 à 2 pour libérer de l'espace vertical
             child: Stack(
               children: [
                 GoogleMap(
@@ -252,7 +252,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           ),
           
           Expanded(
-            flex: 7,
+            flex: 8, // Augmenté de 7 à 8
             child: Container(
               decoration: const BoxDecoration(
                 color: Color(0xFFF8F9FA),
@@ -311,8 +311,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                         }),
                         
                         Container(
-                          padding: const EdgeInsets.all(15),
-                          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
                           decoration: BoxDecoration(
                             color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
@@ -483,7 +483,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 },
                               );
                             },
-                            loading: () => Padding(padding: const EdgeInsets.all(20), child: Column(children: List.generate(2, (index) => const Padding(padding: EdgeInsets.only(bottom: 15), child: SkeletonLoader(width: double.infinity, height: 120, borderRadius: 24))))),
+                            loading: () => Padding(padding: const EdgeInsets.all(20), child: Column(children: List.generate(1, (index) => const Padding(padding: EdgeInsets.only(bottom: 15), child: SkeletonLoader(width: double.infinity, height: 100, borderRadius: 24))))),
                             error: (_, __) => const Center(child: Text("Erreur d'accès aux groupes")),
                           );
                         }),
