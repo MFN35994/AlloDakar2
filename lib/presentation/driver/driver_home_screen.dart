@@ -1,5 +1,5 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -15,7 +15,6 @@ import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import '../widgets/profile_drawer.dart';
-import '../widgets/skeleton_loader.dart';
 import '../widgets/driver_reviews_sheet.dart';
 import '../../core/theme/transen_colors.dart';
 
@@ -252,18 +251,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           ),
           
           Expanded(
-            flex: 6, // Ajusté pour le ratio 4/6 (40%/60%)
+            flex: 6,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8F9FA),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                  topRight: Radius.circular(40),
-                ),
-                boxShadow: [
-                  BoxShadow(color: Color(0x14000000), blurRadius: 30, spreadRadius: 5, offset: Offset(0, -10)),
-                ],
-              ),
+              color: Colors.white,
               child: SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 10, bottom: 20),
@@ -557,7 +547,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       ),
                       Text(
                         "Prévu pour le: ${pool.scheduledDate}",
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                         style: const TextStyle(fontSize: 12, color: Colors.black45),
                       ),
                     ],
                   ),
@@ -878,9 +868,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: Colors.black12),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
