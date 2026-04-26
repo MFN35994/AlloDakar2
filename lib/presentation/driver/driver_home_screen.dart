@@ -483,12 +483,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 },
                               );
                             },
-                            loading: () => const Padding(
-                              padding: EdgeInsets.all(40),
-                              child: Center(
-                                child: CircularProgressIndicator(color: TranSenColors.primaryGreen),
-                              ),
-                            ),
+                            loading: () => const SizedBox.shrink(),
                             error: (_, __) => const Center(child: Text("Erreur d'accès aux groupes")),
                           );
                         }),
