@@ -90,7 +90,8 @@ class DriverReviewsSheet extends ConsumerWidget {
                     final review = reviews[index];
                     final rating = review['rating'] as int? ?? 0;
                     final comment = review['comment'] as String? ?? '';
-                    final timestamp = (review['acceptedAt'] as Timestamp?)?.toDate();
+                    final userName = review['userName'] as String? ?? 'Client';
+                    final timestamp = (review['createdAt'] as Timestamp?)?.toDate();
                     final dateStr = timestamp != null ? DateFormat('dd/MM/yyyy').format(timestamp) : '';
 
                     return Container(
@@ -105,12 +106,9 @@ class DriverReviewsSheet extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              Row(
-                                children: List.generate(5, (i) => Icon(
-                                  i < rating ? Icons.star : Icons.star_border,
-                                  color: Colors.amber,
-                                  size: 14,
-                                )),
+                              Text(
+                                userName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: TranSenColors.primaryGreen),
                               ),
                               const Spacer(),
                               Text(
@@ -118,6 +116,14 @@ class DriverReviewsSheet extends ConsumerWidget {
                                 style: const TextStyle(fontSize: 10, color: Colors.grey),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 5),
+                          Row(
+                            children: List.generate(5, (i) => Icon(
+                              i < rating ? Icons.star : Icons.star_border,
+                              color: Colors.amber,
+                              size: 14,
+                            )),
                           ),
                           if (comment.isNotEmpty) ...[
                             const SizedBox(height: 10),

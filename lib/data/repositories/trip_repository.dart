@@ -151,11 +151,21 @@ class TripRepository {
   }
 
   Future<void> _checkAndAwardReferralPoints(String? userId, String tripType) async {
-    if (userId == null) return;
+    if (userId == null) {
+      debugPrint("[PARRAINAGE] userId est null, arrêt.");
+      return;
+    }
     try {
+      debugPrint("[PARRAINAGE] Vérification parrainage pour client: $userId (Type: $tripType)");
       final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        debugPrint("[PARRAINAGE] Document client $userId introuvable dans 'users'.");
+        return;
+      }
+
       final referredBy = userDoc.data()?['referredBy'] as String?;
       if (referredBy != null) {
+        debugPrint("[PARRAINAGE] Parrain trouvé: $referredBy. Attribution de 1 point.");
         final userName = userDoc.data()?['name'] ?? 'Un client';
         final referrerRef = _firestore.collection('users').doc(referredBy);
         
@@ -172,9 +182,12 @@ class TripRepository {
             'date': FieldValue.serverTimestamp(),
           });
         });
+        debugPrint("[PARRAINAGE] Point attribué avec succès à $referredBy !");
+      } else {
+        debugPrint("[PARRAINAGE] Le client $userId n'a pas de parrain (champ 'referredBy' absent).");
       }
     } catch (e) {
-      debugPrint("Erreur referral points: $e");
+      debugPrint("[PARRAINAGE] ERREUR lors de l'attribution: $e");
     }
   }
 
@@ -290,41 +303,54 @@ class TripRepository {
         });
   }
 
-  Future<void> submitRating(String tripId, int rating, String comment) async {
+  Future<void> submitRating({
+    required String tripId, 
+    required String driverId,
+    required String userId,
+    required String userName,
+    required int rating, 
+    required String comment
+  }) async {
     try {
-      // 1. Essayer dans 'trips'
-      final tripDoc = await _firestore.collection('trips').doc(tripId).get();
-      if (tripDoc.exists) {
-        await _firestore.collection('trips').doc(tripId).update({
-          'rating': rating,
-          'comment': comment,
-          'status': 'rated',
-        });
-        return;
-      }
-
-      // 2. Essayer dans 'pools'
-      final poolDoc = await _firestore.collection('pools').doc(tripId).get();
-      if (poolDoc.exists) {
-        await _firestore.collection('pools').doc(tripId).update({
-          'rating': rating,
-          'comment': comment,
-          'status': 'rated',
-        });
-        return;
-      }
+      debugPrint("[RATING] Soumission avis par $userId pour trajet $tripId");
       
-      throw Exception("Trajet introuvable pour la notation");
+      // 1. Enregistrer l'avis dans une collection globale
+      await _firestore.collection('reviews').add({
+        'tripId': tripId,
+        'driverId': driverId,
+        'userId': userId,
+        'userName': userName,
+        'rating': rating,
+        'comment': comment,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. Marquer comme noté pour CET utilisateur (dans sa propre collection de participations)
+      // Note: On ne change plus le status global du pool/trip à 'rated' pour ne pas bloquer les autres
+      final userReviewRef = _firestore.collection('users').doc(userId).collection('my_reviews').doc(tripId);
+      await userReviewRef.set({
+        'rated': true,
+        'rating': rating,
+        'date': FieldValue.serverTimestamp(),
+      });
+      
+      debugPrint("[RATING] Avis enregistré avec succès.");
     } catch (e) {
       debugPrint("Erreur submitRating: $e");
       rethrow;
     }
   }
 
+  Stream<bool> hasUserRated(String userId, String tripId) {
+    return _firestore.collection('users').doc(userId).collection('my_reviews').doc(tripId).snapshots().map((doc) => doc.exists);
+  }
+
   Future<void> completeTrip(String tripId) async {
+    debugPrint("[TRIP] Tentative de complétion du trajet: $tripId");
     // Vérifier si c'est un pool
     final poolDoc = await _firestore.collection('pools').doc(tripId).get();
     if (poolDoc.exists) {
+      debugPrint("[TRIP] C'est un covoiturage (pool).");
       final data = poolDoc.data() as Map<String, dynamic>;
       final passengerIds = List<String>.from(data['passengerIds'] ?? []);
       
@@ -337,7 +363,9 @@ class TripRepository {
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
       });
+      debugPrint("[TRIP] Status pool mis à jour: completed");
     } else {
+      debugPrint("[TRIP] C'est une course classique (trip/yobante).");
       final tripDoc = await _firestore.collection('trips').doc(tripId).get();
       if (tripDoc.exists) {
         final data = tripDoc.data() as Map<String, dynamic>;
@@ -351,14 +379,16 @@ class TripRepository {
           'status': 'completed',
           'completedAt': FieldValue.serverTimestamp(),
         });
+        debugPrint("[TRIP] Status trip mis à jour: completed");
+      } else {
+        debugPrint("[TRIP] Document $tripId introuvable dans 'pools' ET 'trips'.");
       }
     }
   }
 
   Stream<double> watchDriverRating(String driverId) {
-    return _firestore.collection('trips')
+    return _firestore.collection('reviews')
         .where('driverId', isEqualTo: driverId)
-        .where('rating', isNull: false)
         .snapshots()
         .map((snapshot) {
           if (snapshot.docs.isEmpty) return 0.0;
@@ -371,9 +401,9 @@ class TripRepository {
   }
 
   Stream<List<Map<String, dynamic>>> watchDriverReviews(String driverId) {
-    return _firestore.collection('trips')
+    return _firestore.collection('reviews')
         .where('driverId', isEqualTo: driverId)
-        .where('rating', isNull: false)
+        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) => doc.data()).toList();
@@ -435,6 +465,46 @@ class TripRepository {
         }
       }
     }
+  }
+  Stream<List<TripModel>> watchUserTrips(String userId) {
+    // On regarde dans 'trips' où il est client
+    final tripsStream = _firestore.collection('trips')
+        .where('clientId', isEqualTo: userId)
+        .where('status', isEqualTo: 'completed')
+        .snapshots();
+
+    // On regarde dans 'pools' où il est dans passengerIds
+    final poolsStream = _firestore.collection('pools')
+        .where('passengerIds', arrayContains: userId)
+        .where('status', isEqualTo: 'completed')
+        .snapshots();
+
+    return Rx.combineLatest2(tripsStream, poolsStream, (tripsSnap, poolsSnap) {
+      final List<TripModel> all = [];
+      
+      for (var doc in tripsSnap.docs) {
+        all.add(TripModel.fromFirestore(doc));
+      }
+
+      for (var doc in poolsSnap.docs) {
+        final data = doc.data();
+        all.add(TripModel(
+          id: doc.id,
+          departure: data['departure'] ?? '',
+          destination: data['destination'] ?? '',
+          price: 10000,
+          status: data['status'] ?? 'completed',
+          type: 'Covoiturage',
+          driverId: data['driverId'],
+          driverName: data['driverName'],
+          driverPhone: data['driverPhone'],
+          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        ));
+      }
+
+      all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return all;
+    });
   }
 }
 

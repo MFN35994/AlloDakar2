@@ -47,7 +47,8 @@ class UserRepository {
     return _firestore.collection('users').doc(userId).snapshots().map((doc) {
       if (!doc.exists) return 0;
       final data = doc.data() as Map<String, dynamic>;
-      return (data['bonusPoints'] ?? 0) as int;
+      // Utilisation de toInt() au cas où Firestore stocke un double ou un long
+      return (data['bonusPoints'] ?? 0).toInt();
     });
   }
 

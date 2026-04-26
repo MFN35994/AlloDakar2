@@ -9,6 +9,7 @@ import '../../domain/providers/trip_providers.dart' as providers;
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/models/trip_model.dart';
 import '../widgets/rating_dialog.dart';
+import '../widgets/driver_reviews_sheet.dart';
 import 'package:lottie/lottie.dart' as lottie;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
@@ -83,7 +84,9 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
 
     try {
       PolylinePoints polylinePoints = PolylinePoints(apiKey: "AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE");
+      // ignore: deprecated_member_use
       PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+        // ignore: deprecated_member_use
         request: PolylineRequest(
           origin: PointLatLng(driverPos.latitude, driverPos.longitude),
           destination: PointLatLng(clientPos.latitude, clientPos.longitude),
@@ -174,48 +177,55 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             return _buildSearchingView(trip);
           }
 
-          if (trip.status == 'completed') {
-            return _buildCompletedView(trip);
-          }
+          return StreamBuilder<bool>(
+            stream: tripRepo.hasUserRated(ref.read(authProvider)?.userId ?? '', widget.tripId),
+            builder: (context, ratedSnapshot) {
+              final hasRated = ratedSnapshot.data ?? false;
 
-          if (trip.status == 'rated') {
-            return _buildRatedView();
-          }
+              if (hasRated) {
+                return _buildRatedView();
+              }
 
-          return Stack(
-            children: [
-              _buildMapView(trip),
-              // Notification flottante si accepté ou démarré
-              if (trip.status == 'accepted')
-                Positioned(
-                  top: 20, left: 20, right: 20,
-                  child: _buildStatusBanner("Chauffeur trouvé ! Il arrive.", Colors.green),
-                ),
-              if (trip.status == 'departed')
-                Positioned(
-                  top: 20, left: 20, right: 20,
-                  child: _buildStatusBanner("Trajet démarré ! Préparez-vous.", TranSenColors.primaryGreen),
-                ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _buildDriverInfoPanel(trip),
-              ),
-              // --- NOUVEAU : BOUTON SOS ---
-              if (trip.status == 'accepted' || trip.status == 'departed')
-                Positioned(
-                  top: 100,
-                  right: 20,
-                  child: FloatingActionButton.extended(
-                    onPressed: () => launchUrl(Uri.parse("tel:17")), // Police Secours Sénégal
-                    label: const Text("SOS", style: TextStyle(fontWeight: FontWeight.bold)),
-                    icon: const Icon(Icons.warning_amber),
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+              if (trip.status == 'completed') {
+                return _buildCompletedView(trip);
+              }
+
+              return Stack(
+                children: [
+                  _buildMapView(trip),
+                  // Notification flottante si accepté ou démarré
+                  if (trip.status == 'accepted')
+                    Positioned(
+                      top: 20, left: 20, right: 20,
+                      child: _buildStatusBanner("Chauffeur trouvé ! Il arrive.", Colors.green),
+                    ),
+                  if (trip.status == 'departed')
+                    Positioned(
+                      top: 20, left: 20, right: 20,
+                      child: _buildStatusBanner("Trajet démarré ! Préparez-vous.", TranSenColors.primaryGreen),
+                    ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildDriverInfoPanel(trip),
                   ),
-                ),
-            ],
+                  // --- NOUVEAU : BOUTON SOS ---
+                  if (trip.status == 'accepted' || trip.status == 'departed')
+                    Positioned(
+                      top: 100,
+                      right: 20,
+                      child: FloatingActionButton.extended(
+                        onPressed: () => launchUrl(Uri.parse("tel:17")), // Police Secours Sénégal
+                        label: const Text("SOS", style: TextStyle(fontWeight: FontWeight.bold)),
+                        icon: const Icon(Icons.warning_amber),
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                ],
+              );
+            }
           );
         },
       ),
@@ -382,6 +392,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           markers: _markers,
           polylines: _polylines,
           myLocationEnabled: true,
+          trafficEnabled: true,
         );
       },
     );
@@ -509,12 +520,17 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                                 Consumer(builder: (context, ref, child) {
                                   final ratingAsync = ref.watch(providers.driverRatingProvider(trip.driverId ?? ''));
                                   return ratingAsync.when(
-                                    data: (rating) => Row(
-                                      children: [
-                                        const Icon(Icons.star, color: Colors.amber, size: 14),
-                                        const SizedBox(width: 2),
-                                        Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                      ],
+                                    data: (rating) => InkWell(
+                                      onTap: () => DriverReviewsSheet.show(context, trip.driverId!, driverName),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.star, color: Colors.amber, size: 14),
+                                          const SizedBox(width: 2),
+                                          Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                          const SizedBox(width: 6),
+                                          const Text("Voir avis", style: TextStyle(fontSize: 10, color: Colors.amber, decoration: TextDecoration.underline)),
+                                        ],
+                                      ),
                                     ),
                                     loading: () => const SizedBox.shrink(),
                                     error: (_, __) => const SizedBox.shrink(),
@@ -672,7 +688,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
               onPressed: () {
                 showDialog(
                   context: context,
-                  builder: (context) => RatingDialog(tripId: trip.id),
+                  builder: (context) => RatingDialog(tripId: trip.id, driverId: trip.driverId),
                 );
               },
               style: ElevatedButton.styleFrom(

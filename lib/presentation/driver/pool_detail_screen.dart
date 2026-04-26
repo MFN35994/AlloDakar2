@@ -79,7 +79,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         : const PointLatLng(14.7167, -17.4677);
 
     PolylinePoints polylinePoints = PolylinePoints(apiKey: "AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE");
+    // ignore: deprecated_member_use
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+      // ignore: deprecated_member_use
       request: PolylineRequest(
         origin: PointLatLng(driverPos.latitude, driverPos.longitude),
         destination: dest,
@@ -213,6 +215,32 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     polylines: _polylines,
                     myLocationEnabled: true,
                     myLocationButtonEnabled: true,
+                    trafficEnabled: true,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final origin = "${_myPosition?.latitude},${_myPosition?.longitude}";
+                        final destination = pool.destination;
+                        final waypoints = _optimizedPickups
+                            .map((e) => "${e.value['lat']},${e.value['lng']}")
+                            .join('|');
+                        final url = "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$waypoints&travelmode=driving";
+                        launchUrl(Uri.parse(url));
+                      },
+                      icon: const Icon(Icons.navigation),
+                      label: const Text("LANCER LA NAVIGATION GOOGLE MAPS", style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(
@@ -246,10 +274,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                             _buildStepCard(
                               index + 1,
                               pName,
-                              passenger['phone'] ?? '',
-                              isLast
-                                  ? "Dernier ramassage avant autoroute"
-                                  : "Point de collecte",
+                              passenger,
+                              "Récupération: ${pool.departure}",
                             ),
                             if (!isLast)
                               const Icon(Icons.arrow_downward,
@@ -309,14 +335,14 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         });
   }
 
-  Widget _buildStepCard(int step, String name, String phone, String info) {
+  Widget _buildStepCard(int step, String name, Map<String, dynamic> passenger, String info) {
+    final phone = passenger['phone'] ?? '';
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
-
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -337,12 +363,11 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.chat, color: Colors.green),
-              onPressed: () => launchUrl(
-                  Uri.parse("https://wa.me/221${phone.replaceAll(' ', '')}")),
+              icon: const Icon(Icons.navigation, color: Colors.blue),
+              onPressed: () => launchUrl(Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${passenger['lat']},${passenger['lng']}&travelmode=driving")),
             ),
             IconButton(
-              icon: const Icon(Icons.phone, color: Colors.blue),
+              icon: const Icon(Icons.phone, color: Colors.green),
               onPressed: () => launchUrl(Uri.parse("tel:$phone")),
             ),
           ],

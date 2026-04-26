@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/trip_repository.dart';
+import '../../domain/providers/auth_provider.dart';
 
 class RatingDialog extends StatefulWidget {
   final String tripId;
+  final String? driverId;
 
-  const RatingDialog({super.key, required this.tripId});
+  const RatingDialog({super.key, required this.tripId, this.driverId});
 
   @override
   State<RatingDialog> createState() => _RatingDialogState();
@@ -72,16 +74,20 @@ class _RatingDialogState extends State<RatingDialog> {
             
             // Bouton
             Consumer(builder: (context, ref, child) {
+              final auth = ref.watch(authProvider);
               return SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: (_rating == 0 || _isLoading) ? null : () async {
+                  onPressed: (_rating == 0 || _isLoading || auth == null) ? null : () async {
                     setState(() => _isLoading = true);
                     try {
                       await ref.read(tripRepositoryProvider).submitRating(
-                        widget.tripId, 
-                        _rating, 
-                        _commentController.text
+                        tripId: widget.tripId, 
+                        driverId: widget.driverId ?? '',
+                        userId: auth.userId,
+                        userName: auth.name ?? 'Client',
+                        rating: _rating, 
+                        comment: _commentController.text,
                       );
                       if (context.mounted) Navigator.pop(context);
                     } catch (e) {

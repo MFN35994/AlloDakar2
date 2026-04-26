@@ -15,9 +15,8 @@ final driverRatingProvider = StreamProvider.family<double, String>((ref, driverI
 });
 
 final driverRatingCountProvider = StreamProvider.family<int, String>((ref, driverId) {
-  return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips')
+  return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('reviews')
       .where('driverId', isEqualTo: driverId)
-      .where('rating', isNull: false)
       .snapshots()
       .map((snap) => snap.docs.length);
 });
@@ -27,8 +26,8 @@ final driverReviewsProvider = StreamProvider.family<List<Map<String, dynamic>>, 
     // Trier en mémoire pour éviter de demander un index composite à l'utilisateur
     final sorted = List<Map<String, dynamic>>.from(reviews);
     sorted.sort((a, b) {
-      final dateA = (a['acceptedAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
-      final dateB = (b['acceptedAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+      final dateA = (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+      final dateB = (b['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
       return dateB.compareTo(dateA);
     });
     return sorted;
