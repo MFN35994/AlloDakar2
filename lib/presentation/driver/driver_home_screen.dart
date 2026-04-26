@@ -210,7 +210,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       body: Column(
         children: [
           Expanded(
-            flex: 2, // Réduit de 3 à 2 pour libérer de l'espace vertical
+            flex: 4, // Remis à 40% comme demandé
             child: Stack(
               children: [
                 GoogleMap(
@@ -252,7 +252,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           ),
           
           Expanded(
-            flex: 8, // Augmenté de 7 à 8
+            flex: 6, // Ajusté pour le ratio 4/6 (40%/60%)
             child: Container(
               decoration: const BoxDecoration(
                 color: Color(0xFFF8F9FA),
@@ -483,7 +483,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 },
                               );
                             },
-                            loading: () => Padding(padding: const EdgeInsets.all(20), child: Column(children: List.generate(1, (index) => const Padding(padding: EdgeInsets.only(bottom: 15), child: SkeletonLoader(width: double.infinity, height: 100, borderRadius: 24))))),
+                            loading: () => const Padding(
+                              padding: EdgeInsets.all(40),
+                              child: Center(
+                                child: CircularProgressIndicator(color: TranSenColors.primaryGreen),
+                              ),
+                            ),
                             error: (_, __) => const Center(child: Text("Erreur d'accès aux groupes")),
                           );
                         }),
