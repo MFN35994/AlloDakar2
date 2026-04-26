@@ -616,8 +616,19 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                         error: (e, s) {
                           debugPrint("Erreur Yobanté détaillée: $e");
                           return Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text("Erreur Yobanté: $e", style: const TextStyle(color: Colors.red, fontSize: 10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("Erreur d'accès aux données (Yobanté)", 
+                                  style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
+                                TextButton.icon(
+                                  onPressed: () => ref.refresh(pendingTripsProvider("${_pubDeparture ?? 'ANY'}|ANY")),
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text("Réessayer", style: TextStyle(fontSize: 12)),
+                                ),
+                              ],
+                            ),
                           );
                         },
                       );
@@ -693,7 +704,18 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                             ),
                             error: (err, stack) {
                               debugPrint("Erreur Groupes détaillée: $err");
-                              return Center(child: Text('Erreur: $err', style: const TextStyle(color: Colors.red, fontSize: 10)));
+                              return Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text("Erreur d'accès aux groupes", style: TextStyle(color: Colors.red, fontSize: 12)),
+                                    TextButton(
+                                      onPressed: () => ref.refresh(pendingPoolsProvider("${_pubDeparture ?? 'ANY'}|${_pubDestination ?? 'ANY'}")),
+                                      child: const Text("Actualiser"),
+                                    ),
+                                  ],
+                                ),
+                              );
                             },
                           );
                         },

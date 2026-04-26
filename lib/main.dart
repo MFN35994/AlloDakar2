@@ -30,7 +30,7 @@ void main() async {
       providerApple: kReleaseMode ? const AppleAppAttestProvider() : const AppleDebugProvider(),
     );
     FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-        .settings = const Settings(persistenceEnabled: true);
+        .settings = Settings(persistenceEnabled: !kIsWeb);
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     NotificationService.listenToMessages();
