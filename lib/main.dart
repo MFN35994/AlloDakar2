@@ -107,6 +107,11 @@ class AuthGate extends ConsumerWidget {
     return authState.when(
       // Si les données sont prêtes (isLoading est false)
       data: (auth) {
+        // Si le profil est incomplet (pas de nom), on reste sur LoginScreen (étape Identity)
+        if (auth.name == null || auth.name!.isEmpty) {
+          return const LoginScreen();
+        }
+
         // Redirection selon le rôle stocké dans Firestore
         if (auth.role == 'driver') {
           return const DriverHomeScreen();

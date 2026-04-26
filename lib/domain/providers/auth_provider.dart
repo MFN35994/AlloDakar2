@@ -13,21 +13,24 @@ class AuthState {
   final String role; // 'client', 'driver', or 'none'
   final bool isLoading;
   final bool codeSent;
+  final String? name;
 
   AuthState({
     required this.userId,
     required this.role,
     this.isLoading = false,
     this.codeSent = false,
+    this.name,
   });
 
   AuthState copyWith(
-      {String? userId, String? role, bool? isLoading, bool? codeSent}) {
+      {String? userId, String? role, bool? isLoading, bool? codeSent, String? name}) {
     return AuthState(
       userId: userId ?? this.userId,
       role: role ?? this.role,
       isLoading: isLoading ?? this.isLoading,
       codeSent: codeSent ?? this.codeSent,
+      name: name ?? this.name,
     );
   }
 
@@ -65,8 +68,10 @@ class AuthNotifier extends StateNotifier<AuthState?> {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists && doc.data() != null) {
-        final role = doc.data()!['role'] ?? 'none';
-        state = state?.copyWith(role: role, isLoading: false);
+        final data = doc.data()!;
+        final role = data['role'] ?? 'none';
+        final name = data['name'] ?? data['firstName'];
+        state = state?.copyWith(role: role, name: name, isLoading: false);
         NotificationService().init(uid);
       } else {
         state = state?.copyWith(role: 'none', isLoading: false);

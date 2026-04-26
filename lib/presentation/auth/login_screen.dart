@@ -6,8 +6,6 @@ import '../../core/theme/transen_colors.dart';
 import '../legal/legal_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 enum AuthStep { phone, identity, otp }
 
@@ -27,7 +25,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneMaskFormatter = MaskTextInputFormatter(mask: '## ### ## ##', filter: { "#": RegExp(r'[0-9]') });
 
   AuthStep _step = AuthStep.phone;
-  bool _isNewUser = false;
   bool _localLoading = false;
 
   @override
@@ -40,8 +37,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  // LOGIQUE UNIFIÉE
-  Future<void> _checkPhoneAndProceed() async {
+  // LOGIQUE SÉCURISÉE (Solution 2)
+  Future<void> _sendOtp() async {
     String phone = _phoneController.text.trim().replaceAll(' ', '');
     if (phone.isEmpty) {
       HapticFeedback.heavyImpact();
@@ -56,46 +53,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _localLoading = true);
 
     try {
-      final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
-      final query = await firestore
-          .collection('users')
-          .where('phone', isEqualTo: phone)
-          .limit(1)
-          .get();
-
-      if (query.docs.isNotEmpty) {
-        // Utilisateur existant -> Direct OTP
-        _isNewUser = false;
-        await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
-        setState(() => _step = AuthStep.otp);
-      } else {
-        // Nouvel utilisateur -> Étape Identité
-        _isNewUser = true;
-        setState(() => _step = AuthStep.identity);
-      }
+      HapticFeedback.lightImpact();
+      await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
+      setState(() => _step = AuthStep.otp);
     } catch (e) {
-      _showError("Erreur : ${e.toString()}");
+      _showError("Erreur d'envoi : ${e.toString()}");
     } finally {
       setState(() => _localLoading = false);
     }
   }
 
-  Future<void> _sendOtpForNewUser() async {
+  Future<void> _saveIdentity() async {
     if (_firstNameController.text.trim().isEmpty || _lastNameController.text.trim().isEmpty) {
       HapticFeedback.heavyImpact();
       _showError("Veuillez entrer votre prénom et votre nom");
       return;
     }
 
-    String phone = _phoneController.text.trim().replaceAll(' ', '');
-    if (!phone.startsWith('+')) phone = '+221$phone';
-
+    setState(() => _localLoading = true);
     try {
-      HapticFeedback.lightImpact();
-      await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
-      setState(() => _step = AuthStep.otp);
+      String phone = _phoneController.text.trim().replaceAll(' ', '');
+      if (!phone.startsWith('+')) phone = '+221$phone';
+
+      await ref.read(authProvider.notifier).updateUserData(
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        phone: phone,
+      );
+
+      if (_referralController.text.isNotEmpty) {
+        final auth = ref.read(authProvider);
+        if (auth != null) {
+          await ref.read(referralProvider.notifier).validateAndApply(
+                _referralController.text.trim(),
+                auth.userId,
+              );
+        }
+      }
+      // Une fois sauvegardé, le AuthGate redirigera vers RoleSelectionScreen
     } catch (e) {
-      _showError("Erreur d'envoi : ${e.toString()}");
+      _showError("Erreur de sauvegarde : ${e.toString()}");
+    } finally {
+      setState(() => _localLoading = false);
     }
   }
 
@@ -110,27 +109,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       HapticFeedback.lightImpact();
       await ref.read(authProvider.notifier).verifySmsCode(code);
-      
-      if (_isNewUser) {
-        String phone = _phoneController.text.trim().replaceAll(' ', '');
-        if (!phone.startsWith('+')) phone = '+221$phone';
-
-        await ref.read(authProvider.notifier).updateUserData(
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          phone: phone,
-        );
-
-        if (_referralController.text.isNotEmpty) {
-          final auth = ref.read(authProvider);
-          if (auth != null) {
-            await ref.read(referralProvider.notifier).validateAndApply(
-                  _referralController.text.trim(),
-                  auth.userId,
-                );
-          }
-        }
-      }
     } catch (e) {
       HapticFeedback.heavyImpact();
       _showError("Code incorrect ou expiré");
@@ -153,6 +131,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = (authState?.isLoading ?? false) || _localLoading;
 
+    // Détermination de l'étape en fonction de l'état d'authentification
+    AuthStep currentStep = _step;
+    if (authState != null && authState.userId.isNotEmpty && (authState.name == null || authState.name!.isEmpty)) {
+      currentStep = AuthStep.identity;
+    }
+
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
       body: SingleChildScrollView(
@@ -163,8 +147,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               // Ajuste la hauteur de manière fluide en fonction des champs affichés
-              height: _step == AuthStep.otp ? 200 : (_step == AuthStep.identity ? 450 : 200),
-              child: _buildPhoneForm(isDarkMode, isLoading),
+              height: currentStep == AuthStep.otp ? 200 : (currentStep == AuthStep.identity ? 450 : 200),
+              child: _buildPhoneForm(isDarkMode, isLoading, currentStep),
             ),
             const SizedBox(height: 30),
           ],
@@ -212,7 +196,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildPhoneForm(bool isDarkMode, bool isLoading) {
+  Widget _buildPhoneForm(bool isDarkMode, bool isLoading, AuthStep step) {
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       child: Padding(
@@ -234,9 +218,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             );
           },
           child: Column(
-            key: ValueKey<String>('$_step'),
+            key: ValueKey<String>('$step'),
             children: [
-              if (_step == AuthStep.identity) ...[
+              if (step == AuthStep.identity) ...[
                 _buildTextField(
                     controller: _firstNameController,
                     label: "Prénom",
@@ -250,7 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     isDarkMode: isDarkMode),
                 const SizedBox(height: 10),
               ],
-              if (_step != AuthStep.otp)
+              if (step != AuthStep.otp)
                 _buildTextField(
                     controller: _phoneController,
                     label: "Numéro de téléphone (ex: 77 123 45 67)",
@@ -265,7 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     icon: Icons.vibration,
                     keyboardType: TextInputType.number,
                     isDarkMode: isDarkMode),
-              if (_step == AuthStep.identity)
+              if (step == AuthStep.identity)
                 Padding(
                   padding: const EdgeInsets.only(top: 6, left: 4),
                   child: Row(
@@ -281,7 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                 ),
-              if (_step == AuthStep.identity) ...[
+              if (step == AuthStep.identity) ...[
                 const SizedBox(height: 10),
                 _buildTextField(
                     controller: _referralController,
@@ -344,7 +328,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                                 ),
               ],
-              if (_step == AuthStep.otp)
+              if (step == AuthStep.otp)
                 TextButton(
                     onPressed: () => setState(() => _step = AuthStep.phone),
                     child: const Text("Changer de numéro",
@@ -356,9 +340,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _step == AuthStep.phone 
-                        ? _checkPhoneAndProceed 
-                        : (_step == AuthStep.identity ? _sendOtpForNewUser : _signInWithOtp),
+                    onPressed: step == AuthStep.phone 
+                        ? _sendOtp 
+                        : (step == AuthStep.identity ? _saveIdentity : _signInWithOtp),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isDarkMode ? Colors.white : Colors.black87,
                       foregroundColor: isDarkMode ? Colors.black : Colors.white,
@@ -367,14 +351,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           borderRadius: BorderRadius.circular(15)),
                     ),
                     child: Text(
-                        _step == AuthStep.otp 
+                        step == AuthStep.otp 
                             ? "VÉRIFIER LE CODE" 
-                            : (_step == AuthStep.identity ? "RECEVOIR LE CODE" : "CONTINUER"),
+                            : (step == AuthStep.identity ? "FINALISER" : "CONTINUER"),
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               // Mention légale pour la CONNEXION (Step Téléphone)
-              if (_step == AuthStep.phone) ...
+              if (step == AuthStep.phone) ...
                 [
                   const SizedBox(height: 12),
                   Wrap(
