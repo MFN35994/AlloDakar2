@@ -159,16 +159,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 15),
                   
-                  // CARTE COURSE ACTIVE
+                  // CARTES ACTIVES (Course et Yobanté indépendantes)
                   Consumer(builder: (context, ref, child) {
+                    final activePoolAsync = ref.watch(providers.activePoolProvider);
                     final activeTripAsync = ref.watch(providers.activeTripProvider);
-                    return activeTripAsync.when(
-                      data: (trip) {
-                        if (trip == null) return const SizedBox.shrink();
-                        return _buildActiveTripCard(context, trip);
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
+
+                    return Column(
+                      children: [
+                        activePoolAsync.when(
+                          data: (pool) {
+                            if (pool == null) return const SizedBox.shrink();
+                            return _buildActiveTripCard(context, pool, isYobante: false);
+                          },
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
+                        ),
+                        activeTripAsync.when(
+                          data: (trip) {
+                            if (trip == null) return const SizedBox.shrink();
+                            return _buildActiveTripCard(context, trip, isYobante: true);
+                          },
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
+                        ),
+                      ],
                     );
                   }),
 
@@ -380,26 +394,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildActiveTripCard(BuildContext context, TripModel trip) {
+  Widget _buildActiveTripCard(BuildContext context, TripModel trip, {required bool isYobante}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+        color: isYobante 
+            ? Colors.blue.withValues(alpha: 0.1) 
+            : TranSenColors.primaryGreen.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: TranSenColors.primaryGreen, width: 1.5),
+        border: Border.all(
+            color: isYobante ? Colors.blue : TranSenColors.primaryGreen, 
+            width: 1.5),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        leading: const CircleAvatar(
-          backgroundColor: TranSenColors.primaryGreen,
-          child: Icon(Icons.directions_car, color: Colors.white),
+        leading: CircleAvatar(
+          backgroundColor: isYobante ? Colors.blue : TranSenColors.primaryGreen,
+          child: Icon(isYobante ? Icons.inventory_2 : Icons.directions_car, color: Colors.white),
         ),
-        title: const Text(
-          "Course en cours...",
-          style: TextStyle(fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen),
+        title: Text(
+          isYobante ? "Livraison en cours..." : "Course en cours...",
+          style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              color: isYobante ? Colors.blue : TranSenColors.primaryGreen),
         ),
         subtitle: Text("${trip.departure} ➔ ${trip.destination}"),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: TranSenColors.primaryGreen),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16, 
+            color: isYobante ? Colors.blue : TranSenColors.primaryGreen),
         onTap: () {
           Navigator.push(
             context,

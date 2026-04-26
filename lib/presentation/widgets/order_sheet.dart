@@ -5,6 +5,7 @@ import '../../core/theme/transen_colors.dart';
 
 import 'receipt_screen.dart';
 import '../../data/repositories/trip_repository.dart';
+import '../../domain/providers/trip_providers.dart' as providers;
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/pool_providers.dart';
 import 'pool_progress_indicator.dart';
@@ -223,6 +224,23 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                               textAlign: TextAlign.center,
                             ),
+                            if (existingPool != null) ...[
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: _isProcessing ? null : () => _handleConfirmation(ref, overrideDate: existingPool.scheduledDate),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: TranSenColors.primaryGreen,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 4,
+                                ),
+                                child: const Text(
+                                  "REJOINDRE CE GROUPE", 
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       );
@@ -262,7 +280,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                         context: context,
                         initialDate: _selectedDate,
                         firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                        lastDate: DateTime.now().add(const Duration(days: 1)),
                       );
                       if (date != null) setState(() => _selectedDate = date);
                     },
@@ -291,7 +309,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                         context: context,
                         initialTime: _selectedTime,
                       );
-                      if (time != null) setState(() => _selectedTime = time);
+                      if (time != null) setState(() => _selectedTime = TimeOfDay(hour: time.hour, minute: 0));
                     },
                     child: Container(
                       padding: const EdgeInsets.all(12),
@@ -404,184 +422,173 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             const SizedBox(height: 10),
 
 
-            ElevatedButton(
-              onPressed: (_selectedDeparture != null && _selectedDestination != null)
-                  ? () async {
-                      /* COMMENTÉ POUR LE LANCEMENT GRATUIT
-                      if (_paymentMethod == 'Portefeuille') {
-                        final wallet = ref.read(walletProvider);
-                        if (wallet.balance < 10000) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Solde insuffisant ! Veuillez recharger votre portefeuille."),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
-                      }
-                      */
-                      
-                      final auth = ref.read(authProvider);
-                      final userId = auth?.userId ?? '';
-                      
-                      try {
-                        setState(() => _isProcessing = true);
+            Consumer(builder: (context, ref, child) {
+              final activePool = ref.watch(providers.activePoolProvider).value;
+              final hasActivePool = activePool != null;
 
-                        final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).get();
-                        final existingPhone = userData.data()?['phone'] as String?;
-                        
-                        if (!context.mounted) return;
-                        if (existingPhone == null || existingPhone.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Veuillez compléter votre profil avec un numéro de téléphone valide.")),
-                          );
-                          setState(() => _isProcessing = false);
-                          return;
-                        }
-
-                        // Simulation de paiement externe (si pas portefeuille)
-                        if (_paymentMethod != 'Portefeuille') {
-                          await Future.delayed(const Duration(seconds: 1));
-                        }
-
-                        // Numéro toujours récupéré du profil, jamais saisi dans ce formulaire
-
-                        final userFirstName = userData.data()?['firstName'];
-                        final userLastName = userData.data()?['lastName'];
-                        final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
-                        final userPhone = existingPhone;
-
-                        // LOGIQUE POOLING
-                        final tripRepo = ref.read(tripRepositoryProvider);
-                        final scheduledDate = "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";
-                        
-                        // Calculer le prix final
-                        int finalPrice = 10000;
-                        if (_useBonusPoints) {
-                          finalPrice = (10000 - _userBonusPoints).clamp(0, 10000);
-                        }
-
-                        // Récupérer la position réelle (avec timeout de 3s)
-                        double lat = 14.7167; // Dakar par défaut
-                        double lng = -17.4677;
-                        try {
-                          final pos = await Geolocator.getCurrentPosition(
-                            desiredAccuracy: LocationAccuracy.high,
-                            timeLimit: const Duration(seconds: 3),
-                          );
-                          lat = pos.latitude;
-                          lng = pos.longitude;
-                        } catch (e) {
-                          debugPrint("Erreur localisation (timeout/perm): $e");
-                        }
-
-                        final poolId = await tripRepo.joinOrCreatePool(
-                          userId: userId,
-                          departure: _selectedDeparture!,
-                          destination: _selectedDestination!,
-                          scheduledDate: scheduledDate,
-                          lat: lat,
-                          lng: lng,
-                          seats: _selectedSeats,
-                          userDetails: {
-                            'name': userName,
-                            'firstName': userFirstName,
-                            'lastName': userLastName,
-                            'phone': userPhone,
-                          },
-                        );
-
-                        // Déduire les points si utilisés
-                        if (_useBonusPoints && _userBonusPoints > 0) {
-                          await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).update({
-                            'bonusPoints': 0, // On consomme tout
-                          });
-                        }
-
-                        if (context.mounted) {
-                          setState(() => _isProcessing = false);
-                          final navigator = Navigator.of(context);
-                          
-                          navigator.pop();
-                          
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Demande enregistrée ! Votre départ sera confirmé dès que le groupe sera complet."),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-
-                          // Ouvre le reçu
-                          navigator.push(MaterialPageRoute(
-                            builder: (_) => ReceiptScreen(
-                              orderId: 'POOL-${poolId.substring(0, 5).toUpperCase()}',
-                              departure: _selectedDeparture!,
-                              destination: _selectedDestination!,
-                              price: '$finalPrice FCFA',
-                              type: 'Covoiturage Intelligent',
-                              tripId: poolId,
-                            ),
-                          ));
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          setState(() => _isProcessing = false);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Erreur lors de la réservation : $e"),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: TranSenColors.primaryGreen,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey.shade300,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                elevation: 8,
-                shadowColor: TranSenColors.primaryGreen.withValues(alpha: 0.5),
-
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'REJOINDRE LE TRAJET  • ',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+              return ElevatedButton(
+                onPressed: (_selectedDeparture != null && _selectedDestination != null)
+                    ? () => _handleConfirmation(ref, hasActivePool: hasActivePool)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasActivePool ? Colors.grey : TranSenColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
                   ),
-                  if (_isProcessing)
-                    const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  else
+                  elevation: 8,
+                  shadowColor: TranSenColors.primaryGreen.withValues(alpha: 0.5),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     Text(
-                      '${_useBonusPoints ? (10000 - _userBonusPoints).clamp(0, 10000) : 10000} FCFA',
+                      hasActivePool ? 'COURSE DÉJÀ EN COURS' : 'REJOINDRE LE TRAJET  • ',
                       style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                ],
-              ),
-            ),
+                    if (_isProcessing)
+                      const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    else if (!hasActivePool)
+                      Text(
+                        '${_useBonusPoints ? (10000 - _userBonusPoints).clamp(0, 10000) : 10000} FCFA',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _handleConfirmation(WidgetRef ref, {bool hasActivePool = false, String? overrideDate}) async {
+    if (hasActivePool) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vous avez déjà une course en cours. Terminez-la ou attendez avant d'en créer une nouvelle."),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final auth = ref.read(authProvider);
+    final userId = auth?.userId ?? '';
+    
+    try {
+      setState(() => _isProcessing = true);
+
+      final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).get();
+      final existingPhone = userData.data()?['phone'] as String?;
+      
+      if (!mounted) return;
+      if (existingPhone == null || existingPhone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Veuillez compléter votre profil avec un numéro de téléphone valide.")),
+        );
+        setState(() => _isProcessing = false);
+        return;
+      }
+
+      // Simulation de paiement externe (si pas portefeuille)
+      if (_paymentMethod != 'Portefeuille') {
+        await Future.delayed(const Duration(seconds: 1));
+      }
+
+      final userFirstName = userData.data()?['firstName'];
+      final userLastName = userData.data()?['lastName'];
+      final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
+      final userPhone = existingPhone;
+
+      final tripRepo = ref.read(tripRepositoryProvider);
+      final scheduledDate = overrideDate ?? "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";
+      
+      int finalPrice = 10000;
+      if (_useBonusPoints) {
+        finalPrice = (10000 - _userBonusPoints).clamp(0, 10000);
+      }
+
+      double lat = 14.7167; 
+      double lng = -17.4677;
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 3),
+        );
+        lat = pos.latitude;
+        lng = pos.longitude;
+      } catch (e) {
+        debugPrint("Erreur localisation: $e");
+      }
+
+      final poolId = await tripRepo.joinOrCreatePool(
+        userId: userId,
+        departure: _selectedDeparture!,
+        destination: _selectedDestination!,
+        scheduledDate: scheduledDate,
+        lat: lat,
+        lng: lng,
+        seats: _selectedSeats,
+        userDetails: {
+          'name': userName,
+          'firstName': userFirstName,
+          'lastName': userLastName,
+          'phone': userPhone,
+        },
+      );
+
+      if (_useBonusPoints && _userBonusPoints > 0) {
+        await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).update({
+          'bonusPoints': 0,
+        });
+      }
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      
+      final navigator = Navigator.of(context);
+      navigator.pop();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Demande enregistrée ! Votre départ sera confirmé dès que le groupe sera complet."),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        navigator.push(MaterialPageRoute(
+          builder: (_) => ReceiptScreen(
+            orderId: 'POOL-${poolId.substring(0, 5).toUpperCase()}',
+            departure: _selectedDeparture!,
+            destination: _selectedDestination!,
+            price: '$finalPrice FCFA',
+            type: 'Covoiturage Intelligent',
+            tripId: poolId,
+          ),
+        ));
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur : $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
 

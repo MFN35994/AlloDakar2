@@ -8,6 +8,7 @@ import 'receipt_screen.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/models/trip_model.dart';
 import '../../domain/providers/auth_provider.dart';
+import '../../domain/providers/trip_providers.dart' as providers;
 
 class YobanteSheet extends ConsumerStatefulWidget {
   const YobanteSheet({super.key});
@@ -59,6 +60,17 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
     'Thiès',
     'Ziguinchor',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = ref.read(authProvider);
+      if (auth?.phone != null) {
+        _receiverPhoneController.text = auth!.phone!;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +189,11 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                       _selectedDestination != null &&
                       _selectedParcelType != null)
                   ? () async {
+                      final activeTrip = ref.read(providers.activeTripProvider).value;
+                      if (activeTrip != null) {
+                        _showSnackBar("Vous avez déjà une livraison en cours. Attendez qu'elle se termine.", Colors.orange);
+                        return;
+                      }
                       /* COMMENTÉ POUR LE LANCEMENT GRATUIT
                     if (_paymentMethod == 'Portefeuille') {
                       final wallet = ref.read(walletProvider);
@@ -329,7 +346,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
               context: context,
               initialDate: _selectedDate,
               firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 30)));
+              lastDate: DateTime.now().add(const Duration(days: 1)));
           if (d != null) setState(() => _selectedDate = d);
         })),
         const SizedBox(width: 10),
@@ -338,7 +355,9 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                 Icons.access_time, _selectedTime.format(context), () async {
           final t = await showTimePicker(
               context: context, initialTime: _selectedTime);
-          if (t != null) setState(() => _selectedTime = t);
+          if (t != null) {
+            setState(() => _selectedTime = TimeOfDay(hour: t.hour, minute: 0));
+          }
         })),
       ],
     );

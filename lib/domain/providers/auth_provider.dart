@@ -14,6 +14,7 @@ class AuthState {
   final bool isLoading;
   final bool codeSent;
   final String? name;
+  final String? phone;
 
   AuthState({
     required this.userId,
@@ -21,16 +22,18 @@ class AuthState {
     this.isLoading = false,
     this.codeSent = false,
     this.name,
+    this.phone,
   });
 
   AuthState copyWith(
-      {String? userId, String? role, bool? isLoading, bool? codeSent, String? name}) {
+      {String? userId, String? role, bool? isLoading, bool? codeSent, String? name, String? phone}) {
     return AuthState(
       userId: userId ?? this.userId,
       role: role ?? this.role,
       isLoading: isLoading ?? this.isLoading,
       codeSent: codeSent ?? this.codeSent,
       name: name ?? this.name,
+      phone: phone ?? this.phone,
     );
   }
 
@@ -71,7 +74,8 @@ class AuthNotifier extends StateNotifier<AuthState?> {
         final data = doc.data()!;
         final role = data['role'] ?? 'none';
         final name = data['name'] ?? data['firstName'];
-        state = state?.copyWith(role: role, name: name, isLoading: false);
+        final phone = data['phone'];
+        state = state?.copyWith(role: role, name: name, phone: phone, isLoading: false);
         NotificationService().init(uid);
       } else {
         state = state?.copyWith(role: 'none', isLoading: false);

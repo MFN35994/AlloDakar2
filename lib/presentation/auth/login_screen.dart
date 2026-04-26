@@ -234,24 +234,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     isDarkMode: isDarkMode),
                 const SizedBox(height: 10),
               ],
-              if (step != AuthStep.otp)
+              if (step == AuthStep.phone)
                 _buildTextField(
                     controller: _phoneController,
                     label: "Numéro de téléphone (ex: 77 123 45 67)",
                     icon: Icons.phone_android,
                     keyboardType: TextInputType.phone,
                     inputFormatters: [_phoneMaskFormatter],
-                    isDarkMode: isDarkMode)
-              else
+                    isDarkMode: isDarkMode),
+              if (step == AuthStep.otp)
                 _buildTextField(
                     controller: _otpController,
                     label: "Code OTP",
                     icon: Icons.vibration,
                     keyboardType: TextInputType.number,
                     isDarkMode: isDarkMode),
-              if (step == AuthStep.identity)
+              if (step == AuthStep.phone)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  padding: const EdgeInsets.only(top: 6, left: 4, bottom: 10),
                   child: Row(
                     children: [
                       const Icon(Icons.info_outline, size: 13, color: Colors.orange),
