@@ -5,6 +5,8 @@ import '../../data/repositories/trip_repository.dart';
 import '../../domain/models/trip_model.dart';
 import '../../domain/providers/auth_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class TripDetailScreen extends ConsumerWidget {
   final TripModel trip;
@@ -80,16 +82,28 @@ class TripDetailScreen extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse("tel:${trip.clientPhone ?? '770000000'}")),
-                    icon: const Icon(Icons.phone),
-                    label: const Text("APPELER"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    ),
+                  child: StreamBuilder<DocumentSnapshot>(
+                    stream: trip.clientId != null ? FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(trip.clientId).snapshots() : null,
+                    builder: (context, snapshot) {
+                      String phoneToCall = trip.clientPhone ?? '770000000';
+                      if (snapshot.hasData && snapshot.data!.exists) {
+                        final data = snapshot.data!.data() as Map<String, dynamic>;
+                        if (data['phone'] != null && (data['phone'] as String).isNotEmpty) {
+                          phoneToCall = data['phone'];
+                        }
+                      }
+                      return ElevatedButton.icon(
+                        onPressed: () => launchUrl(Uri.parse("tel:$phoneToCall")),
+                        icon: const Icon(Icons.phone),
+                        label: const Text("APPELER"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        ),
+                      );
+                    }
                   ),
                 ),
                 const SizedBox(width: 15),

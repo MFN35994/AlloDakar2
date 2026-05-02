@@ -9,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final PoolModel pool;
@@ -259,7 +261,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       padding: const EdgeInsets.all(20),
                       itemCount: _optimizedPickups.length,
                       itemBuilder: (context, index) {
-                        final passenger = _optimizedPickups[index].value;
+                        final passengerEntry = _optimizedPickups[index];
+                        final passengerId = passengerEntry.key;
+                        final passenger = passengerEntry.value;
                         final isLast = index == _optimizedPickups.length - 1;
 
                         String pName = passenger['name'] ?? 'Passager';
@@ -274,6 +278,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                             _buildStepCard(
                               index + 1,
                               pName,
+                              passengerId,
                               passenger,
                               "Récupération: ${pool.departure}",
                             ),
@@ -335,8 +340,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         });
   }
 
-  Widget _buildStepCard(int step, String name, Map<String, dynamic> passenger, String info) {
-    final phone = passenger['phone'] ?? '';
+  Widget _buildStepCard(int step, String name, String passengerId, Map<String, dynamic> passenger, String info) {
+    String initialPhone = passenger['phone'] ?? '';
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
@@ -366,9 +371,21 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               icon: const Icon(Icons.navigation, color: Colors.blue),
               onPressed: () => launchUrl(Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${passenger['lat']},${passenger['lng']}&travelmode=driving")),
             ),
-            IconButton(
-              icon: const Icon(Icons.phone, color: Colors.green),
-              onPressed: () => launchUrl(Uri.parse("tel:$phone")),
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(passengerId).snapshots(),
+              builder: (context, snapshot) {
+                String phoneToCall = initialPhone;
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  if (data['phone'] != null && (data['phone'] as String).isNotEmpty) {
+                    phoneToCall = data['phone'];
+                  }
+                }
+                return IconButton(
+                  icon: const Icon(Icons.phone, color: Colors.green),
+                  onPressed: () => launchUrl(Uri.parse("tel:$phoneToCall")),
+                );
+              }
             ),
           ],
         ),

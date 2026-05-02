@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/transen_colors.dart';
@@ -67,10 +68,32 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
   void initState() {
     super.initState();
     _autoDetectLocation();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = ref.read(authProvider);
-      if (auth?.phone != null) {
-        _senderPhoneController.text = auth!.phone!;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final fbUser = FirebaseAuth.instance.currentUser;
+      String? phone = fbUser?.phoneNumber;
+
+      if (phone == null || phone.isEmpty) {
+        final auth = ref.read(authProvider);
+        if (auth?.phone != null && auth!.phone!.isNotEmpty) {
+          phone = auth.phone;
+        } else if (auth?.userId != null) {
+          try {
+            final doc = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                .collection('users')
+                .doc(auth!.userId)
+                .get();
+            final data = doc.data();
+            if (data != null && data['phone'] != null) {
+              phone = data['phone'];
+            }
+          } catch (_) {}
+        }
+      }
+
+      if (phone != null && phone.isNotEmpty && mounted) {
+        setState(() {
+          _senderPhoneController.text = phone!;
+        });
       }
     });
   }

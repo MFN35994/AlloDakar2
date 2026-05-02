@@ -414,7 +414,6 @@ class TripRepository {
   Stream<List<Map<String, dynamic>>> watchDriverReviews(String driverId) {
     return _firestore.collection('reviews')
         .where('driverId', isEqualTo: driverId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) => doc.data()).toList();

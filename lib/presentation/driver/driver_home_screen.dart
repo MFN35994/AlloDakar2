@@ -14,6 +14,7 @@ import '../../domain/providers/pool_providers.dart';
 import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
+import 'driver_trip_detail_sheet.dart';
 import '../widgets/profile_drawer.dart';
 import '../widgets/driver_reviews_sheet.dart';
 import '../../core/theme/transen_colors.dart';
@@ -475,13 +476,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                   ref.watch(demandHeatmapProvider);
                               return heatmapAsync.when(
                                 data: (heatmap) {
-                                  if (heatmap.isEmpty)
+                                  if (heatmap.isEmpty) {
                                     return const Center(
                                         child: Text(
                                             "Aucune demande en attente.",
                                             style: TextStyle(
                                                 fontSize: 12,
                                                 color: Colors.grey)));
+                                  }
                                   final sortedEntries = heatmap.entries.toList()
                                     ..sort(
                                         (a, b) => b.value.compareTo(a.value));
@@ -534,12 +536,79 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                               );
                             }),
                           ),
+
+                          // === COURSES VTC EN ATTENTE ===
+                          Consumer(builder: (context, ref, child) {
+                            final tripsAsync = ref.watch(
+                                pendingTripsProvider(
+                                    "${_pubDeparture ?? 'ANY'}|ANY"));
+                            return tripsAsync.when(
+                              data: (trips) {
+                                final vtcTrips = trips.where((t) {
+                                  final type = t.type.toLowerCase();
+                                  return !type.contains('livraison') &&
+                                      !type.contains('colis') &&
+                                      !type.contains('yobante') &&
+                                      (_pubDeparture == null ||
+                                          _pubDeparture ==
+                                              'TOUTES LES RÉGIONS' ||
+                                          t.departure == _pubDeparture);
+                                }).toList();
+
+                                if (vtcTrips.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 10),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text('Courses VTC',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16)),
+                                          Text(
+                                              '${vtcTrips.length} demande(s)',
+                                              style: const TextStyle(
+                                                  color:
+                                                      TranSenColors.primaryGreen,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 130,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20),
+                                        itemCount: vtcTrips.length,
+                                        itemBuilder: (context, index) =>
+                                            _buildVtcSmallCard(
+                                                context, vtcTrips[index]),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                              loading: () => const SizedBox.shrink(),
+                              error: (_, __) => const SizedBox.shrink(),
+                            );
+                          }),
+
                           Consumer(builder: (context, ref, child) {
                             final deliveriesAsync = ref.watch(
                                 pendingTripsProvider(
                                     "${_pubDeparture ?? 'ANY'}|ANY"));
                             return deliveriesAsync.when(
                               data: (trips) {
+
                                 final deliveries = trips.where((t) {
                                   final type = t.type.toLowerCase();
                                   return (type.contains('livraison') ||
@@ -551,8 +620,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                           t.departure == _pubDeparture);
                                 }).toList();
 
-                                if (deliveries.isEmpty)
+                                if (deliveries.isEmpty) {
                                   return const SizedBox.shrink();
+                                }
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -618,9 +688,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                     .where(
                                         (p) => !_ignoredPoolIds.contains(p.id))
                                     .toList();
-                                if (_isAutoFull)
+                                if (_isAutoFull) {
                                   sortedPools.sort((a, b) => b.currentFilling
                                       .compareTo(a.currentFilling));
+                                }
 
                                 return Padding(
                                   padding:
@@ -1066,11 +1137,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         ],
       ),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => TripDetailScreen(trip: delivery)));
+          onTap: () async {
+          await DriverTripDetailSheet.show(context, delivery);
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1130,24 +1198,108 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       ),
     );
   }
-
-  Widget _buildStatChip(IconData icon, String label, Color color) {
+  Widget _buildVtcSmallCard(BuildContext context, TripModel trip) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 195,
+      margin: const EdgeInsets.only(right: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(label,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: TranSenColors.primaryGreen.withValues(alpha: 0.3),
+            width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: TranSenColors.primaryGreen.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
         ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () async {
+          await DriverTripDetailSheet.show(context, trip);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.directions_car,
+                        color: TranSenColors.primaryGreen, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      trip.clientName ?? 'Client',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.my_location, color: Colors.blue, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(trip.departure,
+                        style: const TextStyle(fontSize: 11),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.red, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(trip.destination,
+                        style: const TextStyle(fontSize: 11),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${trip.price.toInt()} FCFA',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: Colors.green,
+                        fontSize: 13),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text('VOIR',
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: TranSenColors.primaryGreen)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
