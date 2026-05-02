@@ -61,7 +61,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   String? _pubDeparture;
   String? _pubDestination;
   bool _isAutoFull = false;
-  final Set<String> _ignoredPoolIds = {}; 
 
   final List<String> _regions = [
     'Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda',
@@ -282,7 +281,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 }
 
 class _DashboardContent extends ConsumerStatefulWidget {
-  const _DashboardContent({Key? key}) : super(key: key);
+  const _DashboardContent();
 
   @override
   ConsumerState<_DashboardContent> createState() => _DashboardContentState();
@@ -296,13 +295,13 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     final parentState = context.findAncestorStateOfType<_DriverHomeScreenState>();
     if (parentState == null) return const SizedBox();
     
-    final _isOnline = parentState._isOnline;
-    final _pubDeparture = parentState._pubDeparture;
-    final _pubDestination = parentState._pubDestination;
-    final _isAutoFull = parentState._isAutoFull;
+    final isOnline = parentState._isOnline;
+    final pubDeparture = parentState._pubDeparture;
+    final pubDestination = parentState._pubDestination;
+    final isAutoFull = parentState._isAutoFull;
     final currentUserId = parentState._currentDriverId ?? ref.watch(authProvider)?.userId ?? 'unknown';
 
-    if (!_isOnline) {
+    if (!isOnline) {
       return Container(
         padding: const EdgeInsets.all(40),
         alignment: Alignment.center,
@@ -363,7 +362,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         hint: const Text("Départ"),
-                        value: _pubDeparture,
+                        value: pubDeparture,
                         isExpanded: true,
                         items: parentState._regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                         onChanged: (val) {
@@ -379,7 +378,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         hint: const Text("Arrivée"),
-                        value: _pubDestination,
+                        value: pubDestination,
                         isExpanded: true,
                         items: parentState._regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                         onChanged: (val) {
@@ -405,8 +404,8 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               const Text("Zones de forte demande", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               TextButton.icon(
                 onPressed: () => parentState.setState(() => parentState._isAutoFull = !parentState._isAutoFull),
-                icon: Icon(_isAutoFull ? Icons.flash_on : Icons.flash_off, size: 16, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey),
-                label: Text(_isAutoFull ? "AUTO-FULL ACTIVÉ" : "AUTO-FULL DÉSACTIVÉ", style: TextStyle(fontSize: 10, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey)),
+                icon: Icon(isAutoFull ? Icons.flash_on : Icons.flash_off, size: 16, color: isAutoFull ? TranSenColors.accentGold : Colors.grey),
+                label: Text(isAutoFull ? "AUTO-FULL ACTIVÉ" : "AUTO-FULL DÉSACTIVÉ", style: TextStyle(fontSize: 10, color: isAutoFull ? TranSenColors.accentGold : Colors.grey)),
               ),
             ],
           ),
@@ -435,14 +434,14 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                         ),
-                        child: Center(child: Text("\${entry.key} (\${entry.value} pers.)", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red))),
+                        child: const Center(child: Text("\${entry.key} (\${entry.value} pers.)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red))),
                       ),
                     );
                   },
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, __) => Center(child: Text("Erreur heatmap: \$e")),
+              error: (e, __) => const Center(child: Text("Erreur heatmap: \$e")),
             );
           }),
         ),
@@ -454,20 +453,20 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               final deliveries = trips.where((t) {
                 final type = t.type.toLowerCase();
                 return (type.contains('livraison') || type.contains('colis') || type.contains('yobante')) &&
-                       (_pubDeparture == null || _pubDeparture == 'TOUTES LES RÉGIONS' || t.departure == _pubDeparture);
+                       (pubDeparture == null || pubDeparture == 'TOUTES LES RÉGIONS' || t.departure == pubDeparture);
               }).toList();
 
               if (deliveries.isEmpty) return const SizedBox.shrink();
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Livraisons Yobanté", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text("\${deliveries.length} correspondances", style: const TextStyle(color: TranSenColors.accentGold, fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text("Livraisons Yobanté", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text("\${deliveries.length} correspondances", style: TextStyle(color: TranSenColors.accentGold, fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -493,10 +492,10 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           return poolsAsyncValue.when(
             data: (pools) {
               if (pools.isEmpty) {
-                return Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Text(_pubDeparture == null ? 'Sélectionnez un trajet pour voir les covoiturages.' : 'Aucun groupe de voyageur pour le moment.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600))));
+                return Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Text(pubDeparture == null ? 'Sélectionnez un trajet pour voir les covoiturages.' : 'Aucun groupe de voyageur pour le moment.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600))));
               }
               final sortedPools = pools.where((p) => !_ignoredPoolIds.contains(p.id)).toList();
-              if (_isAutoFull) sortedPools.sort((a, b) => b.currentFilling.compareTo(a.currentFilling));
+              if (isAutoFull) sortedPools.sort((a, b) => b.currentFilling.compareTo(a.currentFilling));
 
               return Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
@@ -567,17 +566,17 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
 
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "Trajet \${pool.departure} ➔ \${pool.destination}",
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         "Prévu pour le: \${pool.scheduledDate}",
-                         style: const TextStyle(fontSize: 12, color: Colors.black45),
+                         style: TextStyle(fontSize: 12, color: Colors.black45),
                       ),
                     ],
                   ),
@@ -607,7 +606,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("\${pool.currentFilling}/4 passagers", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const Text("\${pool.currentFilling}/4 passagers", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 if (canAcceptAt3 && !isFull)
                   const Text("Acceptable (3/4)", style: TextStyle(fontSize: 11, color: TranSenColors.accentGold, fontWeight: FontWeight.bold)),
 
@@ -619,11 +618,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               child: Divider(height: 1, color: Colors.black12),
             ),
             
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Total (estimé)", style: TextStyle(fontWeight: FontWeight.bold)),
-                Text("\${pool.currentFilling * 10000} FCFA", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.green)),
+                Text("Total (estimé)", style: TextStyle(fontWeight: FontWeight.bold)),
+                Text("\${pool.currentFilling * 10000} FCFA", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.green)),
               ],
             ),
 
@@ -638,7 +637,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                             context: context,
                             builder: (ctx) => AlertDialog(
                               title: const Text("Départ anticipé ?"),
-                              content: Text("Il n'y a que \${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
+                              content: const Text("Il n'y a que \${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
                               actions: [
                                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ANNULER")),
                                 TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("OUI, ACCEPTER")),
@@ -650,15 +649,13 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
 
                         await ref.read(tripRepositoryProvider).acceptPool(pool.id, driverId);
                         
-                        if (mounted) {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)));
-                        }
+                        if (!context.mounted) return;
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)));
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
-                          );
-                        }
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
+                        );
                       }
                     },
                 style: ElevatedButton.styleFrom(
@@ -725,9 +722,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      const Text(
                         "\${trip.departure} ➔ \${trip.destination}",
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -789,9 +786,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      const Text(
                         "\${pool.departure} ➔ \${pool.destination}",
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -867,9 +864,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   delivery.type.split('(').last.replaceAll(')', ''),
                   style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                 ),
-                Text(
+                const Text(
                   "\${delivery.price.toInt()} F",
-                  style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 14),
+                  style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 14),
                 ),
               ],
             ),
