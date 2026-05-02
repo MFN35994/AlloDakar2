@@ -258,11 +258,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             flex: 6,
             child: Container(
               color: Colors.white,
-              child: const ScrollConfiguration(
-                behavior: NoScrollbarBehavior(),
+              child: ScrollConfiguration(
+                behavior: const NoScrollbarBehavior(),
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.only(top: 10, bottom: 20),
+                    padding: const EdgeInsets.only(top: 10, bottom: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -281,7 +281,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 }
 
 class _DashboardContent extends ConsumerStatefulWidget {
-  const _DashboardContent();
+  // ignore: prefer_const_constructors_in_immutables
+  _DashboardContent();
 
   @override
   ConsumerState<_DashboardContent> createState() => _DashboardContentState();
