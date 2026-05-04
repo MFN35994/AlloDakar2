@@ -188,7 +188,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('Espace Chauffeur'),
+            const Text('TranSen'),
             const SizedBox(width: 5),
             Consumer(builder: (context, ref, child) {
               final auth = ref.watch(authProvider);
@@ -402,7 +402,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                                     currentUserId,
                                                     val!,
                                                     _pubDestination,
-                                                    _noteController.text.trim());
+                                                    _noteController.text
+                                                        .trim());
                                           },
                                         ),
                                       ),
@@ -430,7 +431,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                                       currentUserId,
                                                       _pubDeparture!,
                                                       val,
-                                                      _noteController.text.trim());
+                                                      _noteController.text
+                                                          .trim());
                                             }
                                           },
                                         ),
@@ -442,21 +444,29 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 TextField(
                                   controller: _noteController,
                                   decoration: InputDecoration(
-                                    hintText: "Message (ex: Départ à 8h, Climatisé...)",
-                                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                                    prefixIcon: const Icon(Icons.chat_bubble_outline, size: 18),
+                                    hintText:
+                                        "Message (ex: Départ à 8h, Climatisé...)",
+                                    hintStyle: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade400),
+                                    prefixIcon: const Icon(
+                                        Icons.chat_bubble_outline,
+                                        size: 18),
                                     border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 10),
                                   ),
                                   style: const TextStyle(fontSize: 13),
                                   onSubmitted: (val) {
                                     if (_pubDeparture != null) {
-                                      ref.read(tripRepositoryProvider).publishDriverRoute(
-                                        currentUserId,
-                                        _pubDeparture!,
-                                        _pubDestination,
-                                        val.trim(),
-                                      );
+                                      ref
+                                          .read(tripRepositoryProvider)
+                                          .publishDriverRoute(
+                                            currentUserId,
+                                            _pubDeparture!,
+                                            _pubDestination,
+                                            val.trim(),
+                                          );
                                     }
                                   },
                                 ),
@@ -566,9 +576,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
                           // === COURSES VTC EN ATTENTE ===
                           Consumer(builder: (context, ref, child) {
-                            final tripsAsync = ref.watch(
-                                pendingTripsProvider(
-                                    "${_pubDeparture ?? 'ANY'}|ANY"));
+                            final tripsAsync = ref.watch(pendingTripsProvider(
+                                "${_pubDeparture ?? 'ANY'}|ANY"));
                             return tripsAsync.when(
                               data: (trips) {
                                 final vtcTrips = trips.where((t) {
@@ -599,11 +608,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                               style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16)),
-                                          Text(
-                                              '${vtcTrips.length} demande(s)',
+                                          Text('${vtcTrips.length} demande(s)',
                                               style: const TextStyle(
-                                                  color:
-                                                      TranSenColors.primaryGreen,
+                                                  color: TranSenColors
+                                                      .primaryGreen,
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.bold)),
                                         ],
@@ -635,7 +643,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                     "${_pubDeparture ?? 'ANY'}|ANY"));
                             return deliveriesAsync.when(
                               data: (trips) {
-
                                 final deliveries = trips.where((t) {
                                   final type = t.type.toLowerCase();
                                   return (type.contains('livraison') ||
@@ -792,193 +799,202 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     final canAcceptAt3 = pool.currentFilling >= 3;
     final isFull = pool.currentFilling >= 4;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 15,
-            spreadRadius: 1,
-            offset: const Offset(0, 5),
-          ),
-        ],
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.groups,
-                      color: TranSenColors.primaryGreen, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Trajet ${pool.departure} ➔ ${pool.destination}",
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        "Prévu pour le: ${pool.scheduledDate}",
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.black45),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isFull)
-                  const Icon(Icons.check_circle, color: Colors.green, size: 24)
-                else ...[
-                  if (canAcceptAt3)
-                    const Icon(Icons.info_outline,
-                        color: TranSenColors.primaryGreen, size: 20),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.grey, size: 20),
-                    onPressed: () =>
-                        setState(() => _ignoredPoolIds.add(pool.id)),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 15),
-
-            // Barre de progression simplifiée
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: pool.currentFilling / 4,
-                backgroundColor: Colors.grey.shade100,
-                color: isFull ? Colors.green : TranSenColors.primaryGreen,
-                minHeight: 8,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("${pool.currentFilling}/4 passagers",
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
-                if (canAcceptAt3 && !isFull)
-                  const Text("Acceptable (3/4)",
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: TranSenColors.accentGold,
-                          fontWeight: FontWeight.bold)),
-              ],
-            ),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.0),
-              child: Divider(height: 1, color: Colors.black12),
-            ),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("Total (estimé)",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text("${pool.currentFilling * 10000} FCFA",
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: Colors.green)),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  try {
-                    // 0. Confirmation si peu de passagers
-                    if (pool.currentFilling < 3) {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text("Départ anticipé ?"),
-                          content: Text(
-                              "Il n'y a que ${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.pop(ctx, false),
-                                child: const Text("ANNULER")),
-                            TextButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                child: const Text("OUI, ACCEPTER")),
-                          ],
-                        ),
-                      );
-                      if (confirm != true) return;
-                    }
-
-                    // 1. Commission 5% (COMMENTÉ POUR LE LANCEMENT GRATUIT)
-                    // final totalCommission = pool.currentFilling * 500;
-                    // final wallet = ref.read(walletProvider);
-                    // if (wallet.balance < totalCommission) {
-                    //   throw Exception("Solde insuffisant pour la commission ($totalCommission FCFA)");
-                    // }
-
-                    // ... le reste est identique
-                    await ref
-                        .read(tripRepositoryProvider)
-                        .acceptPool(pool.id, driverId);
-                    // ref.read(walletProvider.notifier).credit((pool.currentFilling * 10000).toDouble(), 'Gains Covoiturage ${pool.destination}');
-                    // ref.read(walletProvider.notifier).debit(totalCommission.toDouble(), 'Commission Plateforme (5%)');
-
-                    if (mounted) {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => PoolDetailScreen(pool: pool)));
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(
-                                e.toString().replaceAll("Exception: ", "")),
-                            backgroundColor: Colors.red),
-                      );
-                    }
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isFull
-                      ? Colors.green
-                      : (canAcceptAt3
-                          ? TranSenColors.accentGold
-                          : TranSenColors.darkGreen),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: Text(
-                    isFull
-                        ? 'DÉPART IMMÉDIAT (COMPLET)'
-                        : (canAcceptAt3
-                            ? 'ACCEPTER (3/4)'
-                            : 'ACCEPTER (${pool.currentFilling}/4)'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13)),
-              ),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 15,
+              spreadRadius: 1,
+              offset: const Offset(0, 5),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.groups,
+                        color: TranSenColors.primaryGreen, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Trajet ${pool.departure} ➔ ${pool.destination}",
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          "Prévu pour le: ${pool.scheduledDate}",
+                          style: const TextStyle(
+                              fontSize: 12, color: Colors.black45),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isFull)
+                    const Icon(Icons.check_circle,
+                        color: Colors.green, size: 24)
+                  else ...[
+                    if (canAcceptAt3)
+                      const Icon(Icons.info_outline,
+                          color: TranSenColors.primaryGreen, size: 20),
+                    IconButton(
+                      icon:
+                          const Icon(Icons.close, color: Colors.grey, size: 20),
+                      onPressed: () =>
+                          setState(() => _ignoredPoolIds.add(pool.id)),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 15),
+
+              // Barre de progression simplifiée
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: pool.currentFilling / 4,
+                  backgroundColor: Colors.grey.shade100,
+                  color: isFull ? Colors.green : TranSenColors.primaryGreen,
+                  minHeight: 8,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("${pool.currentFilling}/4 passagers",
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.bold)),
+                  if (canAcceptAt3 && !isFull)
+                    const Text("Acceptable (3/4)",
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: TranSenColors.accentGold,
+                            fontWeight: FontWeight.bold)),
+                ],
+              ),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Divider(height: 1, color: Colors.black12),
+              ),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Total (estimé)",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text("${pool.currentFilling * 10000} FCFA",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          color: Colors.green)),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      // 0. Confirmation si peu de passagers
+                      if (pool.currentFilling < 3) {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("Départ anticipé ?"),
+                            content: Text(
+                                "Il n'y a que ${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text("ANNULER")),
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text("OUI, ACCEPTER")),
+                            ],
+                          ),
+                        );
+                        if (confirm != true) return;
+                      }
+
+                      // 1. Commission 5% (COMMENTÉ POUR LE LANCEMENT GRATUIT)
+                      // final totalCommission = pool.currentFilling * 500;
+                      // final wallet = ref.read(walletProvider);
+                      // if (wallet.balance < totalCommission) {
+                      //   throw Exception("Solde insuffisant pour la commission ($totalCommission FCFA)");
+                      // }
+
+                      // ... le reste est identique
+                      await ref
+                          .read(tripRepositoryProvider)
+                          .acceptPool(pool.id, driverId);
+                      // ref.read(walletProvider.notifier).credit((pool.currentFilling * 10000).toDouble(), 'Gains Covoiturage ${pool.destination}');
+                      // ref.read(walletProvider.notifier).debit(totalCommission.toDouble(), 'Commission Plateforme (5%)');
+
+                      if (mounted) {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => PoolDetailScreen(pool: pool)));
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  e.toString().replaceAll("Exception: ", "")),
+                              backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isFull
+                        ? Colors.green
+                        : (canAcceptAt3
+                            ? TranSenColors.accentGold
+                            : TranSenColors.darkGreen),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: Text(
+                      isFull
+                          ? 'DÉPART IMMÉDIAT (COMPLET)'
+                          : (canAcceptAt3
+                              ? 'ACCEPTER (3/4)'
+                              : 'ACCEPTER (${pool.currentFilling}/4)'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1164,7 +1180,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         ],
       ),
       child: InkWell(
-          onTap: () async {
+        onTap: () async {
           await DriverTripDetailSheet.show(context, delivery);
         },
         child: Column(
@@ -1225,6 +1241,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       ),
     );
   }
+
   Widget _buildVtcSmallCard(BuildContext context, TripModel trip) {
     return Container(
       width: 195,
@@ -1310,8 +1327,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                         fontSize: 13),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),

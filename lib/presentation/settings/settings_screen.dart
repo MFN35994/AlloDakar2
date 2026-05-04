@@ -56,7 +56,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(

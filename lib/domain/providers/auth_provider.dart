@@ -263,10 +263,16 @@ class AuthNotifier extends Notifier<AuthState?> {
     if (state == null) return;
     final uid = state!.userId;
     try {
-      // 1. Supprimer le document Firestore
+      // 1. Nettoyage des données spécifiques (si chauffeur)
+      if (state?.role == 'driver') {
+        await _firestore.collection('active_drivers').doc(uid).delete();
+        await _firestore.collection('driver_routes').doc(uid).delete();
+      }
+
+      // 2. Supprimer le document Firestore principal
       await _firestore.collection('users').doc(uid).delete();
 
-      // 2. Supprimer l'utilisateur Firebase Auth
+      // 3. Supprimer l'utilisateur Firebase Auth
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await user.delete();
