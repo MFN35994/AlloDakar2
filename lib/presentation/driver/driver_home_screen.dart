@@ -56,6 +56,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   String? _pubDeparture;
   String? _pubDestination;
   bool _isAutoFull = false;
+  final _noteController = TextEditingController();
   final Set<String> _ignoredPoolIds = {};
 
   final List<String> _regions = [
@@ -85,6 +86,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           .doc(_currentDriverId)
           .delete();
     }
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -169,6 +171,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           'driverPhone': phone,
           'departure': _pubDeparture,
           'destination': _pubDestination,
+          'note': _noteController.text.trim(),
         });
       } catch (e) {
         debugPrint("Erreur update position: $e");
@@ -398,7 +401,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                                 .publishDriverRoute(
                                                     currentUserId,
                                                     val!,
-                                                    _pubDestination);
+                                                    _pubDestination,
+                                                    _noteController.text.trim());
                                           },
                                         ),
                                       ),
@@ -425,13 +429,36 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                                   .publishDriverRoute(
                                                       currentUserId,
                                                       _pubDeparture!,
-                                                      val);
+                                                      val,
+                                                      _noteController.text.trim());
                                             }
                                           },
                                         ),
                                       ),
                                     ),
                                   ],
+                                ),
+                                const SizedBox(height: 10),
+                                TextField(
+                                  controller: _noteController,
+                                  decoration: InputDecoration(
+                                    hintText: "Message (ex: Départ à 8h, Climatisé...)",
+                                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                                    prefixIcon: const Icon(Icons.chat_bubble_outline, size: 18),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  style: const TextStyle(fontSize: 13),
+                                  onSubmitted: (val) {
+                                    if (_pubDeparture != null) {
+                                      ref.read(tripRepositoryProvider).publishDriverRoute(
+                                        currentUserId,
+                                        _pubDeparture!,
+                                        _pubDestination,
+                                        val.trim(),
+                                      );
+                                    }
+                                  },
                                 ),
                               ],
                             ),

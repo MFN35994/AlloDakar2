@@ -163,12 +163,26 @@ class TripRepository {
         return;
       }
 
-      final referredBy = userDoc.data()?['referredBy'] as String?;
-      final alreadyClaimed = userDoc.data()?['referralRewardClaimed'] ?? false;
+      final userData = userDoc.data()!;
+      final referredBy = userData['referredBy'] as String?;
+      final alreadyClaimed = userData['referralRewardClaimed'] ?? false;
+      final filleulDeviceId = userData['deviceId'] as String?;
 
       if (referredBy != null && !alreadyClaimed) {
+        // Vérification Anti-Fraude : Même appareil ?
+        final referrerDoc = await _firestore.collection('users').doc(referredBy).get();
+        if (referrerDoc.exists) {
+          final referrerDeviceId = referrerDoc.data()?['deviceId'];
+          if (filleulDeviceId != null && referrerDeviceId != null && filleulDeviceId == referrerDeviceId) {
+            debugPrint("[PARRAINAGE] FRAUDE DÉTECTÉE : Même appareil pour parrain et filleul ($referredBy / $userId).");
+            // On marque quand même comme réclamé pour ne pas reboucler, mais sans donner les points
+            await _firestore.collection('users').doc(userId).update({'referralRewardClaimed': true});
+            return;
+          }
+        }
+
         debugPrint("[PARRAINAGE] Parrain trouvé: $referredBy. Premier trajet détecté. Attribution de 10 points.");
-        final userName = userDoc.data()?['name'] ?? 'Un client';
+        final userName = userData['name'] ?? 'Un client';
         final referrerRef = _firestore.collection('users').doc(referredBy);
         
         await _firestore.runTransaction((transaction) async {
@@ -251,11 +265,12 @@ class TripRepository {
     await _firestore.collection('trips').doc(tripId).delete();
   }
 
-  Future<void> publishDriverRoute(String driverId, String dep, [String? dest]) async {
+  Future<void> publishDriverRoute(String driverId, String dep, [String? dest, String? note]) async {
     // 1. Mise à jour de la table des routes
     await _firestore.collection('driver_routes').doc(driverId).set({
       'departure': dep,
       'destination': dest,
+      'note': note,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -266,6 +281,7 @@ class TripRepository {
       await activeDoc.update({
         'departure': dep,
         'destination': dest,
+        'note': note,
       });
     }
   }

@@ -1,17 +1,38 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/utils/device_utils.dart';
 
-class ReferralNotifier extends StateNotifier<AsyncValue<String?>> {
-  ReferralNotifier() : super(const AsyncValue.data(null));
+class ReferralNotifier extends Notifier<AsyncValue<String?>> {
+  @override
+  AsyncValue<String?> build() {
+    return const AsyncValue.data(null);
+  }
 
   Future<bool> validateAndApply(String code, String userId) async {
     if (code.isEmpty) return true;
     
     state = const AsyncValue.loading();
     try {
-      final query = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-          .collection('users')
+      final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
+      
+      // 0. Vérification Anti-Fraude : Device ID
+      final deviceId = await DeviceUtils.getDeviceId();
+      
+      // Vérifier si cet appareil a déjà été parrainé
+      final deviceQuery = await db.collection('users')
+          .where('deviceId', isEqualTo: deviceId)
+          .where('referredBy', isNull: false)
+          .limit(1)
+          .get();
+          
+      if (deviceQuery.docs.isNotEmpty && deviceQuery.docs.first.id != userId) {
+        state = AsyncValue.error("Cet appareil a déjà été utilisé pour un parrainage.", StackTrace.current);
+        return false;
+      }
+
+      // 1. Rechercher le parrain
+      final query = await db.collection('users')
           .where('referralCode', isEqualTo: code.toUpperCase())
           .limit(1)
           .get();
@@ -21,32 +42,41 @@ class ReferralNotifier extends StateNotifier<AsyncValue<String?>> {
         return false;
       }
 
-      final referrerId = query.docs.first.id;
+      final referrerDoc = query.docs.first;
+      final referrerId = referrerDoc.id;
+      final referrerData = referrerDoc.data();
+      
       if (referrerId == userId) {
         state = AsyncValue.error("Vous ne pouvez pas vous parrainer vous-même", StackTrace.current);
         return false;
       }
+      
+      // Vérification Anti-Fraude : Même appareil ?
+      if (referrerData['deviceId'] == deviceId) {
+        state = AsyncValue.error("Parrainage impossible sur le même appareil.", StackTrace.current);
+        return false;
+      }
 
-      // 1. Marquer l'utilisateur actuel comme parrainé
-      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).set({
+      // 2. Marquer l'utilisateur actuel comme parrainé
+      await db.collection('users').doc(userId).set({
         'referredBy': referrerId,
         'referralRewardClaimed': false,
+        'deviceId': deviceId,
+        'referralAppliedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // 2. Mettre à jour le compteur du parrain
-      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(referrerId).update({
+      // 3. Mettre à jour le compteur du parrain
+      await db.collection('users').doc(referrerId).update({
         'referralCount': FieldValue.increment(1),
       });
 
       state = const AsyncValue.data("Code appliqué avec succès ! Vos gains seront actifs après votre premier trajet.");
       return true;
     } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      state = AsyncValue.error(e.toString(), StackTrace.current);
       return false;
     }
   }
 }
 
-final referralProvider = StateNotifierProvider<ReferralNotifier, AsyncValue<String?>>((ref) {
-  return ReferralNotifier();
-});
+final referralProvider = NotifierProvider<ReferralNotifier, AsyncValue<String?>>(ReferralNotifier.new);

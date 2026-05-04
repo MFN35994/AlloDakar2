@@ -14,6 +14,15 @@ class SkeletonLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.light 
+            ? Colors.grey[200] 
+            : Colors.grey[800],
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
   }
 }

@@ -65,7 +65,7 @@ class NotificationService {
       iOS: initializationSettingsIOS,
     );
 
-    await _localNotifications.initialize(initializationSettings);
+    await _localNotifications.initialize(settings: initializationSettings);
 
     // Créer le canal sur Android
     await _localNotifications
@@ -95,10 +95,10 @@ class NotificationService {
       // Si c'est une notification Android et qu'on a les infos, on l'affiche localement
       if (notification != null && android != null && !kIsWeb) {
         FlutterLocalNotificationsPlugin().show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          NotificationDetails(
+          id: notification.hashCode,
+          title: notification.title,
+          body: notification.body,
+          notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
               _channel.id,
               _channel.name,

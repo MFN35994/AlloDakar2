@@ -83,8 +83,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       
       if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
         final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.low,
-          timeLimit: const Duration(seconds: 5),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+            timeLimit: Duration(seconds: 5),
+          ),
         );
         final region = LocationHelper.detectRegion(pos);
         if (mounted) {
@@ -503,8 +505,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       double lng = -17.4677;
       try {
         final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 3),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 3),
+          ),
         );
         lat = pos.latitude;
         lng = pos.longitude;

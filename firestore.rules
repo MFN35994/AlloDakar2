@@ -2,43 +2,62 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Fonction d'aide pour vérifier l'authentification
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
     // --- COLLECTION USERS ---
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && request.auth.uid == userId;
       
-      // Sous-collection des avis laissés par l'utilisateur
+      // Création initiale
+      allow create: if isOwner(userId);
+      
+      // Mise à jour sécurisée
+      allow update: if isSignedIn() && (
+        // L'utilisateur peut modifier ses infos de base mais PAS ses points/solde/vérification
+        (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['bonusPoints', 'walletBalance', 'isVerified', 'referralCount']))
+        || 
+        // Permettre l'attribution de points de parrainage (incrément de 10) par un tiers (le filleul)
+        (!isOwner(userId) && 
+         request.resource.data.bonusPoints == (resource.data.bonusPoints + 10) && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']))
+      );
+      
       match /my_reviews/{reviewId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
+      }
+      
+      match /transactions/{transId} {
+        allow read: if isOwner(userId);
+        allow create: if isSignedIn(); // Permettre au filleul de créer la ligne de transaction chez le parrain
       }
     }
 
-    // --- COLLECTION REVIEWS (GLOBAL) ---
+    // --- AUTRES COLLECTIONS ---
     match /reviews/{reviewId} {
       allow read: if true;
       allow create: if isSignedIn();
     }
 
-    // --- COLLECTIONS DE COURSES (VTC & Covoiturage) ---
     match /pools/{poolId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
     
     match /trips/{tripId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
 
     match /active_drivers/{driverId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
 
     match /driver_routes/{driverId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
   }
 }

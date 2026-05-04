@@ -47,16 +47,16 @@ class AuthState {
   }
 }
 
-class AuthNotifier extends StateNotifier<AuthState?> {
-  final AuthRepository _repository;
+class AuthNotifier extends Notifier<AuthState?> {
+  late final AuthRepository _repository;
   final FirebaseFirestore _firestore =
       FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
 
-  AuthNotifier(this._repository) : super(null) {
-    _init();
-  }
-
-  void _init() {
+  @override
+  AuthState? build() {
+    _repository = ref.watch(authRepositoryProvider);
+    
+    // Écouter les changements d'état d'authentification
     _repository.authStateChanges.listen((user) async {
       if (user == null) {
         state = null;
@@ -65,6 +65,8 @@ class AuthNotifier extends StateNotifier<AuthState?> {
         await _fetchUserRole(user.uid);
       }
     });
+
+    return null;
   }
 
   Future<void> _fetchUserRole(String uid) async {
@@ -130,7 +132,7 @@ class AuthNotifier extends StateNotifier<AuthState?> {
     }
   }
 
-// Variable pour stocker l'ID de vérification du SMS en mémoire
+  // Variable pour stocker l'ID de vérification du SMS en mémoire
   String? _verificationId;
   ConfirmationResult? _webConfirmationResult;
 
@@ -284,7 +286,4 @@ class AuthNotifier extends StateNotifier<AuthState?> {
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState?>((ref) {
-  final repository = ref.watch(authRepositoryProvider);
-  return AuthNotifier(repository);
-});
+final authProvider = NotifierProvider<AuthNotifier, AuthState?>(AuthNotifier.new);

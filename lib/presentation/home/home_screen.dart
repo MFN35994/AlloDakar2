@@ -15,6 +15,9 @@ import './trip_tracking_screen.dart';
 import '../widgets/driver_reviews_sheet.dart';
 import '../widgets/skeleton_loader.dart';
 
+// Cache pour l'icône de voiture afin d'éviter de la régénérer à chaque snapshot
+BitmapDescriptor? _cachedCarIcon;
+
 final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
   return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
       .collection('active_drivers')
@@ -22,19 +25,21 @@ final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
       .asyncMap((snapshot) async {
     final markers = <Marker>{};
     
-    // Créer une icône voiture transparente avec Canvas
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    const size = 40.0;
-    final paint = Paint()..color = TranSenColors.primaryGreen;
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(6, 14, 28, 16), const Radius.circular(5)), paint);
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(11, 6, 18, 11), const Radius.circular(4)), paint);
-    canvas.drawCircle(const Offset(11, 30), 4, Paint()..color = Colors.black87);
-    canvas.drawCircle(const Offset(29, 30), 4, Paint()..color = Colors.black87);
-    final picture = recorder.endRecording();
-    final img = await picture.toImage(size.toInt(), size.toInt());
-    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-    final carIcon = BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+    // 1. Générer l'icône une seule fois
+    if (_cachedCarIcon == null) {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      const size = 40.0;
+      final paint = Paint()..color = TranSenColors.primaryGreen;
+      canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(6, 14, 28, 16), const Radius.circular(5)), paint);
+      canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(11, 6, 18, 11), const Radius.circular(4)), paint);
+      canvas.drawCircle(const Offset(11, 30), 4, Paint()..color = Colors.black87);
+      canvas.drawCircle(const Offset(29, 30), 4, Paint()..color = Colors.black87);
+      final picture = recorder.endRecording();
+      final img = await picture.toImage(size.toInt(), size.toInt());
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      _cachedCarIcon = BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+    }
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
@@ -49,12 +54,16 @@ final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
         if (DateTime.now().difference(lastUpdated).inMinutes > 10) continue;
       }
       
-      // Récupérer la route directement du document (optimisé)
+      // Récupérer la route directement du document
       final dep = data['departure'];
       final dest = data['destination'];
+      final note = data['note'];
       String snippet = "Chauffeur actif";
-      if (dep != null && dest != null) {
-        snippet = "Trajet : $dep ➔ $dest";
+      if (dep != null || dest != null) {
+        snippet = "Trajet : ${dep ?? '?'} ➔ ${dest ?? '?'}";
+        if (note != null && note.toString().isNotEmpty) {
+          snippet += " | $note";
+        }
       }
 
       markers.add(Marker(
@@ -64,7 +73,7 @@ final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
           title: data['driverName'] ?? 'Chauffeur TranSen',
           snippet: snippet,
         ),
-        icon: carIcon,
+        icon: _cachedCarIcon!,
         rotation: 0,
       ));
     }
@@ -230,13 +239,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             alignment: Alignment.center,
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.grey.withValues(alpha: 0.05),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.grey.withValues(alpha: 0.02),
+                                  Colors.grey.withValues(alpha: 0.08),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                             ),
-                            child: const Text(
-                              "Aucune annonce de trajet pour le moment.",
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.grey.withValues(alpha: 0.5), size: 28),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  "Aucun trajet publié pour le moment.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic, fontWeight: FontWeight.w500),
+                                ),
+                              ],
                             ),
                           );
                         }
@@ -247,14 +271,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             final m = announcedDrivers[index];
                             final snippet = m.infoWindow.snippet ?? '';
                             
-                            // Extraire départ/arrivée du snippet "Trajet : Dakar ➔ Thiès"
+                            // Extraire départ/arrivée et note du snippet "Trajet : Dakar ➔ Thiès | Message"
                             String? departure;
                             String? destination;
+                            String? note;
                             if (snippet.contains('➔')) {
-                              final parts = snippet.replaceFirst("Trajet : ", "").split('➔');
-                              if (parts.length == 2) {
-                                departure = parts[0].trim();
-                                destination = parts[1].trim();
+                              final mainParts = snippet.replaceFirst("Trajet : ", "").split('|');
+                              final routeParts = mainParts[0].split('➔');
+                              if (routeParts.length == 2) {
+                                departure = routeParts[0].trim();
+                                destination = routeParts[1].trim();
+                              }
+                              if (mainParts.length > 1) {
+                                note = mainParts[1].trim();
                               }
                             }
 
@@ -262,13 +291,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               onTap: () {
                                 OrderSheet.show(
                                   context,
-                                  departure: departure,
-                                  destination: destination,
+                                  departure: departure == '?' ? null : departure,
+                                  destination: destination == '?' ? null : destination,
                                   driverId: m.markerId.value,
                                 );
                               },
                               child: Container(
-                                width: 200,
+                                width: 220, // Un peu plus large pour le message
                                 margin: const EdgeInsets.only(right: 15),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -300,12 +329,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 4),
+                                          const SizedBox(height: 2),
                                           Text(
-                                            snippet.replaceFirst("Trajet : ", ""),
+                                            "${departure ?? '?'} ➔ ${destination ?? '?'}",
                                             style: const TextStyle(fontSize: 11, color: TranSenColors.primaryGreen, fontWeight: FontWeight.w700),
                                             overflow: TextOverflow.ellipsis,
                                           ),
+                                          if (note != null) ...[
+                                            const SizedBox(height: 2),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.chat_bubble_outline, size: 10, color: Colors.blue),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    note,
+                                                    style: const TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Colors.blue),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                           const SizedBox(height: 4),
                                           Row(
                                             children: [
@@ -334,6 +379,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                           ratingAsync.value?.toStringAsFixed(1) ?? '0.0',
                                                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                                                         ),
+                                                        const SizedBox(width: 4),
+                                                        Consumer(builder: (context, ref, child) {
+                                                          final countAsync = ref.watch(providers.driverRatingCountProvider(m.markerId.value));
+                                                          return Text(
+                                                            "(${countAsync.value ?? 0})",
+                                                            style: const TextStyle(fontSize: 9, color: Colors.grey),
+                                                          );
+                                                        }),
                                                         const SizedBox(width: 4),
                                                         const Text(
                                                           "Voir avis",

@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen/main.dart';
 import 'package:transen/domain/providers/auth_provider.dart';
 import 'package:transen/domain/providers/theme_provider.dart';
 
-class MockAuthNotifier extends StateNotifier<AuthState?> implements AuthNotifier {
-  MockAuthNotifier() : super(null);
+class MockAuthNotifier extends Notifier<AuthState?> implements AuthNotifier {
+  @override
+  AuthState? build() => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -17,8 +17,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          authProvider.overrideWith((ref) => MockAuthNotifier()),
-          themeProvider.overrideWith((ref) => ThemeMode.light),
+          authProvider.overrideWith(MockAuthNotifier.new),
+          themeProvider.overrideWith(ThemeNotifier.new),
         ],
         child: const MyApp(),
       ),

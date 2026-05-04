@@ -107,8 +107,10 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
       
       if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
         final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.low,
-          timeLimit: const Duration(seconds: 5),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+            timeLimit: Duration(seconds: 5),
+          ),
         );
         final region = LocationHelper.detectRegion(pos);
         if (mounted) {

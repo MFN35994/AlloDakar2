@@ -19,27 +19,30 @@ class WalletState {
   WalletState(this.balance, this.points, this.transactions);
 }
 
-class WalletNotifier extends StateNotifier<WalletState> {
-  final UserRepository _userRepo = UserRepository();
-  final String _userId;
+class WalletNotifier extends Notifier<WalletState> {
+  late final UserRepository _userRepo = UserRepository();
 
-  WalletNotifier(this._userId) : super(WalletState(0.0, 0, [])) {
-    _init();
+  @override
+  WalletState build() {
+    final auth = ref.watch(authProvider);
+    final userId = auth?.userId ?? 'unknown_user';
+    _init(userId);
+    return WalletState(0.0, 0, []);
   }
 
-  void _init() {
+  void _init(String userId) {
     // Écouter le solde
-    _userRepo.watchWalletBalance(_userId).listen((balance) {
+    _userRepo.watchWalletBalance(userId).listen((balance) {
       state = WalletState(balance, state.points, state.transactions);
     });
 
     // Écouter les points
-    _userRepo.watchPoints(_userId).listen((points) {
+    _userRepo.watchPoints(userId).listen((points) {
       state = WalletState(state.balance, points, state.transactions);
     });
 
     // Écouter les transactions
-    _userRepo.watchTransactions(_userId).listen((transData) {
+    _userRepo.watchTransactions(userId).listen((transData) {
       final transactions = transData.map((data) {
         return WalletTransaction(
           data['description'] ?? '',
@@ -52,16 +55,16 @@ class WalletNotifier extends StateNotifier<WalletState> {
   }
 
   void debit(double amount, String description) async {
-    await _userRepo.updateWalletBalance(_userId, -amount, description);
+    final auth = ref.read(authProvider);
+    if (auth == null) return;
+    await _userRepo.updateWalletBalance(auth.userId, -amount, description);
   }
 
   void credit(double amount, String description) async {
-    await _userRepo.updateWalletBalance(_userId, amount, description);
+    final auth = ref.read(authProvider);
+    if (auth == null) return;
+    await _userRepo.updateWalletBalance(auth.userId, amount, description);
   }
 }
 
-final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((ref) {
-  final auth = ref.watch(authProvider);
-  final userId = auth?.userId ?? 'unknown_user';
-  return WalletNotifier(userId);
-});
+final walletProvider = NotifierProvider<WalletNotifier, WalletState>(WalletNotifier.new);

@@ -51,8 +51,12 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           await File('${tempDir.path}/recu_${widget.orderId}.png').create();
       await file.writeAsBytes(buffer);
 
-      await Share.shareXFiles([XFile(file.path)],
-          text: 'Mon reçu TranSen 🚕');
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'Mon reçu TranSen 🚕',
+        ),
+      );
 
     } catch (e) {
       debugPrint("Erreur capture reçu: $e");

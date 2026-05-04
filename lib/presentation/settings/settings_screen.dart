@@ -83,7 +83,7 @@ class SettingsScreen extends ConsumerWidget {
             value: title == 'Mode Sombre' ? isDarkMode : value, 
             onChanged: (val) {
               if (title == 'Mode Sombre') {
-                ref.read(themeProvider.notifier).state = val ? ThemeMode.dark : ThemeMode.light;
+                ref.read(themeProvider.notifier).setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
               }
             }, 
             activeThumbColor: Theme.of(context).colorScheme.primary
