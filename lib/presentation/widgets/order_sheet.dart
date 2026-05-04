@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/transen_colors.dart';
 
+import 'success_dialog.dart';
 import 'receipt_screen.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/providers/trip_providers.dart' as providers;
@@ -538,23 +539,23 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       final navigator = Navigator.of(context);
       navigator.pop();
       
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Demande enregistrée ! Votre départ sera confirmé dès que le groupe sera complet."),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        navigator.push(MaterialPageRoute(
-          builder: (_) => ReceiptScreen(
-            orderId: 'POOL-${poolId.substring(0, 5).toUpperCase()}',
-            departure: _selectedDeparture!,
-            destination: _selectedDestination!,
-            price: '$finalPrice FCFA',
-            type: 'Covoiturage Intelligent',
-            tripId: poolId,
-          ),
-        ));
+      SuccessDialog.show(
+        context,
+        title: 'Demande enregistrée !',
+        message: 'Votre départ sera confirmé dès que le groupe sera complet.',
+        onDismiss: () {
+          navigator.push(MaterialPageRoute(
+            builder: (_) => ReceiptScreen(
+              orderId: 'POOL-${poolId.substring(0, 5).toUpperCase()}',
+              departure: _selectedDeparture!,
+              destination: _selectedDestination!,
+              price: '$finalPrice FCFA',
+              type: 'Covoiturage Intelligent',
+              tripId: poolId,
+            ),
+          ));
+        },
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);

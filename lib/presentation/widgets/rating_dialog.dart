@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/transen_colors.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/providers/auth_provider.dart';
+import 'success_dialog.dart';
 
 class RatingDialog extends StatefulWidget {
   final String tripId;
@@ -139,7 +140,14 @@ class _RatingDialogState extends State<RatingDialog> {
                                 rating: _rating,
                                 comment: _commentController.text.trim(),
                               );
-                              if (context.mounted) Navigator.pop(context);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                SuccessDialog.show(
+                                  context,
+                                  title: 'Merci pour votre avis !',
+                                  message: 'Votre retour nous aide à améliorer la communauté TranSen.',
+                                );
+                              }
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(

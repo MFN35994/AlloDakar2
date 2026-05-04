@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/transen_colors.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'success_dialog.dart';
 import 'receipt_screen.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/models/trip_model.dart';
@@ -318,17 +319,23 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                         final navigator = Navigator.of(context);
                         navigator.pop();
 
-                        navigator.push(MaterialPageRoute(
-                            builder: (_) => ReceiptScreen(
-                                  orderId:
-                                      'YOB-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-                                  departure: _selectedDeparture!,
-                                  destination: _selectedDestination!,
-                                  price: '5 000 FCFA',
-                                  type:
-                                      'Livraison de colis ($_selectedParcelType)',
-                                  tripId: tripId,
-                                )));
+                        SuccessDialog.show(
+                          context,
+                          title: 'Livraison programmée !',
+                          message: 'Votre colis a été enregistré. Un chauffeur vous contactera bientôt.',
+                          onDismiss: () {
+                            navigator.push(MaterialPageRoute(
+                              builder: (_) => ReceiptScreen(
+                                orderId: 'YOB-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                                departure: _selectedDeparture!,
+                                destination: _selectedDestination!,
+                                price: '5 000 FCFA',
+                                type: 'Livraison de colis ($_selectedParcelType)',
+                                tripId: tripId,
+                              ),
+                            ));
+                          },
+                        );
                       }
                     }
                   : null,

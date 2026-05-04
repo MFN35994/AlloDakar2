@@ -5,6 +5,7 @@ import '../../domain/providers/wallet_provider.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../domain/providers/auth_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/animated_count_text.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -62,8 +63,9 @@ class WalletScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${walletState.balance.toInt()} FCFA',
+                  child: AnimatedCountText(
+                    value: walletState.balance.toInt(),
+                    suffix: ' FCFA',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 38,
@@ -142,16 +144,18 @@ class WalletScreen extends ConsumerWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          '${walletState.points} pts',
+                        AnimatedCountText(
+                          value: walletState.points,
+                          suffix: ' pts',
                           style: const TextStyle(
                             fontWeight: FontWeight.w900, 
                             fontSize: 22, 
                             color: Colors.amber
                           ),
                         ),
-                        Text(
-                          '${walletState.points * 100} FCFA',
+                        AnimatedCountText(
+                          value: walletState.points * 100,
+                          suffix: ' FCFA',
                           style: const TextStyle(
                             fontSize: 12, 
                             fontWeight: FontWeight.bold,

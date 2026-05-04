@@ -40,8 +40,9 @@ service cloud.firestore {
 
     // --- AUTRES COLLECTIONS ---
     match /reviews/{reviewId} {
-      allow read: if true;
+      allow read, list: if true;
       allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isOwner(resource.data.userId));
     }
 
     match /pools/{poolId} {
