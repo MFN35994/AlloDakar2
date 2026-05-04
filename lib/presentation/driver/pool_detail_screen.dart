@@ -166,7 +166,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
           return Scaffold(
             appBar: AppBar(
               title: const Text('Itinéraire Porte-à-Porte'),
-              backgroundColor: Colors.black87,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A1A) : Colors.black87,
               foregroundColor: Colors.white,
             ),
             body: Column(
@@ -249,10 +249,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   flex: 6,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF121212) : Colors.white,
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, -5))
                       ],
@@ -317,8 +317,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: pool.status == 'accepted'
                           ? TranSenColors.accentGold
-
-                          : Colors.black87,
+                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.black87),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
@@ -342,15 +341,16 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
   Widget _buildStepCard(int step, String name, String passengerId, Map<String, dynamic> passenger, String info) {
     String initialPhone = passenger['phone'] ?? '';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4)),
         ],

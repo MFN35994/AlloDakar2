@@ -65,13 +65,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text('Reçu de Course'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.black87,
+        foregroundColor: isDark ? Colors.white : Colors.black87,
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -90,11 +91,11 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                     margin: const EdgeInsets.only(top: 40),
                     padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? Colors.grey[900] : Colors.white,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                           blurRadius: 20,
                           spreadRadius: 2,
                           offset: const Offset(0, 10),
@@ -106,7 +107,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                         Text(
                           'Commande Réussi',
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: isDark ? Colors.white70 : Colors.grey.shade600,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -114,10 +115,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                         const SizedBox(height: 10),
                         Text(
                           widget.price,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w900,
-                            color: Colors.black87,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
                         const SizedBox(height: 30),
@@ -153,10 +154,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                               children: [
                                 const Icon(Icons.my_location,
                                     color: Colors.blueAccent, size: 20),
-                                Container(
+                                 Container(
                                   height: 30,
                                   width: 2,
-                                  color: Colors.grey.shade300,
+                                  color: isDark ? Colors.white24 : Colors.grey.shade300,
                                 ),
                                 const Icon(Icons.location_on,
                                     color: Colors.redAccent, size: 20),
@@ -283,11 +284,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.grey.shade600, fontSize: 14),
         ),
         Text(
           value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            fontSize: 14,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+          ),
         ),
       ],
     );

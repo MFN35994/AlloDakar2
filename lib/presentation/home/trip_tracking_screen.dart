@@ -257,7 +257,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           const SizedBox(height: 10),
           Text(
             "Votre demande a été publiée pour votre trajet.",
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.grey.shade600),
           ),
           const SizedBox(height: 40),
           OutlinedButton(
@@ -449,12 +449,13 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
               }
             }
 
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 15, spreadRadius: 5)],
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                boxShadow: [BoxShadow(color: isDark ? Colors.black54 : Colors.black12, blurRadius: 15, spreadRadius: 5)],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

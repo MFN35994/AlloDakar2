@@ -22,6 +22,7 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(20),
         children: [
           _buildSettingsSection(
+            context,
             'Préférences de l\'App',
             [
               _buildSettingsTile(context, ref, Icons.notifications_outlined, 'Notifications', true),
@@ -31,6 +32,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _buildSettingsSection(
+            context,
             'Compte & Sécurité',
             [
               _buildSettingsTile(context, ref, Icons.lock_outline, 'Changer le mot de passe', null),
@@ -43,7 +45,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSettingsSection(String title, List<Widget> children) {
+  Widget _buildSettingsSection(BuildContext context, String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -194,7 +194,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: Theme.of(context).brightness == Brightness.light ? Colors.grey[100] : Colors.grey[850],
               ),
               initialValue: _selectedDestination,
               icon: const Icon(Icons.arrow_drop_down),

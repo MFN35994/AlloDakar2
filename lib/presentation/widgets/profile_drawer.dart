@@ -23,7 +23,7 @@ class ProfileDrawer extends ConsumerWidget {
     const String appVersion = 'v1.0.0+1';
 
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : const Color(0xFF1A1A1A),
       child: Column(
         children: [
           // En-tête Profil
@@ -37,6 +37,7 @@ class ProfileDrawer extends ConsumerWidget {
               padding: EdgeInsets.zero,
               children: [
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.person_outline,
                   title: 'Mon Profil',
                   onTap: () {
@@ -45,6 +46,7 @@ class ProfileDrawer extends ConsumerWidget {
                   },
                 ),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.directions_car_filled_outlined,
                   title: 'Mes Courses',
                   onTap: () {
@@ -67,6 +69,7 @@ class ProfileDrawer extends ConsumerWidget {
                   },
                 ),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.support_agent,
                   title: 'Assistance & Contact',
                   onTap: () {
@@ -75,6 +78,7 @@ class ProfileDrawer extends ConsumerWidget {
                   },
                 ),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.settings_outlined,
                   title: 'Paramètres',
                   onTap: () {
@@ -85,6 +89,7 @@ class ProfileDrawer extends ConsumerWidget {
                 /* COMMENTÉ POUR LE LANCEMENT GRATUIT
                 if (auth?.role == 'driver')
                   _buildMenuItem(
+                    context: context,
                     icon: Icons.account_balance_wallet_outlined,
                     title: 'Mon Portefeuille',
                     onTap: () {
@@ -94,6 +99,7 @@ class ProfileDrawer extends ConsumerWidget {
                   ),
                 */
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.history,
                   title: 'Mon historique',
                   onTap: () {
@@ -102,6 +108,7 @@ class ProfileDrawer extends ConsumerWidget {
                   },
                 ),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.card_giftcard,
                   title: 'Parrainage & Gains',
                   onTap: () {
@@ -111,6 +118,7 @@ class ProfileDrawer extends ConsumerWidget {
                 ),
                 const Divider(indent: 20, endIndent: 20),
                 _buildMenuItem(
+                  context: context,
                   icon: Icons.logout,
                   title: 'Déconnexion',
                   titleColor: Colors.red,
@@ -264,18 +272,20 @@ class ProfileDrawer extends ConsumerWidget {
   }
 
   Widget _buildMenuItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
     Color? iconColor,
     Color? titleColor,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
-      leading: Icon(icon, color: iconColor ?? Colors.black87),
+      leading: Icon(icon, color: iconColor ?? (isDark ? Colors.white70 : Colors.black87)),
       title: Text(
         title,
         style: TextStyle(
-          color: titleColor ?? Colors.black87,
+          color: titleColor ?? (isDark ? Colors.white : Colors.black87),
           fontWeight: FontWeight.w600,
           fontSize: 15,
         ),
