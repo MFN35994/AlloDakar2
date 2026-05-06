@@ -183,19 +183,6 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                     right: 0,
                     child: _buildDriverInfoPanel(trip),
                   ),
-                  // --- NOUVEAU : BOUTON SOS ---
-                  if (trip.status == 'accepted' || trip.status == 'departed')
-                    Positioned(
-                      top: 100,
-                      right: 20,
-                      child: FloatingActionButton.extended(
-                        onPressed: () => launchUrl(Uri.parse("tel:17")), // Police Secours Sénégal
-                        label: const Text("SOS", style: TextStyle(fontWeight: FontWeight.bold)),
-                        icon: const Icon(Icons.warning_amber),
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
                 ],
               );
             }

@@ -122,19 +122,30 @@ class TripRepository {
   Future<void> acceptPool(String poolId, String driverId) async {
     final userDoc = await _firestore.collection('users').doc(driverId).get();
     final userData = userDoc.data() ?? {};
-    
+
     String driverName = userData['name'] ?? 'Chauffeur TranSen';
     if (driverName == 'Chauffeur TranSen' && userData['firstName'] != null) {
       driverName = "${userData['firstName']} ${userData['lastName'] ?? ''}";
     }
-    final driverPhone = userData['phone'] ?? '';
+    final driverPhone = (userData['phone'] as String? ?? '').replaceAll(' ', '');
 
-    await _firestore.collection('pools').doc(poolId).update({
-      'status': 'accepted',
-      'driverId': driverId,
-      'driverName': driverName,
-      'driverPhone': driverPhone,
-      'acceptedAt': FieldValue.serverTimestamp(),
+    final poolRef = _firestore.collection('pools').doc(poolId);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(poolRef);
+      if (!snapshot.exists) {
+        throw Exception("Ce trajet est introuvable.");
+      }
+      final data = snapshot.data()!;
+      if (data['status'] != 'pending') {
+        throw Exception("Ce trajet a déjà été accepté par un autre chauffeur.");
+      }
+      transaction.update(poolRef, {
+        'status': 'accepted',
+        'driverId': driverId,
+        'driverName': driverName,
+        'driverPhone': driverPhone,
+        'acceptedAt': FieldValue.serverTimestamp(),
+      });
     });
 
     await _firestore.collection('active_drivers').doc(driverId).update({

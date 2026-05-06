@@ -1,7 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,55 +12,137 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // --- COLLECTION USERS ---
+    function isDriver() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver';
+    }
+
+    function isClient() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'client';
+    }
+
+    // ── USERS ──────────────────────────────────────────────────────────────────
+
     match /users/{userId} {
+      // Tout utilisateur connecté peut lire un profil (pour afficher les noms/téléphones)
       allow read: if isSignedIn();
-      
-      // Création initiale et suppression
-      allow create, delete: if isOwner(userId);
-      
-      // Mise à jour sécurisée
+
+      // Création uniquement par le propriétaire du compte
+      allow create: if isOwner(userId);
+
+      // Suppression uniquement par le propriétaire
+      allow delete: if isOwner(userId);
+
+      // Mise à jour : règles strictes
       allow update: if isSignedIn() && (
-        // L'utilisateur peut modifier ses infos de base mais PAS ses points/solde/vérification
-        (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['bonusPoints', 'walletBalance', 'isVerified', 'referralCount']))
-        || 
-        // Permettre l'attribution de points de parrainage (incrément de 10) par un tiers (le filleul)
-        (!isOwner(userId) && 
-         request.resource.data.bonusPoints == (resource.data.bonusPoints + 10) && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']))
+        // Le propriétaire peut modifier ses infos de base SAUF les champs financiers/vérification
+        (isOwner(userId) &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['bonusPoints', 'walletBalance', 'isVerified', 'referralCount', 'role']))
+        ||
+        // Attribution de points de parrainage (+10 uniquement) par un tiers (filleul)
+        (!isOwner(userId) &&
+          request.resource.data.bonusPoints == (resource.data.bonusPoints + 10) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']))
       );
-      
+
       match /my_reviews/{reviewId} {
         allow read, write: if isOwner(userId);
       }
-      
+
       match /transactions/{transId} {
         allow read: if isOwner(userId);
-        allow create: if isSignedIn(); // Permettre au filleul de créer la ligne de transaction chez le parrain
+        // Le filleul peut créer une transaction chez le parrain
+        allow create: if isSignedIn();
+        // Personne ne peut modifier/supprimer une transaction
+        allow update, delete: if false;
       }
     }
 
-    // --- AUTRES COLLECTIONS ---
+    // ── TRIPS ──────────────────────────────────────────────────────────────────
+
+    match /trips/{tripId} {
+      // Lecture : l'auteur, le chauffeur assigné, ou un chauffeur cherchant des courses
+      allow read: if isSignedIn() && (
+        resource.data.clientId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isDriver()
+      );
+
+      // Création : uniquement par un client connecté
+      allow create: if isClient() &&
+        request.resource.data.clientId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.price is number &&
+        request.resource.data.price > 0;
+
+      // Mise à jour : règles granulaires
+      allow update: if isSignedIn() && (
+        // Le chauffeur peut accepter/terminer une course (modifier status, driverId, etc.)
+        (isDriver() &&
+          request.resource.data.clientId == resource.data.clientId &&
+          request.resource.data.price == resource.data.price) // empêche de changer le prix
+        ||
+        // Le client peut annuler sa propre course si elle est encore 'pending'
+        (isOwner(resource.data.clientId) &&
+          resource.data.status == 'pending' &&
+          request.resource.data.status == 'cancelled' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+      );
+
+      // Suppression : uniquement par le client propriétaire si 'pending'
+      allow delete: if isOwner(resource.data.clientId) &&
+        resource.data.status == 'pending';
+    }
+
+    // ── POOLS (Covoiturage) ────────────────────────────────────────────────────
+
+    match /pools/{poolId} {
+      // Lecture : tout utilisateur connecté (client cherchant un pool, chauffeur)
+      allow read: if isSignedIn();
+
+      // Création : uniquement un client
+      allow create: if isClient() &&
+        request.resource.data.status == 'pending';
+
+      // Mise à jour : client peut rejoindre, chauffeur peut accepter/terminer
+      allow update: if isSignedIn() && (
+        // Un chauffeur peut accepter ou mettre à jour le statut
+        isDriver() ||
+        // Un client peut rejoindre un pool (ajouter ses infos dans passengerIds)
+        (isClient() && resource.data.status == 'pending')
+      );
+
+      // Suppression interdite (archivage uniquement via update status)
+      allow delete: if false;
+    }
+
+    // ── ACTIVE DRIVERS ─────────────────────────────────────────────────────────
+
+    match /active_drivers/{driverId} {
+      // Lecture : tout utilisateur connecté (pour voir les chauffeurs disponibles)
+      allow read: if isSignedIn();
+      // Écriture : uniquement le chauffeur lui-même
+      allow write: if isDriver() && isOwner(driverId);
+    }
+
+    // ── DRIVER ROUTES ──────────────────────────────────────────────────────────
+
+    match /driver_routes/{driverId} {
+      // Lecture : tout utilisateur connecté
+      allow read: if isSignedIn();
+      // Écriture : uniquement le chauffeur propriétaire
+      allow write: if isDriver() && isOwner(driverId);
+    }
+
+    // ── REVIEWS ────────────────────────────────────────────────────────────────
+
     match /reviews/{reviewId} {
       allow read, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isOwner(resource.data.userId));
-    }
-
-    match /pools/{poolId} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /trips/{tripId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /active_drivers/{driverId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /driver_routes/{driverId} {
-      allow read, write: if isSignedIn();
+      allow update, delete: if isSignedIn() &&
+        resource.data.userId == request.auth.uid;
     }
   }
 }
