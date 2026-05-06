@@ -274,16 +274,32 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                           .collection('users')
                           .doc(userId)
                           .get();
-                      final existingPhone =
-                          userData.data()?['phone'] as String?;
+                      
+                      String existingPhone = userData.data()?['phone'] as String? ?? '';
+                      if (existingPhone.isEmpty && _userPhoneController.text.isNotEmpty) {
+                        existingPhone = _userPhoneController.text.trim();
+                      }
 
-                      if ((existingPhone == null || existingPhone.isEmpty) &&
-                          _userPhoneController.text.isEmpty) {
-                        _showSnackBar(
-                            "Votre numéro de téléphone est obligatoire.",
-                            Colors.red);
+                      final userPhoneDigits = existingPhone.replaceAll(RegExp(r'\D'), '');
+                      
+                      if (userPhoneDigits.length < 9) {
+                        _showSnackBar("Votre numéro de téléphone est incomplet. Veuillez le corriger.", Colors.red);
                         return;
                       }
+
+                      // Nettoyage des téléphones expéditeur/destinataire
+                      String senderPhone = _senderPhoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+                      String receiverPhone = _receiverPhoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+
+                      if (senderPhone.length < 9 || receiverPhone.length < 9) {
+                        _showSnackBar("Les numéros expéditeur/destinataire doivent avoir 9 chiffres.", Colors.red);
+                        return;
+                      }
+
+                      // Formatage final avec +221
+                      final finalUserPhone = existingPhone.startsWith('+') ? existingPhone.replaceAll(' ', '') : '+221$userPhoneDigits';
+                      final finalSenderPhone = '+221$senderPhone';
+                      final finalReceiverPhone = '+221$receiverPhone';
 
                       // Simulation de paiement externe
                       if (_paymentMethod != 'Portefeuille') {
@@ -295,14 +311,12 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
 
                       if (_userPhoneController.text.isNotEmpty) {
                         await ref.read(authProvider.notifier).updateUserData(
-                            phone: _userPhoneController.text.trim());
+                            phone: finalUserPhone);
                       }
 
                       final userName = userData.data()?['name'] ??
                           "Client ${userId.substring(0, 5)}";
-                      final userPhone = _userPhoneController.text.isNotEmpty
-                          ? _userPhoneController.text.trim()
-                          : (existingPhone ?? "");
+                      final userPhone = finalUserPhone;
 
                       /* COMMENTÉ POUR LE LANCEMENT GRATUIT
                     if (_paymentMethod == 'Portefeuille') {
@@ -326,6 +340,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                             clientName: userName,
                             clientPhone: userPhone,
                             clientId: userId,
+                            senderPhone: finalSenderPhone,
+                            receiverPhone: finalReceiverPhone,
                           ));
 
                       if (context.mounted) {

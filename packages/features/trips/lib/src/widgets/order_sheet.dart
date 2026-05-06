@@ -514,12 +514,19 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       setState(() => _isProcessing = true);
 
       final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).get();
-      final existingPhone = userData.data()?['phone'] as String?;
+      final existingPhone = userData.data()?['phone'] as String? ?? '';
+      final userPhone = existingPhone.replaceAll(RegExp(r'\D'), '');
       
       if (!mounted) return;
-      if (existingPhone == null || existingPhone.isEmpty) {
+      
+      // Validation stricte : le numéro (sans indicatif) doit avoir 9 chiffres au Sénégal
+      // Si on garde l'indicatif (221), ça doit faire 12 chiffres
+      if (userPhone.length < 9) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Veuillez compléter votre profil avec un numéro de téléphone valide.")),
+          const SnackBar(
+            content: Text("Votre numéro de téléphone est incomplet. Veuillez le corriger dans votre profil."),
+            backgroundColor: Colors.red,
+          ),
         );
         setState(() => _isProcessing = false);
         return;
@@ -533,7 +540,16 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       final userFirstName = userData.data()?['firstName'];
       final userLastName = userData.data()?['lastName'];
       final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
-      final userPhone = existingPhone.replaceAll(' ', '');
+      
+      // On s'assure d'avoir le +221 propre
+      String finalPhone = userPhone;
+      if (finalPhone.startsWith('221')) {
+        finalPhone = '+$finalPhone';
+      } else if (!finalPhone.startsWith('+')) {
+        finalPhone = '+221$finalPhone';
+      } else {
+        finalPhone = finalPhone.replaceAll(' ', '');
+      }
 
       final tripRepo = ref.read(tripRepositoryProvider);
       final scheduledDate = overrideDate ?? "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";
@@ -567,7 +583,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
           'name': userName,
           'firstName': userFirstName,
           'lastName': userLastName,
-          'phone': userPhone,
+          'phone': finalPhone,
         },
       );
 

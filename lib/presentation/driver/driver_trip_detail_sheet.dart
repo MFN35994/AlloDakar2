@@ -305,45 +305,27 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
                     ],
                   ),
 
-                  // Numéro client
-                  if (_clientPhone != null || trip.clientPhone != null) ...[
+                  // Numéro client (Expéditeur/Destinataire pour Yobanté)
+                  if (_isYobante) ...[
+                    const SizedBox(height: 12),
+                    if (trip.senderPhone != null && trip.senderPhone!.isNotEmpty)
+                      _SectionCard(
+                        children: [
+                          _buildContactRow('Expéditeur', trip.senderPhone!),
+                        ],
+                      ),
+                    const SizedBox(height: 12),
+                    if (trip.receiverPhone != null && trip.receiverPhone!.isNotEmpty)
+                      _SectionCard(
+                        children: [
+                          _buildContactRow('Destinataire', trip.receiverPhone!),
+                        ],
+                      ),
+                  ] else if (_clientPhone != null || trip.clientPhone != null) ...[
                     const SizedBox(height: 12),
                     _SectionCard(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.phone,
-                                    color: Colors.blue, size: 20),
-                                const SizedBox(width: 10),
-                                Text(
-                                  _clientPhone ?? trip.clientPhone ?? '',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () => DeviceUtils.launchPhoneCall(_clientPhone ?? trip.clientPhone ?? ''),
-                                  icon: const Icon(Icons.phone,
-                                      color: Colors.green),
-                                  tooltip: 'Appeler',
-                                ),
-                                IconButton(
-                                  onPressed: () => DeviceUtils.launchWhatsApp(_clientPhone ?? trip.clientPhone),
-                                  icon: const Icon(Icons.chat,
-                                      color: Colors.green),
-                                  tooltip: 'WhatsApp',
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                        _buildContactRow('Client', _clientPhone ?? trip.clientPhone ?? ''),
                       ],
                     ),
                   ],
@@ -419,6 +401,42 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildContactRow(String label, String phone) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                phone,
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ],
+          ),
+        ),
+        Row(
+          children: [
+            IconButton(
+              onPressed: () => DeviceUtils.launchPhoneCall(phone),
+              icon: const Icon(Icons.phone, color: Colors.green),
+              tooltip: 'Appeler',
+            ),
+            IconButton(
+              onPressed: () => DeviceUtils.launchWhatsApp(phone),
+              icon: const Icon(Icons.chat, color: Colors.green),
+              tooltip: 'WhatsApp',
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

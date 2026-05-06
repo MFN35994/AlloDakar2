@@ -42,14 +42,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // LOGIQUE SÉCURISÉE (Solution 2)
   Future<void> _sendOtp() async {
     String phone = _phoneController.text.trim().replaceAll(' ', '');
-    if (phone.isEmpty) {
+    
+    // Validation de longueur pour le Sénégal (9 chiffres attendus après nettoyage)
+    String digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    if (digitsOnly.length < 9) {
       HapticFeedback.heavyImpact();
-      _showError("Veuillez entrer un numéro de téléphone");
+      _showError("Numéro incomplet. Veuillez entrer 9 chiffres.");
       return;
     }
     
     if (!phone.startsWith('+')) {
-      phone = '+221$phone';
+      phone = '+221$digitsOnly';
+    } else {
+      // Si déjà avec +, on s'assure qu'il n'y a pas d'espaces
+      phone = phone.replaceAll(' ', '');
     }
 
     setState(() => _localLoading = true);
@@ -71,8 +77,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     try {
-      String phone = _phoneController.text.trim().replaceAll(' ', '');
-      if (!phone.startsWith('+')) phone = '+221$phone';
+      String rawPhone = _phoneController.text.trim().replaceAll(' ', '');
+      String digitsOnly = rawPhone.replaceAll(RegExp(r'\D'), '');
+      String phone = rawPhone.startsWith('+') ? rawPhone.replaceAll(' ', '') : '+221$digitsOnly';
 
       await ref.read(authProvider.notifier).updateUserData(
         firstName: _firstNameController.text.trim(),

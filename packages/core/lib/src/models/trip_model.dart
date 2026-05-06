@@ -16,6 +16,8 @@ class TripModel {
   final String? clientName;
   final String? clientPhone;
   final String? clientId;
+  final String? senderPhone;
+  final String? receiverPhone;
   final String? driverId;
   final String? driverName;
   final String? driverPhone;
@@ -36,6 +38,8 @@ class TripModel {
     this.clientName,
     this.clientPhone,
     this.clientId,
+    this.senderPhone,
+    this.receiverPhone,
     this.driverId,
     this.driverName,
     this.driverPhone,
@@ -59,6 +63,8 @@ class TripModel {
       clientName: data['clientName'],
       clientPhone: data['clientPhone'],
       clientId: data['clientId'],
+      senderPhone: data['senderPhone'],
+      receiverPhone: data['receiverPhone'],
       driverId: data['driverId'],
       driverName: data['driverName'],
       driverPhone: data['driverPhone'],
@@ -81,6 +87,8 @@ class TripModel {
       'clientName': clientName,
       'clientPhone': clientPhone,
       'clientId': clientId,
+      'senderPhone': senderPhone,
+      'receiverPhone': receiverPhone,
       'driverId': driverId,
       'driverName': driverName,
       'driverPhone': driverPhone,
