@@ -103,6 +103,7 @@ class AuthNotifier extends Notifier<AuthState?> {
       NotificationService().init(state!.userId);
     } catch (e) {
       debugPrint("Erreur saving role: $e");
+      rethrow;
     }
   }
 

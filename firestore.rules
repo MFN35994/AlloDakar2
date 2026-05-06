@@ -26,10 +26,17 @@ service cloud.firestore {
 
       // Mise à jour : règles strictes
       allow update: if isSignedIn() && (
-        // Le propriétaire peut modifier ses infos de base SAUF champs sensibles
+        // Le propriétaire peut modifier son document
         (isOwner(userId) &&
+          // Protection des champs financiers et de vérification (JAMAIS modifiables par le client)
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['bonusPoints', 'walletBalance', 'isVerified', 'referralCount', 'role']))
+            .hasAny(['bonusPoints', 'walletBalance', 'isVerified', 'referralCount']) &&
+          (
+            // On autorise la modif du rôle SEULEMENT si le rôle actuel est absent ou égal à 'none'
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) ||
+            (!('role' in resource.data) || resource.data.role == 'none')
+          )
+        )
         ||
         // Attribution de points de parrainage (+10 uniquement) par un tiers (filleul)
         (!isOwner(userId) &&
@@ -43,9 +50,7 @@ service cloud.firestore {
 
       match /transactions/{transId} {
         allow read: if isOwner(userId);
-        // Le filleul peut créer une transaction chez le parrain
         allow create: if isSignedIn();
-        // Personne ne peut modifier/supprimer une transaction
         allow update, delete: if false;
       }
     }
@@ -53,29 +58,22 @@ service cloud.firestore {
     // ── TRIPS ──────────────────────────────────────────────────────────────────
 
     match /trips/{tripId} {
-      // Lecture : le client auteur, le chauffeur assigné, ou tout chauffeur (pour voir les demandes)
       allow read: if isSignedIn();
 
-      // Création : tout utilisateur connecté peut créer une course pour lui-même
       allow create: if isSignedIn() &&
         request.resource.data.clientId == request.auth.uid &&
         request.resource.data.status == 'pending';
 
-      // Mise à jour : règles granulaires
       allow update: if isSignedIn() && (
-        // N'importe quel utilisateur connecté peut modifier le statut (acceptation, complétion)
-        // mais pas changer le client ni le prix original
         (request.resource.data.clientId == resource.data.clientId &&
          request.resource.data.price == resource.data.price)
         ||
-        // Le client peut annuler sa propre course si elle est encore 'pending'
         (isOwner(resource.data.clientId) &&
           resource.data.status == 'pending' &&
           request.resource.data.status == 'cancelled' &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
       );
 
-      // Suppression : uniquement par le client propriétaire si 'pending'
       allow delete: if isOwner(resource.data.clientId) &&
         resource.data.status == 'pending';
     }
@@ -83,34 +81,23 @@ service cloud.firestore {
     // ── POOLS (Covoiturage) ────────────────────────────────────────────────────
 
     match /pools/{poolId} {
-      // Lecture : tout utilisateur connecté
       allow read: if isSignedIn();
-
-      // Création : tout utilisateur connecté
       allow create: if isSignedIn();
-
-      // Mise à jour : tout utilisateur connecté (rejoindre un pool, accepter, etc.)
       allow update: if isSignedIn();
-
-      // Suppression interdite
       allow delete: if false;
     }
 
     // ── ACTIVE DRIVERS ─────────────────────────────────────────────────────────
 
     match /active_drivers/{driverId} {
-      // Lecture : tout utilisateur connecté
       allow read: if isSignedIn();
-      // Écriture : uniquement le chauffeur lui-même
       allow write: if isSignedIn() && isOwner(driverId);
     }
 
     // ── DRIVER ROUTES ──────────────────────────────────────────────────────────
 
     match /driver_routes/{driverId} {
-      // Lecture : tout utilisateur connecté
       allow read: if isSignedIn();
-      // Écriture : uniquement le chauffeur propriétaire
       allow write: if isSignedIn() && isOwner(driverId);
     }
 
