@@ -14,6 +14,7 @@ import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import 'driver_trip_detail_sheet.dart';
+import 'active_deliveries_sheet.dart';
 
 final pendingTripsProvider =
     StreamProvider.family<List<TripModel>, String>((ref, filterStr) {
@@ -347,6 +348,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                               data: (trip) => trip == null
                                   ? const SizedBox.shrink()
                                   : _buildActiveVtcTripCard(context, trip),
+                              loading: () => const SizedBox.shrink(),
+                              error: (_, __) => const SizedBox.shrink(),
+                            );
+                          }),
+                          Consumer(builder: (context, ref, child) {
+                            final activeDeliveriesAsync =
+                                ref.watch(driverActiveDeliveriesProvider);
+                            return activeDeliveriesAsync.when(
+                              data: (deliveries) => deliveries.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : _buildActiveDeliveriesBanner(context, deliveries),
                               loading: () => const SizedBox.shrink(),
                               error: (_, __) => const SizedBox.shrink(),
                             );
@@ -1061,6 +1073,82 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       const SizedBox(height: 4),
                       Text(
                         "Client: ${trip.clientName ?? 'Anonyme'}",
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios,
+                    color: Colors.white, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveDeliveriesBanner(BuildContext context, List<TripModel> deliveries) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade800, Colors.blue.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.blue.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            ActiveDeliveriesSheet.show(context, deliveries);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.inventory_2, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Livraisons Actives",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${deliveries.length} livraison(s) en cours",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Cliquez pour gérer",
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 12),

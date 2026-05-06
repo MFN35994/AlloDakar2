@@ -90,7 +90,7 @@ class TripDetailScreen extends ConsumerWidget {
                         }
                       }
                       return ElevatedButton.icon(
-                        onPressed: () => launchUrl(Uri.parse("tel:$phoneToCall")),
+                        onPressed: () => launchUrl(Uri.parse("tel:${phoneToCall.replaceAll(' ', '')}")),
                         icon: const Icon(Icons.phone),
                         label: const Text("APPELER"),
                         style: ElevatedButton.styleFrom(

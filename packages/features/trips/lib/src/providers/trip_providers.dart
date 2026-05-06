@@ -1,4 +1,4 @@
-import "package:flutter/foundation.dart";
+
 import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:transen_core/transen_core.dart';
@@ -95,9 +95,29 @@ final driverActiveTripProvider = StreamProvider<TripModel?>((ref) {
       .where('status', isEqualTo: 'accepted')
       .snapshots()
       .map((snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          return TripModel.fromFirestore(snapshot.docs.first);
+        final vtcTrips = snapshot.docs.where((doc) {
+          final type = (doc.data()['type'] as String? ?? '').toLowerCase();
+          return !type.contains('livraison') && !type.contains('colis') && !type.contains('yobante');
+        });
+        if (vtcTrips.isNotEmpty) {
+          return TripModel.fromFirestore(vtcTrips.first);
         }
         return null;
+      });
+});
+
+final driverActiveDeliveriesProvider = StreamProvider<List<TripModel>>((ref) {
+  final auth = ref.watch(authProvider);
+  if (auth == null || auth.userId.isEmpty) return Stream.value([]);
+  
+  return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips')
+      .where('driverId', isEqualTo: auth.userId)
+      .where('status', isEqualTo: 'accepted')
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs.where((doc) {
+          final type = (doc.data()['type'] as String? ?? '').toLowerCase();
+          return type.contains('livraison') || type.contains('colis') || type.contains('yobante');
+        }).map((doc) => TripModel.fromFirestore(doc)).toList();
       });
 });

@@ -6,7 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
-
+import 'trip_detail_screen.dart';
 
 class DriverTripDetailSheet extends ConsumerStatefulWidget {
   final TripModel trip;
@@ -64,13 +64,26 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
           .acceptTrip(widget.trip.id, auth.userId);
       if (mounted) {
         Navigator.of(context).pop(true);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TripDetailScreen(trip: widget.trip),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
+        String errorMsg = e.toString();
+        if (errorMsg.contains("Exception: ")) {
+          errorMsg = errorMsg.split("Exception: ").last;
+        } else {
+          errorMsg = "Erreur lors de l'acceptation de la course.";
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Erreur: ${e.toString()}"),
+            content: Text(errorMsg),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -84,7 +97,7 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
   void _callClient() {
     final phone = _clientPhone ?? widget.trip.clientPhone;
     if (phone != null && phone.isNotEmpty) {
-      launchUrl(Uri.parse('tel:$phone'));
+      launchUrl(Uri.parse('tel:${phone.replaceAll(' ', '')}'));
     }
   }
 

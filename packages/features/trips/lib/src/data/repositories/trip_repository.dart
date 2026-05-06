@@ -248,10 +248,21 @@ class TripRepository {
   }
 
   Future<void> acceptTrip(String tripId, String driverId) async {
-    await _firestore.collection('trips').doc(tripId).update({
-      'status': 'accepted',
-      'driverId': driverId,
-      'acceptedAt': FieldValue.serverTimestamp(),
+    final tripRef = _firestore.collection('trips').doc(tripId);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(tripRef);
+      if (!snapshot.exists) {
+        throw Exception("Course introuvable.");
+      }
+      final data = snapshot.data()!;
+      if (data['status'] != 'pending') {
+        throw Exception("Cette course a déjà été acceptée par un autre chauffeur.");
+      }
+      transaction.update(tripRef, {
+        'status': 'accepted',
+        'driverId': driverId,
+        'acceptedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 

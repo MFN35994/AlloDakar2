@@ -380,7 +380,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 }
                 return IconButton(
                   icon: const Icon(Icons.phone, color: Colors.green),
-                  onPressed: () => launchUrl(Uri.parse("tel:$phoneToCall")),
+                  onPressed: () => launchUrl(Uri.parse("tel:${phoneToCall.replaceAll(' ', '')}")),
                 );
               }
             ),
