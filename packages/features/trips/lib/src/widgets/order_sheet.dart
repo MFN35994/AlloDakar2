@@ -32,14 +32,19 @@ class OrderSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: OrderSheet(
-          initialDeparture: departure,
-          initialDestination: destination,
-          driverId: driverId,
+      barrierColor: Colors.black.withValues(alpha: 0.3),
+      builder: (context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {},
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: OrderSheet(
+            initialDeparture: departure,
+            initialDestination: destination,
+            driverId: driverId,
+          ),
         ),
       ),
     );
@@ -528,7 +533,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       final userFirstName = userData.data()?['firstName'];
       final userLastName = userData.data()?['lastName'];
       final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
-      final userPhone = existingPhone;
+      final userPhone = existingPhone.replaceAll(' ', '');
 
       final tripRepo = ref.read(tripRepositoryProvider);
       final scheduledDate = overrideDate ?? "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";

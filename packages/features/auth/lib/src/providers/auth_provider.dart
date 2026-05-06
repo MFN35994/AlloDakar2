@@ -123,7 +123,7 @@ class AuthNotifier extends Notifier<AuthState?> {
       if (name != null) updates['name'] = name;
       if (firstName != null) updates['firstName'] = firstName;
       if (lastName != null) updates['lastName'] = lastName;
-      if (phone != null) updates['phone'] = phone;
+      if (phone != null) updates['phone'] = phone.replaceAll(' ', '');
       if (email != null) updates['email'] = email;
 
       await _firestore.collection('users').doc(state!.userId).update(updates);
@@ -229,7 +229,7 @@ class AuthNotifier extends Notifier<AuthState?> {
         'name': name,
         'firstName': firstName,
         'lastName': lastName,
-        'phone': phone,
+        'phone': phone.replaceAll(' ', ''),
         'email': currentUser.email ?? currentUser.phoneNumber ?? '',
       }, SetOptions(merge: true));
 

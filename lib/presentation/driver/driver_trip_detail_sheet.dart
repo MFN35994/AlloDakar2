@@ -19,7 +19,12 @@ class DriverTripDetailSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DriverTripDetailSheet(trip: trip),
+      barrierColor: Colors.black.withValues(alpha: 0.3),
+      builder: (_) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {},
+        child: DriverTripDetailSheet(trip: trip),
+      ),
     );
   }
 

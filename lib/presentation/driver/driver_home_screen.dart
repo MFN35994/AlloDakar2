@@ -15,6 +15,7 @@ import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import 'driver_trip_detail_sheet.dart';
 import 'active_deliveries_sheet.dart';
+import 'driver_pool_detail_sheet.dart';
 
 final pendingTripsProvider =
     StreamProvider.family<List<TripModel>, String>((ref, filterStr) {
@@ -808,10 +809,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     final isFull = pool.currentFilling >= 4;
 
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)),
-      ),
+      onTap: () => DriverPoolDetailSheet.show(context, pool),
       borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(
@@ -967,7 +965,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                             context,
                             MaterialPageRoute(
                                 builder: (_) => PoolDetailScreen(pool: pool)));
-                      }
+                      } // This branch is kept for backward compatibility, primary flow now goes through DriverPoolDetailSheet
                     } catch (e) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

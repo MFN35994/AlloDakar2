@@ -48,7 +48,7 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
       await ref.read(authProvider.notifier).signUpDriver(
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
-            phone: _phoneController.text.trim(),
+            phone: _phoneController.text.trim().replaceAll(' ', ''),
           );
       
       final auth = ref.read(authProvider);
