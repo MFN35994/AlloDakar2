@@ -8,10 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:transen_maps/transen_maps.dart';
-import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_trips/transen_trips.dart' as providers;
-import 'package:transen_rating/transen_rating.dart';
 import 'package:transen/presentation/widgets/profile_drawer.dart';
 
 final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
@@ -186,6 +184,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
+          ),
           ),
           ),
         ],
