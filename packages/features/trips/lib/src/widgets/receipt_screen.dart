@@ -1,12 +1,8 @@
 import "package:flutter/foundation.dart";
-import "package:firebase_core/firebase_core.dart";
-import "package:cloud_firestore/cloud_firestore.dart";
-import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_core/transen_core.dart';
@@ -38,6 +34,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   final GlobalKey _boundaryKey = GlobalKey();
 
   Future<void> _captureAndShare() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Le partage de reçu n'est pas encore disponible sur Web.")),
+      );
+      return;
+    }
+    
     try {
       RenderRepaintBoundary? boundary = _boundaryKey.currentContext
           ?.findRenderObject() as RenderRepaintBoundary?;
@@ -49,14 +52,17 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       if (byteData == null) return;
 
       final buffer = byteData.buffer.asUint8List();
-      final tempDir = await getTemporaryDirectory();
-      final file =
-          await File('${tempDir.path}/recu_${widget.orderId}.png').create();
-      await file.writeAsBytes(buffer);
+      
+      // On utilise XFile directement pour éviter l'import de dart:io
+      final xFile = XFile.fromData(
+        buffer,
+        name: 'recu_${widget.orderId}.png',
+        mimeType: 'image/png',
+      );
 
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile(file.path)],
+          files: [xFile],
           text: 'Mon reçu TranSen 🚕',
         ),
       );
