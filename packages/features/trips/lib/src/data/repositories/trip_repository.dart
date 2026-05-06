@@ -265,42 +265,37 @@ class TripRepository {
 
   Future<void> acceptTrip(String tripId, String driverId) async {
     try {
-      debugPrint("Tentative d'acceptation du trip: $tripId par driver: $driverId");
+      debugPrint("AcceptTrip: Début pour $tripId");
       final tripRef = _firestore.collection('trips').doc(tripId);
       
-      await _firestore.runTransaction((transaction) async {
-        final snapshot = await transaction.get(tripRef);
-        if (!snapshot.exists) {
-          throw Exception("Course introuvable.");
-        }
-        final data = snapshot.data()!;
-        final status = data['status'] as String?;
-        
-        debugPrint("Statut actuel de la course: $status");
-        
-        if (status != 'pending') {
-          throw Exception("Cette course a déjà été acceptée ou annulée.");
-        }
-        
-        transaction.update(tripRef, {
-          'status': 'accepted',
-          'driverId': driverId,
-          'acceptedAt': FieldValue.serverTimestamp(),
-        });
-      });
-      debugPrint("Transaction d'acceptation réussie.");
-    } catch (e, stack) {
-      debugPrint("Erreur critique dans acceptTrip: $e");
-      debugPrint("Stacktrace: $stack");
-      rethrow;
-    }
+      // On vérifie d'abord le statut sans transaction pour éviter les bugs Web
+      final snap = await tripRef.get();
+      if (!snap.exists) throw Exception("Course introuvable.");
+      
+      final currentStatus = snap.data()?['status'];
+      if (currentStatus != 'pending') {
+        throw Exception("Cette course n'est plus disponible (Statut: $currentStatus).");
+      }
 
-    try {
+      // Update direct
+      await tripRef.update({
+        'status': 'accepted',
+        'driverId': driverId,
+        'acceptedAt': FieldValue.serverTimestamp(),
+      });
+      
+      debugPrint("AcceptTrip: Update réussi");
+
+      // Mise à jour du chauffeur actif
       await _firestore.collection('active_drivers').doc(driverId).set({
         'activeTripId': tripId,
       }, SetOptions(merge: true));
-    } catch (e) {
-      debugPrint("Erreur active_drivers trip: $e");
+      
+      debugPrint("AcceptTrip: Terminé avec succès");
+    } catch (e, stack) {
+      debugPrint("ERREUR acceptTrip: $e");
+      debugPrint("STACK: $stack");
+      rethrow;
     }
   }
 
