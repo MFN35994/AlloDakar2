@@ -506,12 +506,12 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                         Row(
                           children: [
                             IconButton(
-                              onPressed: () => launchUrl(Uri.parse("https://wa.me/221${driverPhone.replaceAll(' ', '')}")),
+                              onPressed: () => DeviceUtils.launchWhatsApp(driverPhone),
                               icon: const Icon(Icons.chat, color: Colors.green),
                               iconSize: 28,
                             ),
                             IconButton(
-                              onPressed: () => launchUrl(Uri.parse("tel:${driverPhone.replaceAll(' ', '')}")),
+                              onPressed: () => DeviceUtils.launchPhoneCall(driverPhone),
                               icon: const Icon(Icons.phone, color: Colors.blue),
                               iconSize: 28,
                             ),

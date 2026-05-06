@@ -259,7 +259,7 @@ class _DriverPoolDetailSheetState
                                     color: TranSenColors.primaryGreen,
                                     size: 20),
                                 onPressed: () =>
-                                    launchUrl(Uri.parse('tel:$phone')),
+                                    DeviceUtils.launchPhoneCall(phone),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                               ),

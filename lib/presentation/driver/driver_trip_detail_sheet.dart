@@ -98,10 +98,7 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
   }
 
   void _callClient() {
-    final phone = _clientPhone ?? widget.trip.clientPhone;
-    if (phone != null && phone.isNotEmpty) {
-      launchUrl(Uri.parse('tel:${phone.replaceAll(' ', '')}'));
-    }
+    DeviceUtils.launchPhoneCall(_clientPhone ?? widget.trip.clientPhone);
   }
 
   bool get _isYobante {
@@ -332,20 +329,13 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
                             Row(
                               children: [
                                 IconButton(
-                                  onPressed: _callClient,
+                                  onPressed: () => DeviceUtils.launchPhoneCall(_clientPhone ?? trip.clientPhone ?? ''),
                                   icon: const Icon(Icons.phone,
                                       color: Colors.green),
                                   tooltip: 'Appeler',
                                 ),
                                 IconButton(
-                                  onPressed: () {
-                                    final phone = (_clientPhone ??
-                                            trip.clientPhone ??
-                                            '')
-                                        .replaceAll(' ', '');
-                                    launchUrl(Uri.parse(
-                                        'https://wa.me/221$phone'));
-                                  },
+                                  onPressed: () => DeviceUtils.launchWhatsApp(_clientPhone ?? trip.clientPhone),
                                   icon: const Icon(Icons.chat,
                                       color: Colors.green),
                                   tooltip: 'WhatsApp',
