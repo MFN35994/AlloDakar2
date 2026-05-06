@@ -83,6 +83,17 @@ class RoleSelectionScreen extends ConsumerWidget {
                     }
                   },
                 ),
+                const Spacer(),
+                Text(
+                  'v1.0.0+1',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white24 : Colors.white54,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 10),
               ],
             ),
           ),

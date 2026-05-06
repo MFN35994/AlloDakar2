@@ -147,6 +147,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               height: currentStep == AuthStep.otp ? 200 : (currentStep == AuthStep.identity ? 450 : 200),
               child: _buildPhoneForm(isDarkMode, isLoading, currentStep),
             ),
+            const SizedBox(height: 40),
+            Text(
+              'v1.0.0+1',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white24 : Colors.white54,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
