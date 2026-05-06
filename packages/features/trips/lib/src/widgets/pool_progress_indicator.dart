@@ -1,0 +1,75 @@
+import "package:flutter/foundation.dart";
+import "package:firebase_core/firebase_core.dart";
+import "package:cloud_firestore/cloud_firestore.dart";
+import 'package:flutter/material.dart';
+import 'package:transen_core/transen_core.dart';
+
+class PoolProgressIndicator extends StatelessWidget {
+  final int current;
+  final int total;
+  final String? estimatedDeparture;
+
+  const PoolProgressIndicator({
+    super.key,
+    required this.current,
+    this.total = 4,
+    this.estimatedDeparture,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Remplissage du trajet',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+                fontSize: 14,
+              ),
+            ),
+            Text(
+              '$current / $total',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: TranSenColors.primaryGreen,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: current / total,
+            backgroundColor: Colors.grey.shade200,
+            color: TranSenColors.primaryGreen,
+            minHeight: 12,
+          ),
+        ),
+        if (estimatedDeparture != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.timer_outlined, size: 16, color: Colors.blueGrey),
+              const SizedBox(width: 4),
+              Text(
+                estimatedDeparture!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.blueGrey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}

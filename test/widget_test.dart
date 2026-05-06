@@ -1,33 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen/main.dart';
-import 'package:transen/domain/providers/auth_provider.dart';
-import 'package:transen/domain/providers/theme_provider.dart';
-
-class MockAuthNotifier extends Notifier<AuthState?> implements AuthNotifier {
-  @override
-  AuthState? build() => null;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_core/transen_core.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
+    // Basic test to check if MyApp builds
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authProvider.overrideWith(MockAuthNotifier.new),
-          themeProvider.overrideWith(ThemeNotifier.new),
-        ],
-        child: const MyApp(),
+      const ProviderScope(
+        child: MyApp(),
       ),
     );
 
-    // Network images fail in tests by default (returning 400), 
-    // we take the exception so it doesn't fail the test.
     tester.takeException();
-
     expect(find.byType(MyApp), findsOneWidget);
   });
 }

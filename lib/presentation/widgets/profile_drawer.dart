@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/providers/auth_provider.dart';
-import '../../data/repositories/user_repository.dart';
-import '../profile/profile_screen.dart';
-import '../settings/settings_screen.dart';
-import '../wallet/history_screen.dart';
-import '../profile/referral_screen.dart';
-import '../home/trip_tracking_screen.dart';
-import '../../domain/providers/trip_providers.dart';
-import '../../core/theme/transen_colors.dart';
+import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_core/transen_core.dart';
+import 'package:transen_profile/transen_profile.dart';
+import 'package:transen_payment/transen_payment.dart';
 
 
 class ProfileDrawer extends ConsumerWidget {
@@ -30,7 +25,7 @@ class ProfileDrawer extends ConsumerWidget {
           _buildHeader(context, ref, userId, auth?.role),
           
           const SizedBox(height: 10),
-          
+
           // Menu Items
           Expanded(
             child: ListView(
@@ -45,29 +40,7 @@ class ProfileDrawer extends ConsumerWidget {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
                   },
                 ),
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.directions_car_filled_outlined,
-                  title: 'Mes Courses',
-                  onTap: () {
-                    Navigator.pop(context);
-                    final activeTripAsync = ref.read(activeTripProvider);
-                    activeTripAsync.whenData((trip) {
-                      if (trip != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => TripTrackingScreen(tripId: trip.id),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Vous n'avez aucune course en cours.")),
-                        );
-                      }
-                    });
-                  },
-                ),
+
                 _buildMenuItem(
                   context: context,
                   icon: Icons.support_agent,
@@ -86,6 +59,7 @@ class ProfileDrawer extends ConsumerWidget {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
                   },
                 ),
+
                 /* COMMENTÉ POUR LE LANCEMENT GRATUIT
                 if (auth?.role == 'driver')
                   _buildMenuItem(
@@ -98,6 +72,7 @@ class ProfileDrawer extends ConsumerWidget {
                     },
                   ),
                 */
+
                 _buildMenuItem(
                   context: context,
                   icon: Icons.history,
@@ -116,7 +91,9 @@ class ProfileDrawer extends ConsumerWidget {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
                   },
                 ),
+
                 const Divider(indent: 20, endIndent: 20),
+
                 _buildMenuItem(
                   context: context,
                   icon: Icons.logout,
@@ -132,7 +109,7 @@ class ProfileDrawer extends ConsumerWidget {
               ],
             ),
           ),
-          
+
           // Version en bas
           Padding(
             padding: const EdgeInsets.all(20.0),
@@ -152,7 +129,7 @@ class ProfileDrawer extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context, WidgetRef ref, String userId, String? role) {
     if (userId.isEmpty) return const SizedBox.shrink();
-    
+
     final userStream = ref.watch(StreamProvider((ref) => ref.read(userRepositoryProvider).watchUser(userId)));
 
     return userStream.when(
@@ -163,8 +140,8 @@ class ProfileDrawer extends ConsumerWidget {
         }
         if (name.isEmpty) {
           name = role == 'driver' ? 'Chauffeur TranSen' : 'Client TranSen';
-
         }
+        
         final String email = userData?['email'] ?? 'Utilisateur';
 
         return Container(
@@ -260,13 +237,12 @@ class ProfileDrawer extends ConsumerWidget {
       loading: () => Container(
         height: 200,
         decoration: BoxDecoration(color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary),
-
         child: const Center(child: CircularProgressIndicator(color: Colors.white)),
       ),
       error: (_, __) => Container(
         height: 200,
         decoration: BoxDecoration(color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary),
-
+        child: const Center(child: Text("Erreur de chargement", style: TextStyle(color: Colors.white))),
       ),
     );
   }

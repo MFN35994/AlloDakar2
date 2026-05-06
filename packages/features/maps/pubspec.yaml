@@ -1,0 +1,26 @@
+name: transen_maps
+description: Maps and Routing module for TranSen.
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  cloud_firestore: ^6.2.0
+  firebase_core: ^4.6.0
+  flutter:
+    sdk: flutter
+  transen_core:
+    path: ../../core
+  google_maps_flutter: ^2.5.3
+  flutter_polyline_points: ^3.1.0
+  flutter_riverpod: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

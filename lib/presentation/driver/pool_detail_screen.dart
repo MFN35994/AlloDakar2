@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme/transen_colors.dart';
-
-import '../../domain/models/pool_model.dart';
-import '../../domain/utils/itinerary_optimizer.dart';
-import '../../data/repositories/trip_repository.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:transen_core/transen_core.dart';
+import 'package:transen_trips/transen_trips.dart';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final PoolModel pool;

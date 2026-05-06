@@ -1,0 +1,27 @@
+name: transen_rating
+description: Rating and Reviews module for TranSen.
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.3.1
+  firebase_core: ^4.6.0
+  cloud_firestore: ^6.2.0
+  intl: ^0.20.2
+  transen_core:
+    path: ../../core
+  transen_auth:
+    path: ../auth
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

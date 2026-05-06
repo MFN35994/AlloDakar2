@@ -6,16 +6,12 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:transen_core/transen_core.dart';
+import 'package:transen_auth/transen_auth.dart';
 import 'firebase_options.dart';
 import 'presentation/splash/splash_screen.dart';
-import 'data/services/notification_service.dart';
-import 'domain/providers/theme_provider.dart';
-import 'presentation/auth/login_screen.dart';
-import 'presentation/auth/role_selection_screen.dart';
 import 'presentation/home/home_screen.dart';
 import 'presentation/driver/driver_home_screen.dart';
-import 'domain/providers/auth_provider.dart';
-import 'core/theme/transen_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,7 +70,7 @@ class MyApp extends ConsumerWidget {
           primary: TranSenColors.primaryGreen,
           onPrimary: Colors.white,
           secondary: TranSenColors.accentGold,
-          surface: Color(0xFF1A1A1A),
+          surface: const Color(0xFF1A1A1A),
           onSurface: Colors.white,
         ),
         scaffoldBackgroundColor: const Color(0xFF121212),

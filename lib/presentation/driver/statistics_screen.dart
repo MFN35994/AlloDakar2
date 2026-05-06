@@ -1,9 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import '../../core/theme/transen_colors.dart';
+import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/providers/auth_provider.dart';
+import 'package:transen_auth/transen_auth.dart';
 
 class StatisticsScreen extends ConsumerWidget {
   const StatisticsScreen({super.key});

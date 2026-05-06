@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
-import '../auth/login_screen.dart';
-import '../auth/role_selection_screen.dart';
+import 'package:transen_auth/transen_auth.dart';
 import '../home/home_screen.dart';
 import '../driver/driver_home_screen.dart';
-import '../../domain/providers/auth_provider.dart';
-import '../../core/theme/transen_colors.dart';
-
+import 'package:transen_core/transen_core.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -33,7 +30,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (!mounted) return;
     
     final auth = ref.read(authProvider);
-
     if (auth == null) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -53,7 +49,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       } else {
         nextScreen = const HomeScreen();
       }
-
+      
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => nextScreen),
       );

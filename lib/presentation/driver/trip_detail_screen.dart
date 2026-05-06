@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/transen_colors.dart';
+import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/trip_repository.dart';
-import '../../domain/models/trip_model.dart';
-import '../../domain/providers/auth_provider.dart';
+import 'package:transen_trips/transen_trips.dart';
+import 'package:transen_auth/transen_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 class TripDetailScreen extends ConsumerWidget {
   final TripModel trip;
-
   const TripDetailScreen({super.key, required this.trip});
 
   @override
@@ -56,7 +54,7 @@ class TripDetailScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 25),
-
+            
             // Détails du trajet
             const Text("INFORMATIONS TRAJET", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 15),
@@ -65,7 +63,7 @@ class TripDetailScreen extends ConsumerWidget {
             _buildInfoRow(Icons.location_on, "Destination", trip.destination, Colors.red),
             
             const Divider(height: 40),
-
+            
             // Spécificités
             if (trip.seats != null)
               _buildSimpleRow(Icons.groups, "Nombre de places", "${trip.seats}"),
@@ -73,11 +71,10 @@ class TripDetailScreen extends ConsumerWidget {
               _buildSimpleRow(Icons.calendar_today, "Date prévue", trip.scheduledDate!),
             if (trip.baggageDescription != null && trip.baggageDescription!.isNotEmpty)
               _buildSimpleRow(Icons.inventory, "Bagages", trip.baggageDescription!),
-            
             _buildSimpleRow(Icons.payments, "Prix à encaisser", "${trip.price.toInt()} FCFA"),
-
+            
             const SizedBox(height: 40),
-
+            
             // Boutons d'action
             Row(
               children: [
@@ -154,12 +151,14 @@ class TripDetailScreen extends ConsumerWidget {
       children: [
         Icon(icon, color: color),
         const SizedBox(width: 15),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
       ],
     );
@@ -173,7 +172,7 @@ class TripDetailScreen extends ConsumerWidget {
           Icon(icon, color: Colors.grey, size: 20),
           const SizedBox(width: 15),
           Text("$label : ", style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold))),
         ],
       ),
     );

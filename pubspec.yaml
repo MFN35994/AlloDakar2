@@ -10,6 +10,20 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  transen_core:
+    path: packages/core
+  transen_auth:
+    path: packages/features/auth
+  transen_maps:
+    path: packages/features/maps
+  transen_profile:
+    path: packages/features/profile
+  transen_payment:
+    path: packages/features/payment
+  transen_rating:
+    path: packages/features/rating
+  transen_trips:
+    path: packages/features/trips
   google_maps_flutter: ^2.5.3
   geolocator: ^14.0.1
   firebase_auth: ^6.3.0

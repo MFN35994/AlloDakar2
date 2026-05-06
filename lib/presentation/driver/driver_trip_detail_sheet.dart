@@ -3,11 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import '../../core/theme/transen_colors.dart';
-import '../../data/repositories/trip_repository.dart';
-import '../../domain/models/trip_model.dart';
-import '../../domain/providers/auth_provider.dart';
-import '../home/trip_tracking_screen.dart';
+import 'package:transen_core/transen_core.dart';
+import 'package:transen_trips/transen_trips.dart';
+import 'package:transen_auth/transen_auth.dart';
+
 
 class DriverTripDetailSheet extends ConsumerStatefulWidget {
   final TripModel trip;
@@ -25,12 +24,10 @@ class DriverTripDetailSheet extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<DriverTripDetailSheet> createState() =>
-      _DriverTripDetailSheetState();
+  ConsumerState<DriverTripDetailSheet> createState() => _DriverTripDetailSheetState();
 }
 
-class _DriverTripDetailSheetState
-    extends ConsumerState<DriverTripDetailSheet> {
+class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
   bool _isLoading = false;
   String? _clientPhone;
 
@@ -59,22 +56,14 @@ class _DriverTripDetailSheetState
   Future<void> _acceptTrip() async {
     final auth = ref.read(authProvider);
     if (auth == null) return;
-
     setState(() => _isLoading = true);
+
     try {
       await ref
           .read(tripRepositoryProvider)
           .acceptTrip(widget.trip.id, auth.userId);
-
       if (mounted) {
-        // Fermer la modale puis naviguer vers l'écran de suivi chauffeur
         Navigator.of(context).pop(true);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => TripTrackingScreen(tripId: widget.trip.id),
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -84,6 +73,9 @@ class _DriverTripDetailSheetState
             backgroundColor: Colors.red,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -349,7 +341,6 @@ class _DriverTripDetailSheetState
                       ],
                     ),
                   ],
-
                   const SizedBox(height: 24),
                 ],
               ),
@@ -409,10 +400,10 @@ class _DriverTripDetailSheetState
                       style: ElevatedButton.styleFrom(
                         backgroundColor: color,
                         foregroundColor: Colors.white,
+                        elevation: 4,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30)),
-                        elevation: 4,
                       ),
                     ),
                   ),
@@ -427,7 +418,6 @@ class _DriverTripDetailSheetState
 }
 
 // --- Widgets helpers ---
-
 class _SectionCard extends StatelessWidget {
   final List<Widget> children;
   const _SectionCard({required this.children});
@@ -455,7 +445,6 @@ class _InfoRow extends StatelessWidget {
   final Color iconColor;
   final String label;
   final String value;
-
   const _InfoRow({
     required this.icon,
     required this.iconColor,

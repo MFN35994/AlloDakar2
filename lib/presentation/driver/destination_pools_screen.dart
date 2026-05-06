@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/models/pool_model.dart';
-import '../../domain/providers/auth_provider.dart';
-import '../../domain/providers/pool_providers.dart';
-import '../../data/repositories/trip_repository.dart';
+import 'package:transen_core/transen_core.dart';
+import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_trips/transen_trips.dart';
 import 'pool_detail_screen.dart';
-import '../../core/theme/transen_colors.dart';
-
 
 class DestinationPoolsScreen extends ConsumerStatefulWidget {
   final String destination;
   const DestinationPoolsScreen({super.key, required this.destination});
-
   @override
   ConsumerState<DestinationPoolsScreen> createState() => _DestinationPoolsScreenState();
 }
@@ -47,7 +43,6 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
           );
         },
         loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
-
         error: (err, _) => Center(child: Text("Erreur: $err")),
       ),
     );
@@ -55,7 +50,6 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
 
   Widget _buildPoolEntry(BuildContext context, PoolModel pool, String driverId) {
     final isFull = pool.currentFilling >= 4;
-
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -87,7 +81,6 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
               value: pool.currentFilling / 4,
               backgroundColor: Colors.grey.shade200,
               color: pool.currentFilling >= 4 ? Colors.green : TranSenColors.accentGold,
-
             ),
             const SizedBox(height: 10),
             Row(
@@ -98,55 +91,43 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
               ],
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      try {
-                        if (pool.currentFilling < 3) {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text("Départ anticipé ?"),
-                              content: Text("Il n'y a que ${pool.currentFilling} passager(s). Voulez-vous quand même accepter ?"),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ANNULER")),
-                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("OUI")),
-                              ],
-                            ),
-                          );
-                          if (confirm != true) return;
-                        }
-
-                        // COMMENTÉ POUR LE LANCEMENT GRATUIT
-                        // final totalCommission = pool.currentFilling * 500;
-                        // final walletBalance = ref.read(walletProvider).balance;
-                        // if (walletBalance < totalCommission) {
-                        //   throw Exception("Solde insuffisant ($totalCommission FCFA)");
-                        // }
-
-                        await ref.read(tripRepositoryProvider).acceptPool(pool.id, driverId);
-                        
-                        if (!context.mounted) return;
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)));
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isFull ? Colors.green : Colors.black87,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    ),
-                    child: Text(isFull ? 'ACCEPTER (COMPLET)' : 'ACCEPTER (${pool.currentFilling}/4)'),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  try {
+                    if (pool.currentFilling < 3) {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text("Départ anticipé ?"),
+                          content: Text("Il n'y a que ${pool.currentFilling} passager(s). Voulez-vous quand même accepter ?"),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ANNULER")),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("OUI")),
+                          ],
+                        ),
+                      );
+                      if (confirm != true) return;
+                    }
+                    await ref.read(tripRepositoryProvider).acceptPool(pool.id, driverId);
+                    
+                    if (!context.mounted) return;
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)));
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isFull ? Colors.green : Colors.black87,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 ),
-              ],
+                child: Text(isFull ? 'ACCEPTER (COMPLET)' : 'ACCEPTER (${pool.currentFilling}/4)'),
+              ),
             ),
           ],
         ),

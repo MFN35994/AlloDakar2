@@ -5,19 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../data/repositories/trip_repository.dart';
-import '../../domain/models/trip_model.dart';
-import '../../domain/models/pool_model.dart';
-import '../../domain/providers/auth_provider.dart';
-import '../../domain/providers/trip_providers.dart';
-import '../../domain/providers/pool_providers.dart';
+import 'package:transen_trips/transen_trips.dart';
+import 'package:transen_core/transen_core.dart';
+import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_rating/transen_rating.dart';
+import 'package:transen/presentation/widgets/profile_drawer.dart';
 import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import 'driver_trip_detail_sheet.dart';
-import '../widgets/profile_drawer.dart';
-import '../widgets/driver_reviews_sheet.dart';
-import '../../core/theme/transen_colors.dart';
 
 final pendingTripsProvider =
     StreamProvider.family<List<TripModel>, String>((ref, filterStr) {

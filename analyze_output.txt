@@ -1,0 +1,596 @@
+Analyzing allo_dakar...                                         
+
+   info • Unnecessary 'const' keyword • lib/main.dart:73:20 • unnecessary_const
+   info • The member 'build' overrides an inherited member but isn't annotated with '@override' • lib/presentation/driver/destination_pools_screen.dart:16:10 • annotate_overrides
+  error • Expected to find ')' • lib/presentation/driver/destination_pools_screen.dart:43:6 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/destination_pools_screen.dart:70:15 • expected_token
+  error • Too many positional arguments: 0 expected, but 4 found • lib/presentation/driver/destination_pools_screen.dart:77:13 • extra_positional_arguments_could_be_named
+  error • The named parameter 'mainAxisAlignment' isn't defined • lib/presentation/driver/destination_pools_screen.dart:78:15 • undefined_named_parameter
+  error • The named parameter 'child' isn't defined • lib/presentation/driver/destination_pools_screen.dart:82:19 • undefined_named_parameter
+  error • Expected to find ')' • lib/presentation/driver/destination_pools_screen.dart:122:11 • expected_token
+  error • Expected to find ';' • lib/presentation/driver/destination_pools_screen.dart:123:10 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/destination_pools_screen.dart:124:1 • expected_token
+  error • Expected to find '}' • lib/presentation/driver/destination_pools_screen.dart:124:1 • expected_token
+  error • Missing concrete implementation of 'State.build' • lib/presentation/driver/driver_trip_detail_sheet.dart:26:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_isLoading' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:28:8 • unused_field
+   info • The member 'initState' overrides an inherited member but isn't annotated with '@override' • lib/presentation/driver/driver_trip_detail_sheet.dart:30:8 • annotate_overrides
+  error • Local variable '_fetchClientPhone' can't be referenced before it is declared • lib/presentation/driver/driver_trip_detail_sheet.dart:32:5 • referenced_before_declaration
+   info • The local variable '_fetchClientPhone' starts with an underscore • lib/presentation/driver/driver_trip_detail_sheet.dart:33:16 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_acceptTrip' starts with an underscore • lib/presentation/driver/driver_trip_detail_sheet.dart:47:16 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_acceptTrip' isn't referenced • lib/presentation/driver/driver_trip_detail_sheet.dart:47:16 • unused_element
+  error • 'catch' can't be used as an identifier because it's a keyword • lib/presentation/driver/driver_trip_detail_sheet.dart:63:7 • expected_identifier_but_got_keyword
+  error • The method 'catch' isn't defined for the type '_DriverTripDetailSheetState' • lib/presentation/driver/driver_trip_detail_sheet.dart:63:7 • undefined_method
+  error • Undefined name 'e' • lib/presentation/driver/driver_trip_detail_sheet.dart:63:14 • undefined_identifier
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:63:15 • expected_token
+   info • Don't use 'BuildContext's across async gaps • lib/presentation/driver/driver_trip_detail_sheet.dart:64:30 • use_build_context_synchronously
+  error • Undefined name 'e' • lib/presentation/driver/driver_trip_detail_sheet.dart:66:38 • undefined_identifier
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/driver_trip_detail_sheet.dart:68:9 • extra_positional_arguments_could_be_named
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:68:43 • expected_token
+   info • The local variable '_callClient' starts with an underscore • lib/presentation/driver/driver_trip_detail_sheet.dart:70:8 • no_leading_underscores_for_local_identifiers
+warning • The value of the local variable 'get' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:74:8 • unused_local_variable
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:74:8 • expected_token
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:74:12 • expected_token
+  error • Undefined name '_isYobante' • lib/presentation/driver/driver_trip_detail_sheet.dart:74:12 • undefined_identifier
+  error • A value of type 'bool' can't be returned from the function '_callClient' because it has a return type of 'void' • lib/presentation/driver/driver_trip_detail_sheet.dart:76:12 • return_of_invalid_type
+warning • Dead code • lib/presentation/driver/driver_trip_detail_sheet.dart:79:3 • dead_code
+warning • The declaration 'build' isn't referenced • lib/presentation/driver/driver_trip_detail_sheet.dart:79:10 • unused_element
+  error • Undefined name '_isYobante' • lib/presentation/driver/driver_trip_detail_sheet.dart:82:19 • undefined_identifier
+  error • The named parameter 'borderRadius' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:115:17 • undefined_named_parameter
+  error • The named parameter 'child' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:116:15 • undefined_named_parameter
+  error • Undefined name '_isYobante' • lib/presentation/driver/driver_trip_detail_sheet.dart:122:23 • undefined_identifier
+  error • The named parameter 'child' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:147:27 • undefined_named_parameter
+  error • Undefined name '_isYobante' • lib/presentation/driver/driver_trip_detail_sheet.dart:148:29 • undefined_identifier
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:153:23 • expected_token
+  error • The named parameter 'icon' is required, but there's no corresponding argument • lib/presentation/driver/driver_trip_detail_sheet.dart:155:19 • missing_required_argument
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/driver_trip_detail_sheet.dart:155:19 • extra_positional_arguments_could_be_named
+  error • The named parameter 'icon' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:159:21 • undefined_named_parameter
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:160:17 • expected_token
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/driver_trip_detail_sheet.dart:162:13 • extra_positional_arguments_could_be_named
+  error • The method '_SectionCard' isn't defined for the type '_DriverTripDetailSheetState' • lib/presentation/driver/driver_trip_detail_sheet.dart:167:19 • undefined_method
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/driver_trip_detail_sheet.dart:167:19 • extra_positional_arguments_could_be_named
+  error • The method '_InfoRow' isn't defined for the type '_DriverTripDetailSheetState' • lib/presentation/driver/driver_trip_detail_sheet.dart:169:23 • undefined_method
+   info • The 'child' argument should be last in widget constructor invocations • lib/presentation/driver/driver_trip_detail_sheet.dart:177:25 • sort_child_properties_last
+  error • The named parameter 'icon' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:178:25 • undefined_named_parameter
+  error • The named parameter 'iconColor' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:179:25 • undefined_named_parameter
+  error • The named parameter 'label' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:180:25 • undefined_named_parameter
+  error • The named parameter 'value' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:181:25 • undefined_named_parameter
+  error • Invalid constant value • lib/presentation/driver/driver_trip_detail_sheet.dart:181:32 • invalid_constant
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:182:21 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:189:23 • missing_identifier
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:189:23 • expected_token
+  error • Expected to find ',' • lib/presentation/driver/driver_trip_detail_sheet.dart:189:23 • expected_token
+  error • The method '_InfoRow' isn't defined for the type '_DriverTripDetailSheetState' • lib/presentation/driver/driver_trip_detail_sheet.dart:191:25 • undefined_method
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:196:23 • missing_identifier
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:196:23 • expected_token
+  error • Expected to find ',' • lib/presentation/driver/driver_trip_detail_sheet.dart:196:23 • expected_token
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:197:27 • expected_token
+  error • Undefined name 'icon' • lib/presentation/driver/driver_trip_detail_sheet.dart:197:27 • undefined_identifier
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:197:31 • missing_identifier
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:197:31 • expected_token
+  error • Expected to find ']' • lib/presentation/driver/driver_trip_detail_sheet.dart:197:31 • expected_token
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:197:31 • unexpected_token
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:197:39 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:197:45 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:197:45 • unexpected_token
+warning • The label 'iconColor' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:198:27 • unused_label
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:198:52 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:198:64 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:198:64 • unexpected_token
+warning • The label 'label' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:199:27 • unused_label
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:199:34 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:199:45 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:199:45 • unexpected_token
+warning • The label 'value' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:200:27 • unused_label
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:200:48 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:200:61 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:200:61 • unexpected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:202:64 • missing_identifier
+   info • Statements in an if should be enclosed in a block • lib/presentation/driver/driver_trip_detail_sheet.dart:202:67 • curly_braces_in_flow_control_structures
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:203:27 • expected_token
+  error • Undefined name 'icon' • lib/presentation/driver/driver_trip_detail_sheet.dart:203:27 • undefined_identifier
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:203:31 • missing_identifier
+  error • Expected to find ']' • lib/presentation/driver/driver_trip_detail_sheet.dart:203:31 • expected_token
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:203:31 • unexpected_token
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:203:39 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:203:48 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:203:48 • unexpected_token
+warning • The label 'iconColor' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:204:27 • unused_label
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:204:45 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:204:51 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:204:51 • unexpected_token
+warning • The label 'label' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:205:27 • unused_label
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:205:34 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:205:41 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:205:41 • unexpected_token
+warning • The label 'value' isn't used • lib/presentation/driver/driver_trip_detail_sheet.dart:206:27 • unused_label
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:206:57 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:206:58 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:206:58 • unexpected_token
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/driver_trip_detail_sheet.dart:219:27 • extra_positional_arguments_could_be_named
+  error • Methods can't be invoked in constant expressions • lib/presentation/driver/driver_trip_detail_sheet.dart:220:32 • const_eval_method_invocation
+  error • The named parameter 'fontWeight' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:221:31 • undefined_named_parameter
+  error • The named parameter 'fontSize' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:222:31 • undefined_named_parameter
+  error • The named parameter 'color' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:223:31 • undefined_named_parameter
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:225:25 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:227:19 • missing_identifier
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:227:19 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:260:27 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:261:19 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:305:11 • expected_token
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:306:7 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:306:8 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:306:8 • unexpected_token
+  error • 'class' can't be used as an identifier because it's a keyword • lib/presentation/driver/driver_trip_detail_sheet.dart:308:1 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/presentation/driver/driver_trip_detail_sheet.dart:308:1 • missing_statement
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:308:1 • expected_token
+  error • Undefined name 'class' • lib/presentation/driver/driver_trip_detail_sheet.dart:308:1 • undefined_identifier
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:308:7 • expected_token
+  error • Undefined name '_SectionCard' • lib/presentation/driver/driver_trip_detail_sheet.dart:308:7 • undefined_identifier
+  error • 'extends' can't be used as an identifier because it's a keyword • lib/presentation/driver/driver_trip_detail_sheet.dart:308:20 • expected_identifier_but_got_keyword
+  error • Expected a statement • lib/presentation/driver/driver_trip_detail_sheet.dart:308:20 • missing_statement
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:308:20 • expected_token
+  error • Undefined name 'extends' • lib/presentation/driver/driver_trip_detail_sheet.dart:308:20 • undefined_identifier
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:308:28 • expected_token
+  error • The name '_SectionCard' isn't a class • lib/presentation/driver/driver_trip_detail_sheet.dart:310:9 • creation_with_non_type
+   info • 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required • lib/presentation/driver/driver_trip_detail_sheet.dart:310:23 • deprecated_member_use
+  error • Expected to find ',' • lib/presentation/driver/driver_trip_detail_sheet.dart:310:32 • expected_token
+  error • The getter 'children' isn't defined for the type '_DriverTripDetailSheetState' • lib/presentation/driver/driver_trip_detail_sheet.dart:310:37 • undefined_getter
+  error • The named parameter 'child' isn't defined • lib/presentation/driver/driver_trip_detail_sheet.dart:317:7 • undefined_named_parameter
+  error • The final variable 'children' can't be read because it's potentially unassigned at this point • lib/presentation/driver/driver_trip_detail_sheet.dart:319:19 • read_potentially_unassigned_final
+  error • 'class' can't be used as an identifier because it's a keyword • lib/presentation/driver/driver_trip_detail_sheet.dart:320:1 • expected_identifier_but_got_keyword
+  error • Too many positional arguments: 0 expected, but 5 found • lib/presentation/driver/driver_trip_detail_sheet.dart:320:1 • extra_positional_arguments_could_be_named
+  error • Undefined name 'class' • lib/presentation/driver/driver_trip_detail_sheet.dart:320:1 • undefined_identifier
+  error • Expected to find ',' • lib/presentation/driver/driver_trip_detail_sheet.dart:320:7 • expected_token
+  error • Undefined name '_InfoRow' • lib/presentation/driver/driver_trip_detail_sheet.dart:320:7 • undefined_identifier
+  error • 'extends' can't be used as an identifier because it's a keyword • lib/presentation/driver/driver_trip_detail_sheet.dart:320:16 • expected_identifier_but_got_keyword
+  error • Expected to find ',' • lib/presentation/driver/driver_trip_detail_sheet.dart:320:16 • expected_token
+  error • Undefined name 'extends' • lib/presentation/driver/driver_trip_detail_sheet.dart:320:16 • undefined_identifier
+  error • Expected to find ',' • lib/presentation/driver/driver_trip_detail_sheet.dart:320:24 • expected_token
+  error • Expected to find ',' • lib/presentation/driver/driver_trip_detail_sheet.dart:320:40 • expected_token
+  error • Expected an identifier • lib/presentation/driver/driver_trip_detail_sheet.dart:321:3 • missing_identifier
+  error • Expected to find '}' • lib/presentation/driver/driver_trip_detail_sheet.dart:321:3 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:347:7 • expected_token
+  error • Expected to find ';' • lib/presentation/driver/driver_trip_detail_sheet.dart:347:8 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/driver_trip_detail_sheet.dart:348:1 • expected_token
+  error • Expected to find '}' • lib/presentation/driver/driver_trip_detail_sheet.dart:348:1 • expected_token
+  error • Too many positional arguments: 1 expected, but 3 found • lib/presentation/driver/trip_detail_screen.dart:46:19 • extra_positional_arguments_could_be_named
+  error • The argument for the named parameter 'style' was already specified • lib/presentation/driver/trip_detail_screen.dart:48:21 • duplicate_named_argument
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:49:17 • expected_token
+  error • Expected an identifier • lib/presentation/driver/trip_detail_screen.dart:61:13 • missing_identifier
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:61:13 • expected_token
+  error • Expected to find ',' • lib/presentation/driver/trip_detail_screen.dart:61:13 • expected_token
+  error • The method '_buildSimpleRow' isn't defined for the type 'TripDetailScreen' • lib/presentation/driver/trip_detail_screen.dart:62:15 • undefined_method
+  error • The method '_buildSimpleRow' isn't defined for the type 'TripDetailScreen' • lib/presentation/driver/trip_detail_screen.dart:64:15 • undefined_method
+  error • The method '_buildSimpleRow' isn't defined for the type 'TripDetailScreen' • lib/presentation/driver/trip_detail_screen.dart:66:15 • undefined_method
+  error • The method '_buildSimpleRow' isn't defined for the type 'TripDetailScreen' • lib/presentation/driver/trip_detail_screen.dart:67:13 • undefined_method
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/trip_detail_screen.dart:96:17 • extra_positional_arguments_could_be_named
+  error • The argument for the named parameter 'child' was already specified • lib/presentation/driver/trip_detail_screen.dart:97:19 • duplicate_named_argument
+  error • The named parameter 'backgroundColor' isn't defined • lib/presentation/driver/trip_detail_screen.dart:108:27 • undefined_named_parameter
+  error • The named parameter 'label' is required, but there's no corresponding argument • lib/presentation/driver/trip_detail_screen.dart:110:23 • missing_required_argument
+  error • The named parameter 'onPressed' is required, but there's no corresponding argument • lib/presentation/driver/trip_detail_screen.dart:110:23 • missing_required_argument
+  error • The await expression can only be used in an async function • lib/presentation/driver/trip_detail_screen.dart:111:27 • await_in_wrong_context
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/trip_detail_screen.dart:111:27 • extra_positional_arguments_could_be_named
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:111:87 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:117:15 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:118:11 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:120:6 • expected_token
+  error • Too many positional arguments: 0 expected, but 2 found • lib/presentation/driver/trip_detail_screen.dart:129:13 • extra_positional_arguments_could_be_named
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:131:7 • expected_token
+  error • Function expressions can't be named • lib/presentation/driver/trip_detail_screen.dart:132:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/driver/trip_detail_screen.dart:132:25 • extra_positional_arguments_could_be_named
+  error • Expected to find ';' • lib/presentation/driver/trip_detail_screen.dart:141:10 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:142:1 • expected_token
+  error • Expected to find ';' • lib/presentation/driver/trip_detail_screen.dart:142:1 • expected_token
+  error • Expected to find ')' • lib/presentation/driver/trip_detail_screen.dart:143:1 • expected_token
+  error • Expected to find '}' • lib/presentation/driver/trip_detail_screen.dart:143:1 • expected_token
+warning • Unused import: 'package:transen_auth/transen_auth.dart' • lib/presentation/home/home_screen.dart:9:8 • unused_import
+warning • Unused import: 'package:transen_rating/transen_rating.dart' • lib/presentation/home/home_screen.dart:12:8 • unused_import
+  error • The body might complete normally, causing 'null' to be returned, but the return type, 'Widget', is a potentially non-nullable type • lib/presentation/profile/profile_screen.dart:22:42 • body_might_complete_normally
+warning • The receiver can't be null, so the null-aware operator '?[' is unnecessary • lib/presentation/profile/profile_screen.dart:36:44 • invalid_null_aware_operator
+warning • The receiver can't be null, so the null-aware operator '?[' is unnecessary • lib/presentation/profile/profile_screen.dart:37:44 • invalid_null_aware_operator
+warning • The receiver can't be null, so the null-aware operator '?[' is unnecessary • lib/presentation/profile/profile_screen.dart:37:67 • invalid_null_aware_operator
+warning • The receiver can't be null, so the null-aware operator '?[' is unnecessary • lib/presentation/profile/profile_screen.dart:38:47 • invalid_null_aware_operator
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/profile/profile_screen.dart:58:27 • extra_positional_arguments_could_be_named
+  error • Expected to find ')' • lib/presentation/profile/profile_screen.dart:68:25 • expected_token
+   info • Unnecessary 'const' keyword • lib/presentation/profile/profile_screen.dart:94:29 • unnecessary_const
+  error • Too many positional arguments: 0 expected, but 2 found • lib/presentation/profile/profile_screen.dart:94:29 • extra_positional_arguments_could_be_named
+   info • Unnecessary 'const' keyword • lib/presentation/profile/profile_screen.dart:95:29 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/profile/profile_screen.dart:98:29 • unnecessary_const
+  error • Too many positional arguments: 1 expected, but 3 found • lib/presentation/profile/profile_screen.dart:98:29 • extra_positional_arguments_could_be_named
+  error • The constructor being called isn't a const constructor • lib/presentation/profile/profile_screen.dart:99:29 • const_with_non_const
+   info • Unnecessary 'const' keyword • lib/presentation/profile/profile_screen.dart:108:37 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/profile/profile_screen.dart:109:38 • unnecessary_const
+  error • The constructor being called isn't a const constructor • lib/presentation/profile/profile_screen.dart:114:77 • const_with_non_const
+  error • Expected to find ')' • lib/presentation/profile/profile_screen.dart:115:27 • expected_token
+  error • Expected to find ')' • lib/presentation/profile/profile_screen.dart:116:21 • expected_token
+  error • The named parameter 'child' is required, but there's no corresponding argument • lib/presentation/profile/profile_screen.dart:120:30 • missing_required_argument
+  error • The named parameter 'child' isn't defined • lib/presentation/profile/profile_screen.dart:131:25 • undefined_named_parameter
+  error • Expected to find ')' • lib/presentation/profile/profile_screen.dart:132:19 • expected_token
+  error • Expected to find ';' • lib/presentation/profile/profile_screen.dart:135:13 • expected_token
+  error • Expected to find '}' • lib/presentation/profile/profile_screen.dart:135:13 • expected_token
+  error • Expected an identifier • lib/presentation/profile/profile_screen.dart:135:14 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/profile/profile_screen.dart:135:14 • unexpected_token
+  error • Expected to find '}' • lib/presentation/profile/profile_screen.dart:136:11 • expected_token
+  error • Expected to find ')' • lib/presentation/profile/profile_screen.dart:151:9 • expected_token
+  error • The named parameter 'child' isn't defined • lib/presentation/profile/profile_screen.dart:152:7 • undefined_named_parameter
+  error • Expected an identifier • lib/presentation/profile/profile_screen.dart:164:11 • missing_identifier
+  error • Expected to find ')' • lib/presentation/profile/profile_screen.dart:164:11 • expected_token
+  error • Expected to find ',' • lib/presentation/profile/profile_screen.dart:164:11 • expected_token
+  error • Expected to find ';' • lib/presentation/profile/profile_screen.dart:164:41 • expected_token
+  error • Expected to find ')' • lib/presentation/profile/profile_screen.dart:165:1 • expected_token
+  error • Expected to find ']' • lib/presentation/profile/profile_screen.dart:165:1 • expected_token
+  error • Expected to find '}' • lib/presentation/profile/profile_screen.dart:166:1 • expected_token
+  error • The method '_buildSettingsTile' isn't defined for the type 'SettingsScreen' • lib/presentation/settings/settings_screen.dart:24:15 • undefined_method
+  error • The method '_buildSettingsTile' isn't defined for the type 'SettingsScreen' • lib/presentation/settings/settings_screen.dart:25:15 • undefined_method
+  error • The method '_buildSettingsTile' isn't defined for the type 'SettingsScreen' • lib/presentation/settings/settings_screen.dart:26:15 • undefined_method
+  error • The element type 'String' can't be assigned to the list type 'Widget' • lib/presentation/settings/settings_screen.dart:30:13 • list_element_type_not_assignable
+  error • The method '_buildSettingsTile' isn't defined for the type 'SettingsScreen' • lib/presentation/settings/settings_screen.dart:31:15 • undefined_method
+  error • The method '_buildSettingsTile' isn't defined for the type 'SettingsScreen' • lib/presentation/settings/settings_screen.dart:32:15 • undefined_method
+  error • The method '_buildSettingsTile' isn't defined for the type 'SettingsScreen' • lib/presentation/settings/settings_screen.dart:33:15 • undefined_method
+  error • Expected to find ')' • lib/presentation/settings/settings_screen.dart:35:6 • expected_token
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/settings/settings_screen.dart:47:9 • extra_positional_arguments_could_be_named
+  error • Undefined name 'child' • lib/presentation/settings/settings_screen.dart:57:11 • undefined_identifier
+  error • Expected to find ']' • lib/presentation/settings/settings_screen.dart:57:16 • expected_token
+  error • Function expressions can't be named • lib/presentation/settings/settings_screen.dart:59:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/settings/settings_screen.dart:59:28 • extra_positional_arguments_could_be_named
+  error • The method '_showDeleteConfirmation' isn't defined for the type 'SettingsScreen' • lib/presentation/settings/settings_screen.dart:78:11 • undefined_method
+  error • Function expressions can't be named • lib/presentation/settings/settings_screen.dart:81:8 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/settings/settings_screen.dart:81:31 • extra_positional_arguments_could_be_named
+  error • The named parameter 'child' is required, but there's no corresponding argument • lib/presentation/settings/settings_screen.dart:89:11 • missing_required_argument
+  error • Expected to find ';' • lib/presentation/settings/settings_screen.dart:101:13 • expected_token
+  error • Expected an identifier • lib/presentation/settings/settings_screen.dart:101:14 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/settings/settings_screen.dart:101:14 • unexpected_token
+warning • The label 'style' isn't used • lib/presentation/settings/settings_screen.dart:102:13 • unused_label
+  error • Expected to find ';' • lib/presentation/settings/settings_screen.dart:102:68 • expected_token
+  error • Expected an identifier • lib/presentation/settings/settings_screen.dart:102:69 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/settings/settings_screen.dart:102:69 • unexpected_token
+warning • The label 'child' isn't used • lib/presentation/settings/settings_screen.dart:103:13 • unused_label
+  error • Expected to find ';' • lib/presentation/settings/settings_screen.dart:103:57 • expected_token
+  error • Expected an identifier • lib/presentation/settings/settings_screen.dart:103:58 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/settings/settings_screen.dart:103:58 • unexpected_token
+  error • Expected to find ';' • lib/presentation/settings/settings_screen.dart:104:1 • expected_token
+  error • Expected to find ')' • lib/presentation/settings/settings_screen.dart:105:1 • expected_token
+  error • Expected to find ']' • lib/presentation/settings/settings_screen.dart:105:1 • expected_token
+  error • Expected to find '}' • lib/presentation/settings/settings_screen.dart:105:1 • expected_token
+  error • Missing concrete implementation of 'State.build' • lib/presentation/splash/splash_screen.dart:14:7 • non_abstract_class_inherits_abstract_member
+   info • The member 'initState' overrides an inherited member but isn't annotated with '@override' • lib/presentation/splash/splash_screen.dart:15:8 • annotate_overrides
+  error • Local variable '_checkAuthAndNavigate' can't be referenced before it is declared • lib/presentation/splash/splash_screen.dart:21:7 • referenced_before_declaration
+   info • The local variable '_checkAuthAndNavigate' starts with an underscore • lib/presentation/splash/splash_screen.dart:23:8 • no_leading_underscores_for_local_identifiers
+  error • Expected to find ';' • lib/presentation/splash/splash_screen.dart:45:53 • expected_token
+  error • Expected an identifier • lib/presentation/splash/splash_screen.dart:45:54 • missing_identifier
+  error • Unexpected text ',' • lib/presentation/splash/splash_screen.dart:45:54 • unexpected_token
+warning • The declaration 'build' isn't referenced • lib/presentation/splash/splash_screen.dart:47:10 • unused_element
+   info • Unnecessary 'const' keyword • lib/presentation/splash/splash_screen.dart:68:13 • unnecessary_const
+  error • Too many positional arguments: 1 expected, but 3 found • lib/presentation/splash/splash_screen.dart:68:13 • extra_positional_arguments_could_be_named
+  error • The named parameter 'fontSize' isn't defined • lib/presentation/splash/splash_screen.dart:70:17 • undefined_named_parameter
+  error • The named parameter 'color' isn't defined • lib/presentation/splash/splash_screen.dart:71:17 • undefined_named_parameter
+  error • Expected to find ')' • lib/presentation/splash/splash_screen.dart:72:11 • expected_token
+  error • Expected to find '}' • lib/presentation/splash/splash_screen.dart:76:1 • expected_token
+  error • The method '_buildMenuItem' isn't defined for the type 'ProfileDrawer' • lib/presentation/widgets/profile_drawer.dart:33:17 • undefined_method
+  error • Undefined name 'icon' • lib/presentation/widgets/profile_drawer.dart:42:19 • undefined_identifier
+  error • Expected to find ']' • lib/presentation/widgets/profile_drawer.dart:42:23 • expected_token
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:56:23 • expected_token
+  error • Expected to find '}' • lib/presentation/widgets/profile_drawer.dart:90:15 • expected_token
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:103:9 • expected_token
+  error • The named parameter 'error' is required, but there's no corresponding argument • lib/presentation/widgets/profile_drawer.dart:110:23 • missing_required_argument
+  error • The named parameter 'loading' is required, but there's no corresponding argument • lib/presentation/widgets/profile_drawer.dart:110:23 • missing_required_argument
+  error • The body might complete normally, causing 'null' to be returned, but the return type, 'Widget', is a potentially non-nullable type • lib/presentation/widgets/profile_drawer.dart:111:24 • body_might_complete_normally
+  error • The named parameter 'child' isn't defined • lib/presentation/widgets/profile_drawer.dart:126:11 • undefined_named_parameter
+  error • The constructor being called isn't a const constructor • lib/presentation/widgets/profile_drawer.dart:129:15 • const_with_non_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:130:26 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:131:29 • unnecessary_const
+  error • The named parameter 'child' isn't defined • lib/presentation/widgets/profile_drawer.dart:134:17 • undefined_named_parameter
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:134:24 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:138:15 • unnecessary_const
+  error • Too many positional arguments: 0 expected, but 2 found • lib/presentation/widgets/profile_drawer.dart:138:15 • extra_positional_arguments_could_be_named
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:143:28 • unnecessary_const
+  error • Expected an identifier • lib/presentation/widgets/profile_drawer.dart:148:19 • missing_identifier
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:148:19 • expected_token
+  error • Expected to find ',' • lib/presentation/widgets/profile_drawer.dart:148:19 • expected_token
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:149:21 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:150:21 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:153:15 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:155:20 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:156:20 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:160:32 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:164:15 • unnecessary_const
+  error • Expected an identifier • lib/presentation/widgets/profile_drawer.dart:166:15 • missing_identifier
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:166:15 • expected_token
+  error • Expected to find ',' • lib/presentation/widgets/profile_drawer.dart:166:15 • expected_token
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:169:21 • unnecessary_const
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:172:30 • unnecessary_const
+  error • The named parameter 'padding' isn't defined • lib/presentation/widgets/profile_drawer.dart:173:17 • undefined_named_parameter
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:173:26 • unnecessary_const
+  error • The named parameter 'decoration' isn't defined • lib/presentation/widgets/profile_drawer.dart:174:17 • undefined_named_parameter
+  error • The constructor being called isn't a const constructor • lib/presentation/widgets/profile_drawer.dart:175:33 • const_with_non_const
+  error • The named parameter 'child' isn't defined • lib/presentation/widgets/profile_drawer.dart:176:17 • undefined_named_parameter
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:178:26 • unnecessary_const
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:183:13 • expected_token
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:184:10 • expected_token
+  error • Expected to find ']' • lib/presentation/widgets/profile_drawer.dart:184:10 • expected_token
+  error • Expected to find ';' • lib/presentation/widgets/profile_drawer.dart:185:7 • expected_token
+  error • Expected an identifier • lib/presentation/widgets/profile_drawer.dart:185:8 • missing_identifier
+  error • Unexpected text ';' • lib/presentation/widgets/profile_drawer.dart:185:8 • unexpected_token
+warning • The label 'loading' isn't used • lib/presentation/widgets/profile_drawer.dart:186:7 • unused_label
+  error • The named parameter 'error' isn't defined • lib/presentation/widgets/profile_drawer.dart:190:7 • undefined_named_parameter
+  error • Function expressions can't be named • lib/presentation/widgets/profile_drawer.dart:191:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • lib/presentation/widgets/profile_drawer.dart:191:24 • extra_positional_arguments_could_be_named
+  error • The named parameter 'onTap' isn't defined • lib/presentation/widgets/profile_drawer.dart:209:7 • undefined_named_parameter
+  error • The named parameter 'contentPadding' isn't defined • lib/presentation/widgets/profile_drawer.dart:210:7 • undefined_named_parameter
+  error • The named parameter 'shape' isn't defined • lib/presentation/widgets/profile_drawer.dart:211:7 • undefined_named_parameter
+  error • Function expressions can't be named • lib/presentation/widgets/profile_drawer.dart:212:8 • named_function_expression
+  error • Too many positional arguments: 1 expected, but 2 found • lib/presentation/widgets/profile_drawer.dart:212:29 • extra_positional_arguments_could_be_named
+   info • The 'children' argument should be last in widget constructor invocations • lib/presentation/widgets/profile_drawer.dart:221:11 • sort_child_properties_last
+  error • Too many positional arguments: 0 expected, but 6 found • lib/presentation/widgets/profile_drawer.dart:225:17 • extra_positional_arguments_could_be_named
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:232:11 • expected_token
+  error • The named parameter 'actions' isn't defined • lib/presentation/widgets/profile_drawer.dart:233:9 • undefined_named_parameter
+  error • Invalid constant value • lib/presentation/widgets/profile_drawer.dart:235:24 • invalid_constant
+   info • Unnecessary 'const' keyword • lib/presentation/widgets/profile_drawer.dart:236:20 • unnecessary_const
+  error • Expected to find ';' • lib/presentation/widgets/profile_drawer.dart:236:40 • expected_token
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:237:1 • expected_token
+  error • Expected to find ';' • lib/presentation/widgets/profile_drawer.dart:237:1 • expected_token
+  error • Expected to find ']' • lib/presentation/widgets/profile_drawer.dart:237:1 • expected_token
+  error • Expected to find ')' • lib/presentation/widgets/profile_drawer.dart:238:1 • expected_token
+  error • Expected to find '}' • lib/presentation/widgets/profile_drawer.dart:238:1 • expected_token
+warning • Unused import: 'package:flutter/material.dart' • packages/core/lib/src/data/repositories/user_repository.dart:3:8 • unused_import
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/auth/lib/src/data/repositories/auth_repository.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/auth/lib/src/data/repositories/auth_repository.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/auth/lib/src/data/repositories/auth_repository.dart:3:8 • unused_import
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/auth/lib/src/providers/referral_provider.dart:1:8 • unused_import
+  error • Missing concrete implementation of 'State.build' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:15:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_isLoading' isn't used • packages/features/auth/lib/src/screens/driver_signup_screen.dart:20:8 • unused_field
+   info • The member 'dispose' overrides an inherited member but isn't annotated with '@override' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:21:8 • annotate_overrides
+warning • The declaration '_handleSignup' isn't referenced • packages/features/auth/lib/src/screens/driver_signup_screen.dart:28:16 • unused_element
+  error • A try block must be followed by an 'on', 'catch', or 'finally' clause • packages/features/auth/lib/src/screens/driver_signup_screen.dart:41:5 • missing_catch_or_finally
+  error • 'catch' can't be used as an identifier because it's a keyword • packages/features/auth/lib/src/screens/driver_signup_screen.dart:59:7 • expected_identifier_but_got_keyword
+  error • The method 'catch' isn't defined for the type '_DriverSignupScreenState' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:59:7 • undefined_method
+  error • Undefined name 'e' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:59:14 • undefined_identifier
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:59:15 • expected_token
+   info • Don't use 'BuildContext's across async gaps • packages/features/auth/lib/src/screens/driver_signup_screen.dart:60:30 • use_build_context_synchronously
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:64:12 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:65:5 • expected_token
+  error • 'finally' can't be used as an identifier because it's a keyword • packages/features/auth/lib/src/screens/driver_signup_screen.dart:65:7 • expected_identifier_but_got_keyword
+  error • Expected a statement • packages/features/auth/lib/src/screens/driver_signup_screen.dart:65:7 • missing_statement
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:65:7 • expected_token
+  error • Undefined name 'finally' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:65:7 • undefined_identifier
+warning • The declaration 'build' isn't referenced • packages/features/auth/lib/src/screens/driver_signup_screen.dart:67:10 • unused_element
+  error • The element type 'String' can't be assigned to the list type 'Widget' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:89:15 • list_element_type_not_assignable
+  error • Undefined name 'style' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:90:15 • undefined_identifier
+  error • Expected to find ']' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:90:20 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:122:11 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:123:6 • expected_token
+warning • Dead code • packages/features/auth/lib/src/screens/driver_signup_screen.dart:124:3 • dead_code
+   info • The local variable '_buildTextField' starts with an underscore • packages/features/auth/lib/src/screens/driver_signup_screen.dart:124:10 • no_leading_underscores_for_local_identifiers
+warning • The declaration '_buildTextField' isn't referenced • packages/features/auth/lib/src/screens/driver_signup_screen.dart:124:10 • unused_element
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:144:81 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:145:1 • expected_token
+  error • Expected to find '}' • packages/features/auth/lib/src/screens/driver_signup_screen.dart:145:1 • expected_token
+  error • Missing concrete implementation of 'State.build' • packages/features/auth/lib/src/screens/login_screen.dart:18:7 • non_abstract_class_inherits_abstract_member
+warning • The value of the field '_phoneMaskFormatter' isn't used • packages/features/auth/lib/src/screens/login_screen.dart:24:9 • unused_field
+   info • The member 'dispose' overrides an inherited member but isn't annotated with '@override' • packages/features/auth/lib/src/screens/login_screen.dart:27:8 • annotate_overrides
+  error • The method '_showError' isn't defined for the type '_LoginScreenState' • packages/features/auth/lib/src/screens/login_screen.dart:40:7 • undefined_method
+  error • The method '_showError' isn't defined for the type '_LoginScreenState' • packages/features/auth/lib/src/screens/login_screen.dart:51:7 • undefined_method
+   info • The local variable '_saveIdentity' starts with an underscore • packages/features/auth/lib/src/screens/login_screen.dart:54:16 • no_leading_underscores_for_local_identifiers
+  error • The method '_showError' isn't defined for the type '_LoginScreenState' • packages/features/auth/lib/src/screens/login_screen.dart:56:7 • undefined_method
+  error • The method '_showError' isn't defined for the type '_LoginScreenState' • packages/features/auth/lib/src/screens/login_screen.dart:74:7 • undefined_method
+  error • Undefined name 'e' • packages/features/auth/lib/src/screens/login_screen.dart:74:44 • undefined_identifier
+   info • The local variable '_signInWithOtp' starts with an underscore • packages/features/auth/lib/src/screens/login_screen.dart:75:16 • no_leading_underscores_for_local_identifiers
+  error • Local variable '_showError' can't be referenced before it is declared • packages/features/auth/lib/src/screens/login_screen.dart:78:7 • referenced_before_declaration
+  error • Local variable '_showError' can't be referenced before it is declared • packages/features/auth/lib/src/screens/login_screen.dart:80:7 • referenced_before_declaration
+   info • The local variable '_showError' starts with an underscore • packages/features/auth/lib/src/screens/login_screen.dart:81:8 • no_leading_underscores_for_local_identifiers
+warning • The declaration 'build' isn't referenced • packages/features/auth/lib/src/screens/login_screen.dart:89:10 • unused_element
+  error • The body might complete normally, causing 'null' to be returned, but the return type, 'Widget', is a potentially non-nullable type • packages/features/auth/lib/src/screens/login_screen.dart:89:10 • body_might_complete_normally
+  error • Local variable '_buildHeader' can't be referenced before it is declared • packages/features/auth/lib/src/screens/login_screen.dart:102:13 • referenced_before_declaration
+  error • The method '_buildPhoneForm' isn't defined for the type '_LoginScreenState' • packages/features/auth/lib/src/screens/login_screen.dart:108:22 • undefined_method
+warning • Dead code • packages/features/auth/lib/src/screens/login_screen.dart:114:3 • dead_code
+   info • The local variable '_buildHeader' starts with an underscore • packages/features/auth/lib/src/screens/login_screen.dart:114:10 • no_leading_underscores_for_local_identifiers
+  error • The named parameter 'borderRadius' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:123:9 • undefined_named_parameter
+  error • The named parameter 'boxShadow' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:124:9 • undefined_named_parameter
+  error • The named parameter 'child' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:128:7 • undefined_named_parameter
+  error • The constructor being called isn't a const constructor • packages/features/auth/lib/src/screens/login_screen.dart:130:11 • const_with_non_const
+   info • Unnecessary 'const' keyword • packages/features/auth/lib/src/screens/login_screen.dart:134:11 • unnecessary_const
+   info • Unnecessary 'const' keyword • packages/features/auth/lib/src/screens/login_screen.dart:135:11 • unnecessary_const
+   info • Unnecessary 'const' keyword • packages/features/auth/lib/src/screens/login_screen.dart:140:11 • unnecessary_const
+  error • The named parameter 'color' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:141:19 • undefined_named_parameter
+  error • The named parameter 'fontSize' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:142:19 • undefined_named_parameter
+  error • The named parameter 'fontWeight' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:143:19 • undefined_named_parameter
+  error • The named parameter 'letterSpacing' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:144:19 • undefined_named_parameter
+  error • Expected to find ']' • packages/features/auth/lib/src/screens/login_screen.dart:144:36 • expected_token
+  error • Function expressions can't be named • packages/features/auth/lib/src/screens/login_screen.dart:145:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/auth/lib/src/screens/login_screen.dart:145:25 • extra_positional_arguments
+  error • The method '_buildTextField' isn't defined for the type '_LoginScreenState' • packages/features/auth/lib/src/screens/login_screen.dart:170:17 • undefined_method
+  error • Undefined name 'controller' • packages/features/auth/lib/src/screens/login_screen.dart:176:21 • undefined_identifier
+  error • Expected to find ']' • packages/features/auth/lib/src/screens/login_screen.dart:176:31 • expected_token
+  error • Undefined name 'controller' • packages/features/auth/lib/src/screens/login_screen.dart:180:21 • undefined_identifier
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/login_screen.dart:180:31 • expected_token
+  error • Expected to find ']' • packages/features/auth/lib/src/screens/login_screen.dart:180:31 • expected_token
+  error • The named parameter 'child' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:226:23 • undefined_named_parameter
+   info • Unnecessary 'const' keyword • packages/features/auth/lib/src/screens/login_screen.dart:234:21 • unnecessary_const
+  error • Too many positional arguments: 0 expected, but 3 found • packages/features/auth/lib/src/screens/login_screen.dart:234:21 • extra_positional_arguments_could_be_named
+  error • The named parameter 'title' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:235:29 • undefined_named_parameter
+  error • The named parameter 'assetPath' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:236:29 • undefined_named_parameter
+   info • Unnecessary 'const' keyword • packages/features/auth/lib/src/screens/login_screen.dart:238:21 • unnecessary_const
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/login_screen.dart:239:19 • expected_token
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/login_screen.dart:245:41 • expected_token
+  error • Expected an identifier • packages/features/auth/lib/src/screens/login_screen.dart:246:15 • missing_identifier
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/login_screen.dart:246:15 • expected_token
+   info • Statements in an if should be enclosed in a block • packages/features/auth/lib/src/screens/login_screen.dart:247:17 • curly_braces_in_flow_control_structures
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/login_screen.dart:247:82 • expected_token
+   info • Statements in an if should be enclosed in a block • packages/features/auth/lib/src/screens/login_screen.dart:249:17 • curly_braces_in_flow_control_structures
+  error • The named parameter 'child' is required, but there's no corresponding argument • packages/features/auth/lib/src/screens/login_screen.dart:251:26 • missing_required_argument
+  error • The named parameter 'child' isn't defined • packages/features/auth/lib/src/screens/login_screen.dart:261:21 • undefined_named_parameter
+  error • Expected an identifier • packages/features/auth/lib/src/screens/login_screen.dart:267:15 • missing_identifier
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/login_screen.dart:267:15 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/login_screen.dart:296:17 • expected_token
+  error • Function expressions can't be named • packages/features/auth/lib/src/screens/login_screen.dart:299:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/auth/lib/src/screens/login_screen.dart:299:25 • extra_positional_arguments_could_be_named
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/login_screen.dart:326:69 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/login_screen.dart:327:1 • expected_token
+  error • Expected to find '}' • packages/features/auth/lib/src/screens/login_screen.dart:327:1 • expected_token
+  error • The element type 'String' can't be assigned to the list type 'Widget' • packages/features/auth/lib/src/screens/role_selection_screen.dart:32:17 • list_element_type_not_assignable
+  error • Undefined name 'style' • packages/features/auth/lib/src/screens/role_selection_screen.dart:33:17 • undefined_identifier
+  error • Expected to find ']' • packages/features/auth/lib/src/screens/role_selection_screen.dart:33:22 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/role_selection_screen.dart:57:13 • expected_token
+  error • Expected to find '}' • packages/features/auth/lib/src/screens/role_selection_screen.dart:57:13 • expected_token
+warning • The declaration '_buildRoleCard' isn't referenced • packages/features/auth/lib/src/screens/role_selection_screen.dart:63:10 • unused_element
+  error • The named parameter 'child' isn't defined • packages/features/auth/lib/src/screens/role_selection_screen.dart:86:9 • undefined_named_parameter
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/auth/lib/src/screens/role_selection_screen.dart:100:13 • extra_positional_arguments_could_be_named
+  error • Expected to find ';' • packages/features/auth/lib/src/screens/role_selection_screen.dart:100:78 • expected_token
+  error • Expected to find ')' • packages/features/auth/lib/src/screens/role_selection_screen.dart:101:1 • expected_token
+  error • Expected to find ']' • packages/features/auth/lib/src/screens/role_selection_screen.dart:101:1 • expected_token
+  error • Expected to find '}' • packages/features/auth/lib/src/screens/role_selection_screen.dart:102:1 • expected_token
+warning • The dev dependency on firebase_core is unnecessary because there is also a normal dependency on that package • packages/features/auth/pubspec.yaml:21:3 • unnecessary_dev_dependency
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/maps/lib/src/utils/map_marker_utils.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/maps/lib/src/utils/map_marker_utils.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/maps/lib/src/utils/map_marker_utils.dart:3:8 • unused_import
+warning • The dev dependency on cloud_firestore is unnecessary because there is also a normal dependency on that package • packages/features/maps/pubspec.yaml:21:3 • unnecessary_dev_dependency
+warning • The dev dependency on firebase_core is unnecessary because there is also a normal dependency on that package • packages/features/maps/pubspec.yaml:22:3 • unnecessary_dev_dependency
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/payment/lib/src/providers/wallet_provider.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/payment/lib/src/providers/wallet_provider.dart:2:8 • unused_import
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/payment/lib/src/screens/history_screen.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/payment/lib/src/screens/history_screen.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/payment/lib/src/screens/history_screen.dart:3:8 • unused_import
+  error • The method '_buildTripsList' isn't defined for the type 'HistoryScreen' • packages/features/payment/lib/src/screens/history_screen.dart:42:13 • undefined_method
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/history_screen.dart:45:6 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/history_screen.dart:53:8 • expected_token
+  error • The named parameter 'trailing' isn't defined • packages/features/payment/lib/src/screens/history_screen.dart:81:13 • undefined_named_parameter
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/history_screen.dart:89:10 • expected_token
+  error • Function expressions can't be named • packages/features/payment/lib/src/screens/history_screen.dart:91:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/history_screen.dart:91:25 • extra_positional_arguments_could_be_named
+  error • The body might complete normally, causing 'null' to be returned, but the return type, 'Widget', is a potentially non-nullable type • packages/features/payment/lib/src/screens/history_screen.dart:94:36 • body_might_complete_normally
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/history_screen.dart:105:12 • expected_token
+warning • Dead code • packages/features/payment/lib/src/screens/history_screen.dart:106:9 • dead_code
+  error • The named parameter 'trailing' isn't defined • packages/features/payment/lib/src/screens/history_screen.dart:126:17 • undefined_named_parameter
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/history_screen.dart:133:14 • expected_token
+  error • Expected to find ';' • packages/features/payment/lib/src/screens/history_screen.dart:134:12 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/history_screen.dart:135:1 • expected_token
+  error • Expected to find ';' • packages/features/payment/lib/src/screens/history_screen.dart:135:1 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/history_screen.dart:136:1 • expected_token
+  error • Expected to find '}' • packages/features/payment/lib/src/screens/history_screen.dart:136:1 • expected_token
+   info • The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • packages/features/payment/lib/src/screens/wallet_screen.dart:1:8 • unnecessary_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/payment/lib/src/screens/wallet_screen.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/payment/lib/src/screens/wallet_screen.dart:3:8 • unused_import
+  error • Too many positional arguments: 0 expected, but 2 found • packages/features/payment/lib/src/screens/wallet_screen.dart:61:17 • extra_positional_arguments_could_be_named
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:73:21 • extra_positional_arguments_could_be_named
+  error • The named parameter 'color' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:75:25 • undefined_named_parameter
+  error • The named parameter 'fontSize' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:76:25 • undefined_named_parameter
+  error • The named parameter 'letterSpacing' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:77:25 • undefined_named_parameter
+  error • Too many positional arguments: 1 expected, but 3 found • packages/features/payment/lib/src/screens/wallet_screen.dart:78:21 • extra_positional_arguments_could_be_named
+  error • The named parameter 'child' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:85:23 • undefined_named_parameter
+  error • Too many positional arguments: 0 expected, but 2 found • packages/features/payment/lib/src/screens/wallet_screen.dart:93:11 • extra_positional_arguments_could_be_named
+  error • The named parameter 'border' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:98:15 • undefined_named_parameter
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:113:27 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:114:23 • expected_token
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:115:21 • extra_positional_arguments_could_be_named
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:117:25 • extra_positional_arguments_could_be_named
+  error • The argument for the named parameter 'value' was already specified • packages/features/payment/lib/src/screens/wallet_screen.dart:125:27 • duplicate_named_argument
+  error • The argument for the named parameter 'suffix' was already specified • packages/features/payment/lib/src/screens/wallet_screen.dart:126:27 • duplicate_named_argument
+  error • The named parameter 'fontSize' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:127:29 • undefined_named_parameter
+  error • The named parameter 'fontWeight' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:128:29 • undefined_named_parameter
+  error • The named parameter 'color' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:129:29 • undefined_named_parameter
+  error • Expected to find ',' • packages/features/payment/lib/src/screens/wallet_screen.dart:130:17 • expected_token
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:130:17 • extra_positional_arguments_could_be_named
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:133:21 • extra_positional_arguments_could_be_named
+   info • Unnecessary 'const' keyword • packages/features/payment/lib/src/screens/wallet_screen.dart:137:27 • unnecessary_const
+  error • Too many positional arguments: 1 expected, but 2 found • packages/features/payment/lib/src/screens/wallet_screen.dart:140:27 • extra_positional_arguments_could_be_named
+  error • Invalid constant value • packages/features/payment/lib/src/screens/wallet_screen.dart:140:45 • invalid_constant
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:156:25 • expected_token
+  error • Expected an identifier • packages/features/payment/lib/src/screens/wallet_screen.dart:157:21 • missing_identifier
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:157:21 • expected_token
+  error • Expected to find ',' • packages/features/payment/lib/src/screens/wallet_screen.dart:157:21 • expected_token
+  error • The named parameter 'child' is required, but there's no corresponding argument • packages/features/payment/lib/src/screens/wallet_screen.dart:158:23 • missing_required_argument
+  error • The named parameter 'child' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:167:25 • undefined_named_parameter
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:169:21 • expected_token
+  error • The named parameter 'child' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:175:25 • undefined_named_parameter
+  error • Too many positional arguments: 1 expected, but 2 found • packages/features/payment/lib/src/screens/wallet_screen.dart:179:11 • extra_positional_arguments_could_be_named
+   info • Unnecessary 'const' keyword • packages/features/payment/lib/src/screens/wallet_screen.dart:180:22 • unnecessary_const
+  error • Invalid constant value • packages/features/payment/lib/src/screens/wallet_screen.dart:183:17 • invalid_constant
+  error • The method '_buildRechargeButton' isn't defined for the type 'WalletScreen' • packages/features/payment/lib/src/screens/wallet_screen.dart:183:17 • undefined_method
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:183:17 • extra_positional_arguments_could_be_named
+   info • Unnecessary 'const' keyword • packages/features/payment/lib/src/screens/wallet_screen.dart:191:11 • unnecessary_const
+   info • Unnecessary 'const' keyword • packages/features/payment/lib/src/screens/wallet_screen.dart:193:11 • unnecessary_const
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:203:11 • extra_positional_arguments_could_be_named
+  error • Invalid constant value • packages/features/payment/lib/src/screens/wallet_screen.dart:204:20 • invalid_constant
+   info • Unnecessary 'const' keyword • packages/features/payment/lib/src/screens/wallet_screen.dart:205:19 • unnecessary_const
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:210:17 • expected_token
+  error • The constructor being called isn't a const constructor • packages/features/payment/lib/src/screens/wallet_screen.dart:210:19 • const_with_non_const
+  error • The named parameter 'title' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:223:25 • undefined_named_parameter
+  error • The named parameter 'subtitle' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:224:25 • undefined_named_parameter
+  error • The named parameter 'trailing' isn't defined • packages/features/payment/lib/src/screens/wallet_screen.dart:226:25 • undefined_named_parameter
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:230:24 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:232:9 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:233:6 • expected_token
+  error • Expected to find ']' • packages/features/payment/lib/src/screens/wallet_screen.dart:233:6 • expected_token
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:245:11 • extra_positional_arguments_could_be_named
+  error • Function expressions can't be named • packages/features/payment/lib/src/screens/wallet_screen.dart:256:10 • named_function_expression
+  error • Too many positional arguments: 0 expected, but 1 found • packages/features/payment/lib/src/screens/wallet_screen.dart:256:30 • extra_positional_arguments_could_be_named
+  error • The argument for the named parameter 'style' was already specified • packages/features/payment/lib/src/screens/wallet_screen.dart:263:7 • duplicate_named_argument
+  error • The argument type 'ButtonStyle' can't be assigned to the parameter type 'TextStyle?'.  • packages/features/payment/lib/src/screens/wallet_screen.dart:263:14 • argument_type_not_assignable
+  error • Expected to find ';' • packages/features/payment/lib/src/screens/wallet_screen.dart:271:10 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:272:1 • expected_token
+  error • Expected to find ';' • packages/features/payment/lib/src/screens/wallet_screen.dart:272:1 • expected_token
+  error • Expected to find ')' • packages/features/payment/lib/src/screens/wallet_screen.dart:273:1 • expected_token
+  error • Expected to find ']' • packages/features/payment/lib/src/screens/wallet_screen.dart:273:1 • expected_token
+  error • Expected to find '}' • packages/features/payment/lib/src/screens/wallet_screen.dart:273:1 • expected_token
+warning • The dev dependency on firebase_core is unnecessary because there is also a normal dependency on that package • packages/features/payment/pubspec.yaml:24:3 • unnecessary_dev_dependency
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:65:21 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:71:15 • expected_token
+  error • Too many positional arguments: 0 expected, but 2 found • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:72:11 • extra_positional_arguments_could_be_named
+warning • The value of the local variable 'rating' isn't used • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:86:27 • unused_local_variable
+warning • The value of the local variable 'comment' isn't used • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:87:27 • unused_local_variable
+  error • The named parameter 'child' isn't defined • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:97:23 • undefined_named_parameter
+  error • The element type 'String' can't be assigned to the list type 'Widget' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:107:33 • list_element_type_not_assignable
+  error • Undefined name 'style' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:108:33 • undefined_identifier
+  error • Expected to find ']' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:108:38 • expected_token
+  error • Undefined name 'children' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:112:29 • undefined_identifier
+  error • Expected to find ']' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:112:37 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:125:22 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:131:9 • expected_token
+  error • Expected to find ';' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:131:10 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:132:1 • expected_token
+  error • Expected to find '}' • packages/features/rating/lib/src/widgets/driver_reviews_sheet.dart:133:1 • expected_token
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/rating/lib/src/widgets/rating_dialog.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/rating/lib/src/widgets/rating_dialog.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/rating/lib/src/widgets/rating_dialog.dart:3:8 • unused_import
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • packages/features/rating/lib/src/widgets/rating_dialog.dart:5:8 • unused_import
+warning • Unused import: 'package:transen_core/transen_core.dart' • packages/features/rating/lib/src/widgets/rating_dialog.dart:6:8 • unused_import
+warning • Unused import: 'package:transen_rating/transen_rating.dart' • packages/features/rating/lib/src/widgets/rating_dialog.dart:7:8 • unused_import
+warning • Unused import: 'package:transen_auth/transen_auth.dart' • packages/features/rating/lib/src/widgets/rating_dialog.dart:8:8 • unused_import
+   info • The private field _rating could be 'final' • packages/features/rating/lib/src/widgets/rating_dialog.dart:18:7 • prefer_final_fields
+warning • The value of the field '_rating' isn't used • packages/features/rating/lib/src/widgets/rating_dialog.dart:18:7 • unused_field
+   info • The private field _isLoading could be 'final' • packages/features/rating/lib/src/widgets/rating_dialog.dart:20:8 • prefer_final_fields
+warning • The value of the field '_isLoading' isn't used • packages/features/rating/lib/src/widgets/rating_dialog.dart:20:8 • unused_field
+   info • The member 'dispose' overrides an inherited member but isn't annotated with '@override' • packages/features/rating/lib/src/widgets/rating_dialog.dart:21:8 • annotate_overrides
+   info • The member 'build' overrides an inherited member but isn't annotated with '@override' • packages/features/rating/lib/src/widgets/rating_dialog.dart:25:10 • annotate_overrides
+  error • Expected an identifier • packages/features/rating/lib/src/widgets/rating_dialog.dart:56:19 • missing_identifier
+  error • The argument for the named parameter 'style' was already specified • packages/features/rating/lib/src/widgets/rating_dialog.dart:58:15 • duplicate_named_argument
+  error • Expected an identifier • packages/features/rating/lib/src/widgets/rating_dialog.dart:60:13 • missing_identifier
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/rating_dialog.dart:60:13 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/rating_dialog.dart:135:29 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/rating_dialog.dart:154:15 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/rating_dialog.dart:159:13 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/rating_dialog.dart:167:13 • expected_token
+  error • Expected to find ']' • packages/features/rating/lib/src/widgets/rating_dialog.dart:170:7 • expected_token
+  error • Expected to find ')' • packages/features/rating/lib/src/widgets/rating_dialog.dart:171:6 • expected_token
+  error • Expected to find '}' • packages/features/rating/lib/src/widgets/rating_dialog.dart:172:1 • expected_token
+warning • Unused import: 'package:transen_auth/transen_auth.dart' • packages/features/trips/lib/src/data/repositories/trip_repository.dart:5:8 • unused_import
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/trips/lib/src/providers/pool_providers.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/trips/lib/src/providers/pool_providers.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/trips/lib/src/providers/pool_providers.dart:3:8 • unused_import
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/trips/lib/src/providers/trip_providers.dart:1:8 • unused_import
+   info • The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • packages/features/trips/lib/src/screens/trip_tracking_screen.dart:1:8 • unnecessary_import
+warning • Unused import: 'package:transen_trips/transen_trips.dart' • packages/features/trips/lib/src/screens/trip_tracking_screen.dart:15:8 • unused_import
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/trips/lib/src/utils/itinerary_optimizer.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/trips/lib/src/utils/itinerary_optimizer.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/trips/lib/src/utils/itinerary_optimizer.dart:3:8 • unused_import
+   info • The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • packages/features/trips/lib/src/widgets/order_sheet.dart:1:8 • unnecessary_import
+warning • Unused import: 'package:flutter/foundation.dart' • packages/features/trips/lib/src/widgets/pool_progress_indicator.dart:1:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/trips/lib/src/widgets/pool_progress_indicator.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/trips/lib/src/widgets/pool_progress_indicator.dart:3:8 • unused_import
+warning • Unused import: 'package:firebase_core/firebase_core.dart' • packages/features/trips/lib/src/widgets/receipt_screen.dart:2:8 • unused_import
+warning • Unused import: 'package:cloud_firestore/cloud_firestore.dart' • packages/features/trips/lib/src/widgets/receipt_screen.dart:3:8 • unused_import
+   info • The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • packages/features/trips/lib/src/widgets/yobante_sheet.dart:1:8 • unnecessary_import
+warning • The dev dependency on firebase_auth is unnecessary because there is also a normal dependency on that package • packages/features/trips/pubspec.yaml:36:3 • unnecessary_dev_dependency
+warning • Unused import: 'package:transen_auth/transen_auth.dart' • test/widget_test.dart:4:8 • unused_import
+warning • Unused import: 'package:transen_core/transen_core.dart' • test/widget_test.dart:5:8 • unused_import
+
