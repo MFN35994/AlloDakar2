@@ -78,10 +78,8 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
       }
     } catch (e) {
       if (mounted) {
-        String errorMsg = e.toString();
-        if (errorMsg.contains("Exception: ")) {
-          errorMsg = errorMsg.split("Exception: ").last;
-        } else {
+        String errorMsg = e.toString().replaceAll("Exception: ", "");
+        if (errorMsg.isEmpty) {
           errorMsg = "Erreur lors de l'acceptation de la course.";
         }
         ScaffoldMessenger.of(context).showSnackBar(

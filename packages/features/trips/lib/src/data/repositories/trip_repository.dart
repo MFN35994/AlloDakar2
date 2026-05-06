@@ -136,8 +136,9 @@ class TripRepository {
         throw Exception("Ce trajet est introuvable.");
       }
       final data = snapshot.data()!;
-      if (data['status'] != 'pending') {
-        throw Exception("Ce trajet a déjà été accepté par un autre chauffeur.");
+      final currentStatus = data['status'] as String?;
+      if (currentStatus != 'open' && currentStatus != 'full') {
+        throw Exception("Ce trajet n'est plus disponible ou a déjà été accepté.");
       }
       transaction.update(poolRef, {
         'status': 'accepted',
@@ -263,22 +264,36 @@ class TripRepository {
   }
 
   Future<void> acceptTrip(String tripId, String driverId) async {
-    final tripRef = _firestore.collection('trips').doc(tripId);
-    await _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(tripRef);
-      if (!snapshot.exists) {
-        throw Exception("Course introuvable.");
-      }
-      final data = snapshot.data()!;
-      if (data['status'] != 'pending') {
-        throw Exception("Cette course a déjà été acceptée par un autre chauffeur.");
-      }
-      transaction.update(tripRef, {
-        'status': 'accepted',
-        'driverId': driverId,
-        'acceptedAt': FieldValue.serverTimestamp(),
+    try {
+      debugPrint("Tentative d'acceptation du trip: $tripId par driver: $driverId");
+      final tripRef = _firestore.collection('trips').doc(tripId);
+      
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(tripRef);
+        if (!snapshot.exists) {
+          throw Exception("Course introuvable.");
+        }
+        final data = snapshot.data()!;
+        final status = data['status'] as String?;
+        
+        debugPrint("Statut actuel de la course: $status");
+        
+        if (status != 'pending') {
+          throw Exception("Cette course a déjà été acceptée ou annulée.");
+        }
+        
+        transaction.update(tripRef, {
+          'status': 'accepted',
+          'driverId': driverId,
+          'acceptedAt': FieldValue.serverTimestamp(),
+        });
       });
-    });
+      debugPrint("Transaction d'acceptation réussie.");
+    } catch (e, stack) {
+      debugPrint("Erreur critique dans acceptTrip: $e");
+      debugPrint("Stacktrace: $stack");
+      rethrow;
+    }
 
     try {
       await _firestore.collection('active_drivers').doc(driverId).set({
