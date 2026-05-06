@@ -126,7 +126,7 @@ class AuthNotifier extends Notifier<AuthState?> {
       if (phone != null) updates['phone'] = phone.replaceAll(' ', '');
       if (email != null) updates['email'] = email;
 
-      await _firestore.collection('users').doc(state!.userId).update(updates);
+      await _firestore.collection('users').doc(state!.userId).set(updates, SetOptions(merge: true));
       
       // Mise à jour immédiate du state
       state = state?.copyWith(
@@ -136,6 +136,7 @@ class AuthNotifier extends Notifier<AuthState?> {
       );
     } catch (e) {
       debugPrint("Erreur saving user data: $e");
+      rethrow;
     }
   }
 
