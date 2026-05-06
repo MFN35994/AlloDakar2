@@ -148,9 +148,13 @@ class TripRepository {
       });
     });
 
-    await _firestore.collection('active_drivers').doc(driverId).update({
-      'activePoolId': poolId,
-    }).catchError((_) {});
+    try {
+      await _firestore.collection('active_drivers').doc(driverId).set({
+        'activePoolId': poolId,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Erreur active_drivers: $e");
+    }
   }
 
   Future<void> departPool(String poolId) async {
@@ -275,6 +279,14 @@ class TripRepository {
         'acceptedAt': FieldValue.serverTimestamp(),
       });
     });
+
+    try {
+      await _firestore.collection('active_drivers').doc(driverId).set({
+        'activeTripId': tripId,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Erreur active_drivers trip: $e");
+    }
   }
 
   Stream<int> watchDriverOccupancy(String driverId) {

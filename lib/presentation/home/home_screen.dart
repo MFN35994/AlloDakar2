@@ -1,3 +1,5 @@
+import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -100,22 +102,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               zoomControlsEnabled: false,
             ),
           ),
-          Container(
-            height: MediaQuery.of(context).size.height * 0.45,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(40),
-                topRight: Radius.circular(40),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 30,
-                  offset: const Offset(0, -10),
-                ),
-              ],
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(40),
+              topRight: Radius.circular(40),
             ),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.45,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(40),
+                    topRight: Radius.circular(40),
+                  ),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.light 
+                      ? Colors.white.withValues(alpha: 0.4) 
+                      : Colors.white.withValues(alpha: 0.05)
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 30,
+                      offset: const Offset(0, -10),
+                    ),
+                  ],
+                ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -173,6 +187,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -209,20 +224,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildActionCard(BuildContext context, {required String title, required IconData icon, required Color color, required VoidCallback onTap}) {
     return InkWell(
-      onTap: onTap,
+      onTap: () async {
+        await HapticFeedback.lightImpact();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.15), 
+              blurRadius: 15, 
+              offset: const Offset(0, 8)
+            )
+          ],
+          border: Border.all(
+            color: color.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 10),
+            Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 16)),
           ],
         ),
       ),

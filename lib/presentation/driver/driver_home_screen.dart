@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -229,7 +231,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 activeThumbColor: Colors.greenAccent,
                 inactiveThumbColor: Colors.grey,
                 inactiveTrackColor: Colors.white24,
-                onChanged: (val) => _toggleOnline(val, currentUserId),
+                onChanged: (val) async {
+                  await HapticFeedback.mediumImpact();
+                  _toggleOnline(val, currentUserId);
+                },
               ),
               IconButton(
                 onPressed: () => DriverReviewsSheet.show(
@@ -376,110 +381,119 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                   color: TranSenColors.primaryGreen
                                       .withValues(alpha: 0.3)),
                             ),
-                            child: Column(
-                              children: [
-                                const Row(
-                                  children: [
-                                    Icon(Icons.auto_awesome,
-                                        color: TranSenColors.accentGold,
-                                        size: 20),
-                                    SizedBox(width: 10),
-                                    Text("Mon trajet d'aujourd'hui",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14)),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<String>(
-                                          hint: const Text("Départ"),
-                                          value: _pubDeparture,
-                                          isExpanded: true,
-                                          items: _regions
-                                              .map((r) => DropdownMenuItem(
-                                                  value: r, child: Text(r)))
-                                              .toList(),
-                                          onChanged: (val) {
-                                            setState(() => _pubDeparture = val);
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(15),
+                                  child: Column(
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.auto_awesome,
+                                              color: TranSenColors.accentGold,
+                                              size: 20),
+                                          SizedBox(width: 10),
+                                          Text("Mon trajet d'aujourd'hui",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: DropdownButtonHideUnderline(
+                                              child: DropdownButton<String>(
+                                                hint: const Text("Départ"),
+                                                value: _pubDeparture,
+                                                isExpanded: true,
+                                                items: _regions
+                                                    .map((r) => DropdownMenuItem(
+                                                        value: r, child: Text(r)))
+                                                    .toList(),
+                                                onChanged: (val) {
+                                                  setState(() => _pubDeparture = val);
+                                                  ref
+                                                      .read(tripRepositoryProvider)
+                                                      .publishDriverRoute(
+                                                          currentUserId,
+                                                          val!,
+                                                          _pubDestination,
+                                                          _noteController.text
+                                                              .trim());
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(Icons.arrow_forward,
+                                              size: 16, color: Colors.grey),
+                                          const SizedBox(width: 5),
+                                          Expanded(
+                                            child: DropdownButtonHideUnderline(
+                                              child: DropdownButton<String>(
+                                                hint: const Text("Arrivée"),
+                                                value: _pubDestination,
+                                                isExpanded: true,
+                                                items: _regions
+                                                    .map((r) => DropdownMenuItem(
+                                                        value: r, child: Text(r)))
+                                                    .toList(),
+                                                onChanged: (val) {
+                                                  setState(
+                                                      () => _pubDestination = val);
+                                                  if (_pubDeparture != null) {
+                                                    ref
+                                                        .read(tripRepositoryProvider)
+                                                        .publishDriverRoute(
+                                                            currentUserId,
+                                                            _pubDeparture!,
+                                                            val,
+                                                            _noteController.text
+                                                                .trim());
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      TextField(
+                                        controller: _noteController,
+                                        decoration: InputDecoration(
+                                          hintText:
+                                              "Message (ex: Départ à 8h, Climatisé...)",
+                                          hintStyle: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade400),
+                                          prefixIcon: const Icon(
+                                              Icons.chat_bubble_outline,
+                                              size: 18),
+                                          border: InputBorder.none,
+                                          contentPadding: const EdgeInsets.symmetric(
+                                              vertical: 10),
+                                        ),
+                                        style: const TextStyle(fontSize: 13),
+                                        onSubmitted: (val) {
+                                          if (_pubDeparture != null) {
                                             ref
                                                 .read(tripRepositoryProvider)
                                                 .publishDriverRoute(
-                                                    currentUserId,
-                                                    val!,
-                                                    _pubDestination,
-                                                    _noteController.text
-                                                        .trim());
-                                          },
-                                        ),
+                                                  currentUserId,
+                                                  _pubDeparture!,
+                                                  _pubDestination,
+                                                  val.trim(),
+                                                );
+                                          }
+                                        },
                                       ),
-                                    ),
-                                    const Icon(Icons.arrow_forward,
-                                        size: 16, color: Colors.grey),
-                                    const SizedBox(width: 5),
-                                    Expanded(
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<String>(
-                                          hint: const Text("Arrivée"),
-                                          value: _pubDestination,
-                                          isExpanded: true,
-                                          items: _regions
-                                              .map((r) => DropdownMenuItem(
-                                                  value: r, child: Text(r)))
-                                              .toList(),
-                                          onChanged: (val) {
-                                            setState(
-                                                () => _pubDestination = val);
-                                            if (_pubDeparture != null) {
-                                              ref
-                                                  .read(tripRepositoryProvider)
-                                                  .publishDriverRoute(
-                                                      currentUserId,
-                                                      _pubDeparture!,
-                                                      val,
-                                                      _noteController.text
-                                                          .trim());
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                TextField(
-                                  controller: _noteController,
-                                  decoration: InputDecoration(
-                                    hintText:
-                                        "Message (ex: Départ à 8h, Climatisé...)",
-                                    hintStyle: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade400),
-                                    prefixIcon: const Icon(
-                                        Icons.chat_bubble_outline,
-                                        size: 18),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 10),
+                                    ],
                                   ),
-                                  style: const TextStyle(fontSize: 13),
-                                  onSubmitted: (val) {
-                                    if (_pubDeparture != null) {
-                                      ref
-                                          .read(tripRepositoryProvider)
-                                          .publishDriverRoute(
-                                            currentUserId,
-                                            _pubDeparture!,
-                                            _pubDestination,
-                                            val.trim(),
-                                          );
-                                    }
-                                  },
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                           Padding(
@@ -808,22 +822,31 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     final canAcceptAt3 = pool.currentFilling >= 3;
     final isFull = pool.currentFilling >= 4;
 
-    return InkWell(
-      onTap: () => DriverPoolDetailSheet.show(context, pool),
+    return ClipRRect(
       borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: InkWell(
+          onTap: () async {
+            await HapticFeedback.selectionClick();
+            if (!mounted) return;
+            DriverPoolDetailSheet.show(context, pool);
+          },
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 15,
-              spreadRadius: 1,
-              offset: const Offset(0, 5),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 15,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-          ],
-        ),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
@@ -924,9 +947,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
+                    await HapticFeedback.mediumImpact();
                     try {
                       // 0. Confirmation si peu de passagers
                       if (pool.currentFilling < 3) {
+                        if (!mounted) return;
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
@@ -953,10 +978,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       //   throw Exception("Solde insuffisant pour la commission ($totalCommission FCFA)");
                       // }
 
-                      // ... le reste est identique
-                      await ref
-                          .read(tripRepositoryProvider)
-                          .acceptPool(pool.id, driverId);
+                      if (mounted) {
+                        await ref
+                            .read(tripRepositoryProvider)
+                            .acceptPool(pool.id, driverId);
+                      }
                       // ref.read(walletProvider.notifier).credit((pool.currentFilling * 10000).toDouble(), 'Gains Covoiturage ${pool.destination}');
                       // ref.read(walletProvider.notifier).debit(totalCommission.toDouble(), 'Commission Plateforme (5%)');
 
@@ -1003,6 +1029,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           ),
         ),
       ),
+    ),
+    ),
     );
   }
 
@@ -1329,16 +1357,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       width: 195,
       margin: const EdgeInsets.only(right: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: TranSenColors.primaryGreen.withValues(alpha: 0.3),
+            color: TranSenColors.primaryGreen.withValues(alpha: 0.4),
             width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: TranSenColors.primaryGreen.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4)),
+              color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 6)),
         ],
       ),
       child: InkWell(

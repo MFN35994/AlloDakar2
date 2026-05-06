@@ -15,30 +15,19 @@ service cloud.firestore {
     // ── USERS ──────────────────────────────────────────────────────────────────
 
     match /users/{userId} {
-      // Tout utilisateur connecté peut lire un profil (noms, téléphones)
       allow read: if isSignedIn();
-
-      // Création uniquement par le propriétaire du compte
       allow create: if isOwner(userId);
-
-      // Suppression uniquement par le propriétaire
       allow delete: if isOwner(userId);
-
-      // Mise à jour : règles strictes
       allow update: if isSignedIn() && (
-        // Le propriétaire peut modifier son document
         (isOwner(userId) &&
-          // Protection des champs financiers et de vérification (JAMAIS modifiables par le client)
           !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['bonusPoints', 'walletBalance', 'isVerified', 'referralCount']) &&
           (
-            // On autorise la modif du rôle SEULEMENT si le rôle actuel est absent ou égal à 'none'
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) ||
             (!('role' in resource.data) || resource.data.role == 'none')
           )
         )
         ||
-        // Attribution de points de parrainage (+10 uniquement) par un tiers (filleul)
         (!isOwner(userId) &&
           request.resource.data.bonusPoints == (resource.data.bonusPoints + 10) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']))
@@ -65,9 +54,10 @@ service cloud.firestore {
         request.resource.data.status == 'pending';
 
       allow update: if isSignedIn() && (
-        (request.resource.data.clientId == resource.data.clientId &&
-         request.resource.data.price == resource.data.price)
+        // Le chauffeur accepte/modifie mais ne touche pas au client ni au prix
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['clientId', 'price']))
         ||
+        // Le client peut annuler sa propre course si elle est encore 'pending'
         (isOwner(resource.data.clientId) &&
           resource.data.status == 'pending' &&
           request.resource.data.status == 'cancelled' &&

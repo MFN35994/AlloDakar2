@@ -131,10 +131,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : TranSenColors.primaryGreen,
+      body: PremiumBackground(
+        blobColors: isDarkMode 
+          ? [Colors.blue.withValues(alpha: 0.1), Colors.purple.withValues(alpha: 0.1)]
+          : [Colors.white.withValues(alpha: 0.2), Colors.greenAccent.withValues(alpha: 0.1)],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
             _buildHeader(isDarkMode),
             const SizedBox(height: 30),
             AnimatedContainer(
@@ -146,6 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -153,9 +158,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 70, bottom: 30),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [TranSenColors.primaryGreen, TranSenColors.darkGreen],
+          colors: isDarkMode ? [const Color(0xFF1A1A1A), const Color(0xFF121212)] : [Colors.white, Colors.grey.shade100],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -167,19 +172,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       child: Column(
         children: [
-          Image.asset('assets/images/logo.png',
-              height: 100,
-              errorBuilder: (c, e, s) => const Icon(Icons.directions_car,
-                  size: 80, color: Colors.white)),
+          Hero(
+            tag: 'auth_icon',
+            child: Image.asset('assets/images/logo.png',
+                height: 100,
+                errorBuilder: (c, e, s) => Icon(Icons.directions_car,
+                    size: 80, color: isDarkMode ? Colors.white : TranSenColors.primaryGreen)),
+          ),
           const SizedBox(height: 15),
-          const Text("Bienvenue sur TranSen",
+          Text("Bienvenue sur TranSen",
               style: TextStyle(
-                  color: Colors.white,
+                  color: isDarkMode ? Colors.white : TranSenColors.primaryGreen,
                   fontSize: 24,
                   fontWeight: FontWeight.bold)),
-          const Text("LE TRANSPORT 5 ÉTOILES AU SÉNÉGAL",
+          Text("LE TRANSPORT 5 ÉTOILES AU SÉNÉGAL",
               style: TextStyle(
-                  color: Colors.white70,
+                  color: isDarkMode ? Colors.white70 : TranSenColors.primaryGreen.withValues(alpha: 0.7),
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2)),
@@ -332,15 +340,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: step == AuthStep.phone 
-                        ? _sendOtp 
-                        : (step == AuthStep.identity ? _saveIdentity : _signInWithOtp),
+                    onPressed: isLoading ? null : () async {
+                      await HapticFeedback.lightImpact();
+                      if (step == AuthStep.phone) {
+                        _sendOtp();
+                      } else if (step == AuthStep.identity) {
+                        _saveIdentity();
+                      } else {
+                        _signInWithOtp();
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDarkMode ? Colors.white : Colors.black87,
-                      foregroundColor: isDarkMode ? Colors.black : Colors.white,
+                      backgroundColor: isDarkMode ? Colors.white : Colors.white,
+                      foregroundColor: isDarkMode ? Colors.black : TranSenColors.primaryGreen,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15)),
+                      elevation: 5,
                     ),
                     child: Text(
                         step == AuthStep.otp 
@@ -359,13 +375,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         text: "En continuant, vous acceptez nos ",
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                          color: isDarkMode ? Colors.white70 : Colors.white.withValues(alpha: 0.9),
                         ),
                         children: [
                           TextSpan(
                             text: "CGU",
                             style: const TextStyle(
-                              color: TranSenColors.primaryGreen,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
                             ),
@@ -380,11 +396,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                           ),
-                          const TextSpan(text: " et notre "),
+                          TextSpan(
+                            text: " et notre ",
+                            style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.white.withValues(alpha: 0.9)),
+                          ),
                           TextSpan(
                             text: "Politique de Confidentialité",
                             style: const TextStyle(
-                              color: TranSenColors.primaryGreen,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
                             ),
@@ -399,7 +418,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                           ),
-                          const TextSpan(text: "."),
+                          TextSpan(
+                            text: ".",
+                            style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.white.withValues(alpha: 0.9)),
+                          ),
                         ],
                       ),
                       textAlign: TextAlign.center,
@@ -426,15 +448,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
-      style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+      style: TextStyle(color: isDarkMode ? Colors.white : TranSenColors.primaryGreen),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade600),
+        labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey.shade600),
         prefixIcon: Icon(icon, color: TranSenColors.primaryGreen),
         filled: true,
         fillColor: isDarkMode
             ? Colors.white.withValues(alpha: 0.05)
-            : Colors.grey.shade100,
+            : Colors.white,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide.none),
