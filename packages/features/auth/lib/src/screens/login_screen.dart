@@ -4,7 +4,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart'; // Par sécurité car on utilise Firebase.app() ailleurs
 import '../providers/auth_provider.dart';
 import '../providers/referral_provider.dart';
 import 'package:flutter/services.dart';
