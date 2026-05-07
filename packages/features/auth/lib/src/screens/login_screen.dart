@@ -81,11 +81,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     try {
-      // On utilise le numéro qui a été validé à l'étape 1
+      // 1. Essayer de récupérer le numéro mémorisé localement
       String finalPhone = _validatedPhone;
 
+      // 2. Si perdu (remount), essayer de le récupérer depuis Firebase Auth
       if (finalPhone.length < 9) {
-        // Fallback au cas où, on essaie de relire le controller
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser?.phoneNumber != null && currentUser!.phoneNumber!.length >= 9) {
+          finalPhone = currentUser.phoneNumber!.replaceAll(RegExp(r'\D'), '');
+          // Enlever le 221 si présent pour garder 9 chiffres
+          if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
+            finalPhone = finalPhone.substring(3);
+          }
+        }
+      }
+
+      // 3. Si toujours rien, essayer de relire le controller
+      if (finalPhone.length < 9) {
         String rawPhone = _phoneController.text.trim().replaceAll(' ', '');
         finalPhone = rawPhone.replaceAll(RegExp(r'\D'), '');
         if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
@@ -94,7 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       if (finalPhone.length < 9) {
-        _showError("Erreur de session : numéro de téléphone perdu. Veuillez recommencer.");
+        _showError("Session expirée : numéro de téléphone introuvable. Veuillez recommencer l'étape 1.");
         setState(() => _step = AuthStep.phone);
         return;
       }
@@ -270,30 +282,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     isDarkMode: isDarkMode),
                 const SizedBox(height: 10),
                 // Affichage du numéro validé
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.phone_android, size: 20, color: isDarkMode ? Colors.white70 : Colors.grey),
-                      const SizedBox(width: 10),
-                      Text(
-                        _validatedPhone.length == 9 
-                          ? "${_validatedPhone.substring(0, 2)} ${_validatedPhone.substring(2, 5)} ${_validatedPhone.substring(5, 7)} ${_validatedPhone.substring(7, 9)}"
-                          : _validatedPhone,
-                        style: TextStyle(
-                          fontSize: 16, 
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black87
-                        ),
+                Builder(
+                  builder: (context) {
+                    String displayPhone = _validatedPhone;
+                    if (displayPhone.isEmpty) {
+                      displayPhone = FirebaseAuth.instance.currentUser?.phoneNumber?.replaceAll(RegExp(r'\D'), '') ?? '';
+                      if (displayPhone.startsWith('221') && displayPhone.length >= 12) {
+                        displayPhone = displayPhone.substring(3);
+                      }
+                    }
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(15),
                       ),
-                      const Spacer(),
-                      const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                    ],
-                  ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.phone_android, size: 20, color: isDarkMode ? Colors.white70 : Colors.grey),
+                          const SizedBox(width: 10),
+                          Text(
+                            displayPhone.length == 9 
+                              ? "${displayPhone.substring(0, 2)} ${displayPhone.substring(2, 5)} ${displayPhone.substring(5, 7)} ${displayPhone.substring(7, 9)}"
+                              : displayPhone.isEmpty ? "Numéro validé" : displayPhone,
+                            style: TextStyle(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black87
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        ],
+                      ),
+                    );
+                  }
                 ),
               ],
 
