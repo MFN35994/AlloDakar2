@@ -184,29 +184,26 @@ class ProfileScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              String newPhone = controller.text.trim().replaceAll(' ', '');
-              String digitsOnly = newPhone.replaceAll(RegExp(r'\D'), '');
+              String input = controller.text.trim().replaceAll(' ', '');
+              String digitsOnly = input.replaceAll(RegExp(r'\D'), '');
               
-              if (digitsOnly.length < 9) {
+              // Normalisation Sénégal
+              String finalPhone = digitsOnly;
+              if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
+                finalPhone = finalPhone.substring(3);
+              }
+
+              if (finalPhone.length < 9) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Numéro invalide (min 9 chiffres)")),
                 );
                 return;
               }
 
-              if (!newPhone.startsWith('+')) {
-                // Si ça commence déjà par 221 mais pas de +, on l'ajoute
-                if (digitsOnly.startsWith('221') && digitsOnly.length >= 12) {
-                  newPhone = '+$digitsOnly';
-                } else {
-                  newPhone = '+221$digitsOnly';
-                }
-              }
-
               try {
                 await ref.read(userRepositoryProvider).updateUserData(userId, {
-                  'phone': newPhone,
-                  'phoneNumber': newPhone, // On met à jour les deux champs par sécurité
+                  'phone': finalPhone,
+                  'phoneNumber': finalPhone, 
                 });
                 if (context.mounted) Navigator.pop(context);
                 if (context.mounted) {

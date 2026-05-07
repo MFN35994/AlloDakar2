@@ -298,10 +298,25 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                         return;
                       }
 
-                      // Formatage final avec +221
-                      final finalUserPhone = existingPhone.startsWith('+') ? existingPhone.replaceAll(' ', '') : '+221$userPhoneDigits';
-                      final finalSenderPhone = '+221$senderPhone';
-                      final finalReceiverPhone = '+221$receiverPhone';
+                      // Normalisation Sénégal : on ne garde que les 9 chiffres
+                      String cleanUserPhone = userPhoneDigits;
+                      if (cleanUserPhone.startsWith('221') && cleanUserPhone.length >= 12) {
+                        cleanUserPhone = cleanUserPhone.substring(3);
+                      }
+                      
+                      String cleanSenderPhone = senderPhone;
+                      if (cleanSenderPhone.startsWith('221') && cleanSenderPhone.length >= 12) {
+                        cleanSenderPhone = cleanSenderPhone.substring(3);
+                      }
+                      
+                      String cleanReceiverPhone = receiverPhone;
+                      if (cleanReceiverPhone.startsWith('221') && cleanReceiverPhone.length >= 12) {
+                        cleanReceiverPhone = cleanReceiverPhone.substring(3);
+                      }
+
+                      final finalUserPhone = cleanUserPhone;
+                      final finalSenderPhone = cleanSenderPhone;
+                      final finalReceiverPhone = cleanReceiverPhone;
 
                       // Simulation de paiement externe
                       if (_paymentMethod != 'Portefeuille') {

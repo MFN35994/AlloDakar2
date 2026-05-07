@@ -524,7 +524,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       if (userPhoneDigits.length < 9) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Votre numéro de téléphone est incomplet. Veuillez le corriger dans votre profil."),
+            content: Text("Numéro de téléphone incomplet (9 chiffres requis)."),
             backgroundColor: Colors.red,
           ),
         );
@@ -541,14 +541,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       final userLastName = userData.data()?['lastName'];
       final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
       
-      // On s'assure d'avoir le +221 propre
-      String finalPhone = phoneToValidate;
-      if (finalPhone.startsWith('221')) {
-        finalPhone = '+$finalPhone';
-      } else if (!finalPhone.startsWith('+')) {
-        finalPhone = '+221$finalPhone';
-      } else {
-        finalPhone = finalPhone.replaceAll(' ', '');
+      // On s'assure d'avoir les 9 chiffres propres
+      String finalPhone = userPhoneDigits;
+      if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
+        finalPhone = finalPhone.substring(3);
       }
 
       final tripRepo = ref.read(tripRepositoryProvider);

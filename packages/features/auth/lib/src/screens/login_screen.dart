@@ -80,24 +80,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       String rawPhone = _phoneController.text.trim().replaceAll(' ', '');
       String digitsOnly = rawPhone.replaceAll(RegExp(r'\D'), '');
       
-      // Validation : si ça commence par 221, on vérifie qu'on a bien 12 chiffres en tout
-      // Sinon on vérifie qu'on a 9 chiffres locaux
-      if (digitsOnly.startsWith('221')) {
-        if (digitsOnly.length < 12) {
-          _showError("Numéro de téléphone incomplet");
-          return;
-        }
-      } else if (digitsOnly.length < 9) {
-        _showError("Veuillez entrer un numéro sénégalais valide (9 chiffres)");
-        return;
+      // Normalisation : on ne garde que les 9 chiffres locaux
+      String finalPhone = digitsOnly;
+      if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
+        finalPhone = finalPhone.substring(3);
       }
 
-      String phone = rawPhone.startsWith('+') ? rawPhone : '+221$digitsOnly';
+      if (finalPhone.length < 9) {
+        _showError("Veuillez entrer un numéro valide (9 chiffres)");
+        return;
+      }
 
       await ref.read(authProvider.notifier).updateUserData(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        phone: phone,
+        phone: finalPhone,
       );
 
       if (_referralController.text.isNotEmpty) {
