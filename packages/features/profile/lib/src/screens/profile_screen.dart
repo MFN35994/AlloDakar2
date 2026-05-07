@@ -204,7 +204,7 @@ class ProfileScreen extends ConsumerWidget {
               }
 
               try {
-                await ref.read(userRepositoryProvider).updateUser(userId, {
+                await ref.read(userRepositoryProvider).updateUserData(userId, {
                   'phone': newPhone,
                   'phoneNumber': newPhone, // On met à jour les deux champs par sécurité
                 });

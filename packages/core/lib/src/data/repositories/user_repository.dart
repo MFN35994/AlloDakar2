@@ -24,6 +24,10 @@ class UserRepository {
   Stream<Map<String, dynamic>?> watchUser(String userId) {
     return _firestore.collection('users').doc(userId).snapshots().map((doc) => doc.data());
   }
+
+  Future<void> updateUserData(String userId, Map<String, dynamic> data) async {
+    await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
+  }
 }
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
