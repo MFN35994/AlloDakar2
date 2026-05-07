@@ -514,14 +514,14 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       setState(() => _isProcessing = true);
 
       final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).get();
-      final existingPhone = userData.data()?['phone'] as String? ?? '';
-      final userPhone = existingPhone.replaceAll(RegExp(r'\D'), '');
+      final data = userData.data();
+      String phoneToValidate = data?['phone'] ?? (data?['phoneNumber'] ?? (auth?.phone ?? ''));
+      final userPhoneDigits = phoneToValidate.replaceAll(RegExp(r'\D'), '');
       
       if (!mounted) return;
       
-      // Validation stricte : le numéro (sans indicatif) doit avoir 9 chiffres au Sénégal
-      // Si on garde l'indicatif (221), ça doit faire 12 chiffres
-      if (userPhone.length < 9) {
+      // Validation : au moins 9 chiffres (format Sénégal)
+      if (userPhoneDigits.length < 9) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Votre numéro de téléphone est incomplet. Veuillez le corriger dans votre profil."),
@@ -542,7 +542,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
       
       // On s'assure d'avoir le +221 propre
-      String finalPhone = userPhone;
+      String finalPhone = phoneToValidate;
       if (finalPhone.startsWith('221')) {
         finalPhone = '+$finalPhone';
       } else if (!finalPhone.startsWith('+')) {

@@ -275,7 +275,9 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                           .doc(userId)
                           .get();
                       
-                      String existingPhone = userData.data()?['phone'] as String? ?? '';
+                      final data = userData.data();
+                      String existingPhone = data?['phone'] ?? (data?['phoneNumber'] ?? (auth?.phone ?? ''));
+                      
                       if (existingPhone.isEmpty && _userPhoneController.text.isNotEmpty) {
                         existingPhone = _userPhoneController.text.trim();
                       }
