@@ -143,18 +143,14 @@ class ProfileScreen extends ConsumerWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Fonctionnalité d'édition bientôt disponible !"))
-                          );
-                        },
+                        onPressed: () => _showEditPhoneDialog(context, ref, userId, phone),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: auth?.role == 'driver' ? Colors.black87 : TranSenColors.primaryGreen,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
-                        child: const Text('MODIFIER LE PROFIL', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('MODIFIER LE NUMÉRO', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -162,6 +158,75 @@ class ProfileScreen extends ConsumerWidget {
               );
             },
           ),
+    );
+  }
+
+  void _showEditPhoneDialog(BuildContext context, WidgetRef ref, String userId, String currentPhone) {
+    final controller = TextEditingController(text: currentPhone == 'Non renseigné' ? '' : currentPhone);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Modifier le numéro'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Nouveau numéro',
+            hintText: '77 123 45 67',
+            prefixText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ANNULER'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String newPhone = controller.text.trim().replaceAll(' ', '');
+              String digitsOnly = newPhone.replaceAll(RegExp(r'\D'), '');
+              
+              if (digitsOnly.length < 9) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Numéro invalide (min 9 chiffres)")),
+                );
+                return;
+              }
+
+              if (!newPhone.startsWith('+')) {
+                // Si ça commence déjà par 221 mais pas de +, on l'ajoute
+                if (digitsOnly.startsWith('221') && digitsOnly.length >= 12) {
+                  newPhone = '+$digitsOnly';
+                } else {
+                  newPhone = '+221$digitsOnly';
+                }
+              }
+
+              try {
+                await ref.read(userRepositoryProvider).updateUser(userId, {
+                  'phone': newPhone,
+                  'phoneNumber': newPhone, // On met à jour les deux champs par sécurité
+                });
+                if (context.mounted) Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Numéro mis à jour avec succès !"), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Erreur : ${e.toString()}"), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: TranSenColors.primaryGreen, foregroundColor: Colors.white),
+            child: const Text('ENREGISTRER'),
+          ),
+        ],
+      ),
     );
   }
 
