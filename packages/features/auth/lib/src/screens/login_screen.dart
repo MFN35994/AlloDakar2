@@ -25,6 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _referralController = TextEditingController();
 
   final _phoneMaskFormatter = MaskTextInputFormatter(mask: '## ### ## ##', filter: { "#": RegExp(r'[0-9]') });
+  String _validatedPhone = "";
 
   AuthStep _step = AuthStep.phone;
   bool _localLoading = false;
@@ -58,7 +59,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       phone = phone.replaceAll(' ', '');
     }
 
-    setState(() => _localLoading = true);
+    setState(() {
+      _validatedPhone = digitsOnly; // On stocke les 9 chiffres
+      _localLoading = true;
+    });
     try {
       HapticFeedback.lightImpact();
       await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
@@ -77,17 +81,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     try {
-      String rawPhone = _phoneController.text.trim().replaceAll(' ', '');
-      String digitsOnly = rawPhone.replaceAll(RegExp(r'\D'), '');
-      
-      // Normalisation : on ne garde que les 9 chiffres locaux
-      String finalPhone = digitsOnly;
-      if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
-        finalPhone = finalPhone.substring(3);
+      // On utilise le numéro qui a été validé à l'étape 1
+      String finalPhone = _validatedPhone;
+
+      if (finalPhone.length < 9) {
+        // Fallback au cas où, on essaie de relire le controller
+        String rawPhone = _phoneController.text.trim().replaceAll(' ', '');
+        finalPhone = rawPhone.replaceAll(RegExp(r'\D'), '');
+        if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
+          finalPhone = finalPhone.substring(3);
+        }
       }
 
       if (finalPhone.length < 9) {
-        _showError("Veuillez entrer un numéro valide (9 chiffres)");
+        _showError("Erreur de session : numéro de téléphone perdu. Veuillez recommencer.");
+        setState(() => _step = AuthStep.phone);
         return;
       }
 
@@ -260,6 +268,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     label: "Nom",
                     icon: Icons.person_outline,
                     isDarkMode: isDarkMode),
+                const SizedBox(height: 10),
+                // Affichage du numéro validé
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.phone_android, size: 20, color: isDarkMode ? Colors.white70 : Colors.grey),
+                      const SizedBox(width: 10),
+                      Text(
+                        _validatedPhone.length == 9 
+                          ? "${_validatedPhone.substring(0, 2)} ${_validatedPhone.substring(2, 5)} ${_validatedPhone.substring(5, 7)} ${_validatedPhone.substring(7, 9)}"
+                          : _validatedPhone,
+                        style: TextStyle(
+                          fontSize: 16, 
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black87
+                        ),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                    ],
+                  ),
+                ),
               ],
 
               if (step == AuthStep.phone)
