@@ -26,24 +26,31 @@ class DeviceUtils {
   static Future<void> launchPhoneCall(String? phone) async {
     if (phone == null || phone.trim().isEmpty) return;
     
-    // Garder uniquement les chiffres
-    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    // 1. Enlever tout sauf les chiffres
+    String digits = phone.replaceAll(RegExp(r'\D'), '');
     
-    // Si c'est juste "221", on considère que c'est vide
-    if (cleanPhone == '221') return;
-
-    // Si ça commence déjà par 221, on extrait le reste
-    if (cleanPhone.startsWith('221') && cleanPhone.length > 3) {
-      cleanPhone = cleanPhone.substring(3);
+    // 2. Normalisation du préfixe Sénégal (221)
+    // Tant qu'on a un 221 suivi de plus de 9 chiffres, on l'enlève
+    while (digits.startsWith('221') && digits.length > 9) {
+      digits = digits.substring(3);
     }
     
-    // Un numéro sénégalais valide (hors indicatif) fait 9 chiffres
-    // Si on a moins, c'est probablement une erreur de saisie
-    if (cleanPhone.length < 7) return; 
+    // 3. Format standard Sénégal : 9 chiffres
+    if (digits.length == 9) {
+      final Uri url = Uri.parse('tel:+221$digits');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      }
+      return;
+    }
 
-    final Uri url = Uri.parse('tel:+221$cleanPhone');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
+    // 4. Fallback pour numéros déjà préfixés ou internationaux
+    if (digits.length >= 7) {
+      final String prefix = phone.startsWith('+') ? '+' : '';
+      final Uri url = Uri.parse('tel:$prefix$digits');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      }
     }
   }
 
@@ -51,16 +58,26 @@ class DeviceUtils {
   static Future<void> launchWhatsApp(String? phone, {String message = ""}) async {
     if (phone == null || phone.trim().isEmpty) return;
     
-    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleanPhone == '221') return;
-
-    if (cleanPhone.startsWith('221') && cleanPhone.length > 3) {
-      cleanPhone = cleanPhone.substring(3);
+    // 1. Enlever tout sauf les chiffres
+    String digits = phone.replaceAll(RegExp(r'\D'), '');
+    
+    // 2. Normalisation du préfixe
+    while (digits.startsWith('221') && digits.length > 9) {
+      digits = digits.substring(3);
     }
     
-    if (cleanPhone.length < 7) return;
+    // 3. Format final WhatsApp (préfixe numérique obligatoire)
+    String finalPhone = digits;
+    if (digits.length == 9) {
+      finalPhone = '221$digits';
+    } else if (digits.length > 9 && digits.startsWith('221')) {
+      finalPhone = digits;
+    } else if (digits.length < 9) {
+      debugPrint("DeviceUtils: Numéro WhatsApp trop court: $digits");
+      return;
+    }
 
-    final String urlStr = 'https://wa.me/221$cleanPhone?text=${Uri.encodeComponent(message)}';
+    final String urlStr = 'https://wa.me/$finalPhone?text=${Uri.encodeComponent(message)}';
     final Uri url = Uri.parse(urlStr);
     
     if (await canLaunchUrl(url)) {

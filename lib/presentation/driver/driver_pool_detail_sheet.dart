@@ -253,14 +253,26 @@ class _DriverPoolDetailSheetState
                                       fontWeight: FontWeight.w600)),
                             ),
                             if (phone.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.phone,
-                                    color: TranSenColors.primaryGreen,
-                                    size: 20),
-                                onPressed: () =>
-                                    DeviceUtils.launchPhoneCall(phone),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
+                              StreamBuilder<DocumentSnapshot>(
+                                stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(entry.key).snapshots(),
+                                builder: (context, snapshot) {
+                                  String phoneToCall = phone;
+                                  if (snapshot.hasData && snapshot.data!.exists) {
+                                    final data = snapshot.data!.data() as Map<String, dynamic>;
+                                    if (data['phone'] != null && (data['phone'] as String).isNotEmpty) {
+                                      phoneToCall = data['phone'];
+                                    }
+                                  }
+                                  return IconButton(
+                                    icon: const Icon(Icons.phone,
+                                        color: TranSenColors.primaryGreen,
+                                        size: 20),
+                                    onPressed: () =>
+                                        DeviceUtils.launchPhoneCall(phoneToCall),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  );
+                                }
                               ),
                           ],
                         ),
