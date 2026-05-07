@@ -32,6 +32,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _localLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Si l'utilisateur est déjà connecté via Firebase (cas du remount par AuthGate après OTP réussi)
+    // mais qu'il arrive ici, c'est qu'il doit finaliser son profil.
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _step = AuthStep.identity;
+    }
+  }
+
+  @override
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
