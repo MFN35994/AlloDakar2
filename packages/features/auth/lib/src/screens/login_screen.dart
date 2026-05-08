@@ -227,9 +227,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Hero(
             tag: 'auth_icon',
             child: Image.asset('assets/images/logo.png',
-                height: 100,
+                height: 150,
                 errorBuilder: (c, e, s) => Icon(Icons.directions_car,
-                    size: 80, color: isDarkMode ? Colors.white : TranSenColors.primaryGreen)),
+                    size: 120, color: isDarkMode ? Colors.white : TranSenColors.primaryGreen)),
           ),
           const SizedBox(height: 15),
           Text("Bienvenue sur TranSen",
