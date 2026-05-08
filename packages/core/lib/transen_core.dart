@@ -13,3 +13,4 @@ export 'src/widgets/animated_count_text.dart';
 export 'src/widgets/success_dialog.dart';
 export 'src/widgets/skeleton_loader.dart';
 export 'src/widgets/premium_background.dart';
+export 'src/widgets/app_version_widget.dart';
