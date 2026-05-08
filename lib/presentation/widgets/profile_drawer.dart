@@ -14,9 +14,6 @@ class ProfileDrawer extends ConsumerWidget {
     final auth = ref.watch(authProvider);
     final userId = auth?.userId ?? '';
     
-    // Version de l'application (à synchroniser avec pubspec.yaml si possible)
-    const String appVersion = 'v1.0.0+1';
-
     return Drawer(
       backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : const Color(0xFF1A1A1A),
       child: Column(
@@ -111,16 +108,9 @@ class ProfileDrawer extends ConsumerWidget {
           ),
 
           // Version en bas
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Text(
-              'Version $appVersion',
-              style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+          const Padding(
+            padding: EdgeInsets.all(20.0),
+            child: AppVersionWidget(fontSize: 12),
           ),
         ],
       ),
