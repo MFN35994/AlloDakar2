@@ -197,7 +197,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: _buildPhoneForm(isDarkMode, isLoading, currentStep),
             ),
             const SizedBox(height: 40),
-            const AppVersionWidget(),
+            const AppVersionWidget(color: Colors.white54),
             const SizedBox(height: 20),
           ],
         ),

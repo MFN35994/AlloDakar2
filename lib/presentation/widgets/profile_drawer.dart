@@ -110,7 +110,10 @@ class ProfileDrawer extends ConsumerWidget {
           // Version en bas
           const Padding(
             padding: EdgeInsets.all(20.0),
-            child: AppVersionWidget(fontSize: 12),
+            child: AppVersionWidget(
+              fontSize: 12,
+              color: TranSenColors.primaryGreen,
+            ),
           ),
         ],
       ),
