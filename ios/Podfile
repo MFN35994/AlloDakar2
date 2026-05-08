@@ -2,7 +2,7 @@
 # Généré et configuré pour Flutter + Firebase + Google Maps
 
 # Version iOS minimum requise
-platform :ios, '14.0'
+platform :ios, '15.0'
 
 # Désactive les warnings des pods
 inhibit_all_warnings!
@@ -50,7 +50,7 @@ post_install do |installer|
 
     target.build_configurations.each do |config|
       # Version iOS minimale requise par Firebase et Google Maps SDK
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
 
       # Désactiver les bitcode (requis pour Firebase/Google Maps)
       config.build_settings['ENABLE_BITCODE'] = 'NO'
