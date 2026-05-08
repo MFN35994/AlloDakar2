@@ -48,15 +48,6 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: Upload arm-v7a to Firebase App Distribution (Optional)
-        run: |
-          npx -y firebase-tools appdistribution:distribute build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
-            --app "${{ secrets.FIREBASE_APP_ID_ANDROID || '1:552529206563:android:9ce8bac8520d403803c096' }}" \
-            --groups "testeurs_transen" \
-            --release-notes "Build automatique arm-v7a v${{ github.ref_name }}"
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
