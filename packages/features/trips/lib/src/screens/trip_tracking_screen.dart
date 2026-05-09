@@ -11,6 +11,7 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_maps/transen_maps.dart';
 import 'package:transen_trips/transen_trips.dart';
+import 'chat_screen.dart';
 
 import 'package:transen_rating/transen_rating.dart';
 
@@ -506,7 +507,22 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                           children: [
                             IconButton(
                               onPressed: () => DeviceUtils.launchWhatsApp(driverPhone),
-                              icon: const Icon(Icons.chat, color: Colors.green),
+                              icon: const Icon(Icons.message_outlined, color: Colors.green),
+                              iconSize: 28,
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatScreen(
+                                      tripId: widget.tripId,
+                                      otherPartyName: trip.driverName ?? 'Chauffeur',
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen),
                               iconSize: 28,
                             ),
                             IconButton(

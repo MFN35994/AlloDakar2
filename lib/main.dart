@@ -9,6 +9,8 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'firebase_options.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'presentation/onboarding/onboarding_screen.dart';
 import 'presentation/splash/splash_screen.dart';
 import 'presentation/home/home_screen.dart';
 import 'presentation/driver/driver_home_screen.dart';
@@ -81,8 +83,39 @@ class MyApp extends ConsumerWidget {
               .apply(bodyColor: Colors.white, displayColor: Colors.white),
         ),
       ),
-      home: const AuthGate(),
+      home: const InitialGate(),
     );
+  }
+}
+
+class InitialGate extends StatefulWidget {
+  const InitialGate({super.key});
+
+  @override
+  State<InitialGate> createState() => _InitialGateState();
+}
+
+class _InitialGateState extends State<InitialGate> {
+  bool? _seenOnboarding;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _seenOnboarding = prefs.getBool('onboarding_seen') ?? false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_seenOnboarding == null) return const SplashScreen();
+    if (_seenOnboarding == false) return const OnboardingScreen();
+    return const AuthGate();
   }
 }
 
@@ -107,6 +140,9 @@ class AuthGate extends ConsumerWidget {
         if (auth.name == null || auth.name!.isEmpty) {
           return const LoginScreen();
         }
+
+        // Initialiser les notifications push pour cet utilisateur
+        NotificationService().init(auth.userId);
 
         // Redirection selon le rôle stocké dans Firestore
         if (auth.role == 'driver') {

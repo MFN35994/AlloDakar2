@@ -88,16 +88,46 @@ class TripDetailScreen extends ConsumerWidget {
                           phoneToCall = data['phone'];
                         }
                       }
-                      return ElevatedButton.icon(
-                        onPressed: () => DeviceUtils.launchPhoneCall(phoneToCall),
-                        icon: const Icon(Icons.phone),
-                        label: const Text("APPELER"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        ),
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => DeviceUtils.launchPhoneCall(phoneToCall),
+                              icon: const Icon(Icons.phone),
+                              label: const Text("APPELER"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 55,
+                            width: 55,
+                            decoration: BoxDecoration(
+                              color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: TranSenColors.primaryGreen),
+                            ),
+                            child: IconButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatScreen(
+                                      tripId: trip.id,
+                                      otherPartyName: trip.clientName ?? 'Client',
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen),
+                            ),
+                          ),
+                        ],
                       );
                     }
                   ),

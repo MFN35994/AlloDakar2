@@ -8,9 +8,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 // Doit être en dehors de toute classe
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
   debugPrint("Handling a background message: ${message.messageId}");
-  // Note: Si vous avez besoin de Firebase, vous devez l'initialiser ici
-  // await Firebase.initializeApp();
 }
 
 class NotificationService {

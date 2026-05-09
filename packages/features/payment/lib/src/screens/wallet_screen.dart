@@ -342,9 +342,116 @@ class WalletScreen extends ConsumerWidget {
     );
   }
 
+  void _showRechargeDialog(BuildContext context, String method) {
+    final amountController = TextEditingController();
+    final Color color = method == 'Wave' ? Colors.lightBlue : TranSenColors.primaryGreen;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              method == 'Wave' ? Icons.waves : Icons.account_balance_wallet,
+              color: color,
+            ),
+            const SizedBox(width: 10),
+            Text('Recharger via $method'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Entrez le montant à recharger. Vous serez redirigé vers l\'application $method.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Montant (FCFA)',
+                prefixIcon: Icon(Icons.monetization_on, color: color),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide(color: color, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ANNULER'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = amountController.text.trim();
+              if (amount.isEmpty) return;
+              
+              Navigator.pop(context);
+              
+              if (method == 'Wave') {
+                // Deeplink Wave : ouvre l'app Wave ou le Play Store
+                const wavePackage = 'com.wave.personal';
+                final waveUrl = Uri.parse('https://play.google.com/store/apps/details?id=$wavePackage');
+                try {
+                  // Essayer d'ouvrir l'app Wave directement
+                  final appUri = Uri.parse('wave://');
+                  if (await canLaunchUrl(appUri)) {
+                    await launchUrl(appUri, mode: LaunchMode.externalApplication);
+                  } else {
+                    await launchUrl(waveUrl, mode: LaunchMode.externalApplication);
+                  }
+                } catch (_) {
+                  await launchUrl(waveUrl, mode: LaunchMode.externalApplication);
+                }
+              } else {
+                // Orange Money : ouvre l'app OM ou le Play Store
+                const omPackage = 'com.orange.money.senegal';
+                final omUrl = Uri.parse('https://play.google.com/store/apps/details?id=$omPackage');
+                try {
+                  final appUri = Uri.parse('orangemoney://');
+                  if (await canLaunchUrl(appUri)) {
+                    await launchUrl(appUri, mode: LaunchMode.externalApplication);
+                  } else {
+                    await launchUrl(omUrl, mode: LaunchMode.externalApplication);
+                  }
+                } catch (_) {
+                  await launchUrl(omUrl, mode: LaunchMode.externalApplication);
+                }
+              }
+              
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Effectuez le transfert de $amount FCFA via $method vers le compte TranSen.'),
+                    backgroundColor: color,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 5),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('OUVRIR $method'.toUpperCase()),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRechargeButton(BuildContext context, String name, Color color, IconData icon) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: () => _showRechargeDialog(context, name),
       icon: Icon(icon, color: color),
       label: Text(
         name,
