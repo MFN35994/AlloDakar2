@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 
@@ -20,6 +21,7 @@ admin.initializeApp({
 // Utiliser la base de données spécifiée 'transen'
 const db = getFirestore('transen');
 const app = express();
+app.use(cors());
 app.use(bodyParser.json());
 
 // Endpoint de santé pour Render
@@ -143,6 +145,7 @@ const SENEPAY_CONFIG = {
 // Endpoint pour créer une session de paiement (Payin)
 app.post('/api/payment/create-session', async (req, res) => {
     try {
+        console.log(`[Proxy] Création session: ${req.body.orderReference} - ${req.body.amount} FCFA`);
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions`, {
             method: 'POST',
             headers: {
@@ -153,6 +156,7 @@ app.post('/api/payment/create-session', async (req, res) => {
             body: JSON.stringify(req.body)
         });
         const data = await response.json();
+        console.log(`[Proxy] Réponse SenePay (${response.status}):`, JSON.stringify(data));
         res.status(response.status).send(data);
     } catch (error) {
         console.error("Erreur SenePay Session:", error);
