@@ -51,12 +51,18 @@ class SenePayService {
         final data = jsonDecode(response.body);
         return data['checkoutUrl'] as String?;
       } else {
-        debugPrint("SenePay Proxy Error: ${response.statusCode} - ${response.body}");
-        return null;
+        String errorMsg = "Erreur ${response.statusCode}";
+        try {
+          final errorData = jsonDecode(response.body);
+          errorMsg = errorData['error'] ?? errorData['message'] ?? errorMsg;
+        } catch (_) {}
+        debugPrint("SenePay Proxy Error: $errorMsg");
+        // On pourrait lever une exception pour la catcher dans l'UI
+        throw Exception(errorMsg);
       }
     } catch (e) {
       debugPrint("SenePay Proxy Exception: $e");
-      return null;
+      rethrow; // Laisser l'UI gérer l'erreur
     }
   }
 
