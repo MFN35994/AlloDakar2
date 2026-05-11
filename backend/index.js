@@ -90,9 +90,16 @@ app.post('/webhook/senepay', async (req, res) => {
 });
 
 app.post('/webhook/payout', async (req, res) => {
-    const { externalId, status, amount, internalId } = req.body;
+    // SenePay Payout webhook met les infos dans un objet 'data'
+    const payload = req.body.data || req.body;
+    const { externalId, status, amount, internalId } = payload;
 
     console.log(`[SenePay] Payout Webhook reçu: ${externalId} - Status: ${status}`);
+
+    if (status === 'Completed') {
+        console.log(`✅ Payout réussi: ${externalId}`);
+        return res.status(200).send("OK - Payout terminé");
+    }
 
     if (status === 'Failed' || status === 'Cancelled' || status === 'REJECTED') {
         try {
