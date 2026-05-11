@@ -39,11 +39,13 @@ class SenePayService {
         body["providerId"] = providerId;
       }
       
+      debugPrint("Appel Proxy Render: $url");
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
-      );
+      ).timeout(const Duration(seconds: 15));
+      debugPrint("Réponse Proxy Render: ${response.statusCode}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
