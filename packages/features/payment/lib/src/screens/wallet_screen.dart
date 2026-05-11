@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -290,23 +291,16 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Wrap(
-              spacing: 10,
+              spacing: 15,
               runSpacing: 10,
               alignment: WrapAlignment.center,
               children: [
                 _buildActionButton(
                   context,
-                  'Déposer (Wave)',
-                  Colors.lightBlue,
-                  Icons.add_circle_outline,
-                  () => _showRechargeDialog(context, 'Wave'),
-                ),
-                _buildActionButton(
-                  context,
-                  'Déposer (OM)',
+                  'Déposer',
                   TranSenColors.primaryGreen,
                   Icons.add_circle_outline,
-                  () => _showRechargeDialog(context, 'Orange Money'),
+                  () => _showRechargeDialog(context),
                 ),
                 _buildActionButton(
                   context,
@@ -411,29 +405,26 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
   }
 
-  void _showRechargeDialog(BuildContext context, String method) {
+  void _showRechargeDialog(BuildContext context) {
     final amountController = TextEditingController();
-    final Color color = method == 'Wave' ? Colors.lightBlue : TranSenColors.primaryGreen;
+    const Color color = TranSenColors.primaryGreen;
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
+        title: const Row(
           children: [
-            Icon(
-              method == 'Wave' ? Icons.waves : Icons.account_balance_wallet,
-              color: color,
-            ),
-            const SizedBox(width: 10),
-            Text('Recharger via $method'),
+            Icon(Icons.add_card, color: color),
+            SizedBox(width: 10),
+            Text('Recharger mon compte'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Entrez le montant à recharger. Vous serez redirigé vers l\'application $method.',
+              'Entrez le montant à recharger. Vous pourrez ensuite choisir votre moyen de paiement (Wave, OM, Carte, etc.) sur la page sécurisée.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
             const SizedBox(height: 20),
@@ -442,11 +433,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Montant (FCFA)',
-                prefixIcon: Icon(Icons.monetization_on, color: color),
+                prefixIcon: const Icon(Icons.monetization_on, color: color),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide(color: color, width: 2),
+                  borderSide: const BorderSide(color: color, width: 2),
                 ),
               ),
             ),
@@ -476,23 +467,35 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 builder: (context) => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
               );
 
+              // Timer de sécurité : si rien ne se passe après 20s, on ferme le loader quoi qu'il arrive
+              final safetyTimer = Timer(const Duration(seconds: 20), () {
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Le serveur met trop de temps à répondre. Vérifiez votre connexion.'))
+                  );
+                }
+              });
+
               try {
                 final auth = ref.read(authProvider);
                 final orderId = "DEP-${DateTime.now().millisecondsSinceEpoch}-${auth?.userId}";
                 
-                debugPrint("WalletScreen: Appel SenePayService...");
+                debugPrint("WalletScreen: Appel SenePayService pour $amount FCFA...");
                 final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
                   amount: amount,
                   orderId: orderId,
-                  description: "Dépôt Portefeuille TransPay via $method",
+                  description: "Dépôt Portefeuille TranSen",
                   customerName: auth?.name,
                   customerPhone: auth?.phone,
-                  providerId: method == 'Wave' ? 'WAVE' : 'ORANGE_MONEY',
+                  providerId: null, // SenePay affichera la liste des choix
                 );
-                debugPrint("WalletScreen: Réponse SenePay reçue: $checkoutUrl");
+                
+                safetyTimer.cancel();
+                debugPrint("WalletScreen: checkoutUrl reçu = $checkoutUrl");
 
                 if (context.mounted) {
-                  Navigator.of(context, rootNavigator: true).pop(); // Force le pop du dialog
+                  Navigator.of(context, rootNavigator: true).pop(); // Enlever loader
                 }
 
                 if (checkoutUrl != null) {
@@ -504,23 +507,26 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                       .doc(orderId)
                       .set({
                     'amount': amount,
-                    'method': method,
+                    'method': 'SenePay',
                     'status': 'Pending',
                     'createdAt': FieldValue.serverTimestamp(),
                   });
 
                   final uri = Uri.parse(checkoutUrl);
+                  debugPrint("WalletScreen: Lancement de l'URL: $checkoutUrl");
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Impossible de générer le lien de paiement. Réessayez.'))
+                      const SnackBar(content: Text('SenePay n\'a pas renvoyé de lien de paiement.'))
                     );
                   }
                 }
               } catch (e) {
+                safetyTimer.cancel();
+                debugPrint("WalletScreen: Exception catchée: $e");
                 if (context.mounted) {
-                  Navigator.pop(context); // Enlever loader
+                  Navigator.of(context, rootNavigator: true).pop();
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
                 }
               }
@@ -530,7 +536,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('PAYER AVEC $method'.toUpperCase()),
+            child: const Text('PROCÉDER AU PAIEMENT'),
           ),
         ],
       ),
