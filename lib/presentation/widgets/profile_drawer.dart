@@ -5,6 +5,10 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
 
+final userStreamProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, userId) {
+  return ref.watch(userRepositoryProvider).watchUser(userId);
+});
+
 
 class ProfileDrawer extends ConsumerWidget {
   const ProfileDrawer({super.key});
@@ -13,6 +17,7 @@ class ProfileDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final userId = auth?.userId ?? '';
+    final isDriver = auth?.role == 'driver';
     
     return Drawer(
       backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : const Color(0xFF1A1A1A),
@@ -38,6 +43,36 @@ class ProfileDrawer extends ConsumerWidget {
                   },
                 ),
 
+                if (isDriver) ...[
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.history,
+                    title: 'Mon Historique',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                    },
+                  ),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.card_giftcard,
+                    title: 'Parrainage & Gains',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
+                    },
+                  ),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.account_balance_wallet_outlined,
+                    title: 'Portefeuille TransPay',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                    },
+                  ),
+                ],
+
                 _buildMenuItem(
                   context: context,
                   icon: Icons.support_agent,
@@ -54,38 +89,6 @@ class ProfileDrawer extends ConsumerWidget {
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-                  },
-                ),
-
-                /* COMMENTÉ POUR LE LANCEMENT GRATUIT
-                if (auth?.role == 'driver')
-                  _buildMenuItem(
-                    context: context,
-                    icon: Icons.account_balance_wallet_outlined,
-                    title: 'Mon Portefeuille',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
-                    },
-                  ),
-                */
-
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.history,
-                  title: 'Mon historique',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
-                  },
-                ),
-                _buildMenuItem(
-                  context: context,
-                  icon: Icons.card_giftcard,
-                  title: 'Parrainage & Gains',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
                   },
                 ),
 
@@ -123,7 +126,7 @@ class ProfileDrawer extends ConsumerWidget {
   Widget _buildHeader(BuildContext context, WidgetRef ref, String userId, String? role) {
     if (userId.isEmpty) return const SizedBox.shrink();
 
-    final userStream = ref.watch(StreamProvider((ref) => ref.read(userRepositoryProvider).watchUser(userId)));
+    final userStream = ref.watch(userStreamProvider(userId));
 
     return userStream.when(
       data: (userData) {
@@ -207,6 +210,34 @@ class ProfileDrawer extends ConsumerWidget {
                   ],
                 ),
               const SizedBox(height: 15),
+              Consumer(
+                builder: (context, ref, child) {
+                  final wallet = ref.watch(walletProvider);
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.account_balance_wallet, color: Colors.white, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          "${wallet.balance.toInt()} FCFA",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              ),
+              const SizedBox(height: 15),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -228,14 +259,26 @@ class ProfileDrawer extends ConsumerWidget {
         );
       },
       loading: () => Container(
-        height: 200,
-        decoration: BoxDecoration(color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary),
-        child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+        width: double.infinity,
+        height: 250,
+        decoration: BoxDecoration(
+          color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
+          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40)),
+        ),
+        child: Center(
+          child: Image.asset('assets/images/logo_menu.png', height: 100),
+        ),
       ),
       error: (_, __) => Container(
-        height: 200,
-        decoration: BoxDecoration(color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary),
-        child: const Center(child: Text("Erreur de chargement", style: TextStyle(color: Colors.white))),
+        width: double.infinity,
+        height: 250,
+        decoration: BoxDecoration(
+          color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
+          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40)),
+        ),
+        child: const Center(
+          child: Text("Erreur de chargement", style: TextStyle(color: Colors.white70, fontSize: 12)),
+        ),
       ),
     );
   }

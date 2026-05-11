@@ -1,0 +1,1629 @@
+Documentation API SenePay
+Intégrez facilement les paiements mobile money (Wave, Orange Money, Free Money,
+MTN, Moov) dans votre site e-commerce.
+URL de base
+https://api.sene-pay.com
+
+1. Prérequis
+1.1 Créer un compte marchand
+1. Inscrivez-vous sur sene-pay.com
+2. Complétez votre profil marchand (KYC)
+3. Attendez la validation de votre compte
+1.2 Obtenir vos clés API
+Une fois votre compte validé:
+1. Connectez-vous à votre tableau de bord
+2. Allez dans Api & Dev → Clés API
+3. Cliquez sur Générer des clés
+4. Notez vos clés:
+X-Api-Key : Clé publique (identifiant)
+X-Api-Secret : Clé secrète (à garder confidentielle)
+
+Important: Ne partagez jamais votre X-Api-Secret . Elle doit rester côté serveur
+uniquement.
+
+2. Créer une session de paiement
+POST
+
+/api/v1/checkout/sessions
+
+Headers requis
+Content-Type: application/json
+X-Api-Key: votre_api_key
+X-Api-Secret: votre_api_secret
+
+Corps de la requête
+{
+"amount": 10000,
+"currency": "XOF",
+"orderReference": "CMD-12345",
+"description": "Achat sur MonSite.sn",
+"successUrl": "https://monsite.sn/paiement/success",
+"cancelUrl": "https://monsite.sn/paiement/cancel",
+"webhookUrl": "https://monsite.sn/api/webhooks/senepay",
+"metadata": {
+"client_id": "123",
+"product": "T-shirt"
+},
+"expiresInMinutes": 60
+}
+
+Paramètres
+Paramètre
+
+Type
+
+Requis
+
+Description
+
+amount
+
+number
+
+Oui
+
+Montant en XOF (min: 200, max: 10,000,000)
+
+currency
+
+string
+
+Non
+
+Devise (défaut: "XOF")
+
+country
+
+string
+
+Non
+
+Pays fixe (code ISO sur 2 lettres, ex: "SN" ).
+- Si ce champ est présent, la page de paiement affichera uniq
+- S’il est absent, le client pourra choisir son pays parmi tous c
+Liste des codes pays supportés : voir tableau ci-dessous.
+
+orderReference
+
+string
+
+Non
+
+Votre référence de commande
+
+description
+
+string
+
+Non
+
+Description affichée au client
+
+successUrl
+
+string
+
+Non
+
+URL de redirection après paiement réussi
+
+cancelUrl
+
+string
+
+Non
+
+URL de redirection si annulation
+
+Paramètre
+
+Type
+
+Requis
+
+Description
+
+webhookUrl
+
+string
+
+Non
+
+URL pour recevoir les notifications
+
+metadata
+
+object
+
+Non
+
+Données personnalisées (retournées dans le webhook)
+
+expiresInMinutes
+
+number
+
+Non
+
+Durée de validité (défaut: 1440 = 24h)
+
+Pays et méthodes de paiement supportés
+Pays
+
+Code pays
+
+Devises supportées
+
+Opérateurs disponibles
+
+Bénin
+
+BJ
+
+XOF
+
+moov, mtn, celtiis, coris
+
+Burkina Faso
+
+BF
+
+XOF
+
+moov, orange, wligdicash
+
+Cameroun
+
+CM
+
+XAF
+
+mtn, orange
+
+République du Congo
+
+CG
+
+XAF
+
+airtel, mtn
+
+Côte d'Ivoire
+
+CI
+
+XOF
+
+moov, mtn, orange, wave
+
+Gabon
+
+GA
+
+XAF
+
+airtel, moov
+
+Gambie
+
+GM
+
+GMD
+
+afrimoney
+
+Guinée
+
+GN
+
+GNF
+
+mtn, orange
+
+Guinée-Bissau
+
+GW
+
+XOF
+
+orange
+
+Mali
+
+ML
+
+XOF
+
+moov, orange
+
+Niger
+
+NE
+
+XOF
+
+airtel, wligdicash, moov, amanata, nita, zama
+
+R.D. Congo
+
+CD
+
+CDF, USD
+
+airtel, mpesa, orange, afrimoney, vodacom
+
+Sénégal
+
+SN
+
+XOF
+
+emoney, free, orange, wave
+
+Tchad
+
+TD
+
+XAF
+
+airtel, moov
+
+Togo
+
+TG
+
+XOF
+
+moov, tmoney
+
+Centrafrique
+
+CF
+
+XAF
+
+orange
+
+Note : les codes opérateurs sont à utiliser en minuscules (ex: "wave" ).
+Réponse succès (200)
+
+{
+"sessionToken": "chk_abc123xyz789",
+"checkoutUrl": "https://api.sene-pay.com/checkout?
+session=chk_abc123xyz789",
+"amount": 10000,
+"currency": "XOF",
+"orderReference": "CMD-12345",
+"status": "Open",
+"expiresAt": "2026-03-06T15:00:00Z",
+"createdAt": "2026-03-06T14:00:00Z"
+}
+
+Exemples d'intégration
+const response = await fetch('https://api.sene-pay.com/api/v1/checkout/sessions',
+{
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+'X-Api-Key': 'votre_api_key',
+'X-Api-Secret': 'votre_api_secret'
+},
+body: JSON.stringify({
+amount: 10000,
+orderReference: 'CMD-12345',
+successUrl: 'https://monsite.sn/success',
+webhookUrl: 'https://monsite.sn/webhooks/senepay'
+})
+});
+const data = await response.json();
+// Rediriger le client vers la page de paiement
+window.location.href = data.checkoutUrl;
+
+<?php
+$curl = curl_init();
+curl_setopt_array($curl, [
+CURLOPT_URL => "https://api.sene-pay.com/api/v1/checkout/sessions",
+CURLOPT_RETURNTRANSFER => true,
+CURLOPT_POST => true,
+CURLOPT_HTTPHEADER => [
+"Content-Type: application/json",
+
+"X-Api-Key: votre_api_key",
+"X-Api-Secret: votre_api_secret"
+],
+CURLOPT_POSTFIELDS => json_encode([
+"amount" => 10000,
+"orderReference" => "CMD-12345",
+"successUrl" => "https://monsite.sn/success",
+"webhookUrl" => "https://monsite.sn/webhooks/senepay"
+])
+]);
+$response = curl_exec($curl);
+$data = json_decode($response, true);
+// Rediriger le client
+header("Location: " . $data['checkoutUrl']);
+exit;
+
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+var client = new HttpClient();
+client.DefaultRequestHeaders.Add("X-Api-Key", "votre_api_key");
+client.DefaultRequestHeaders.Add("X-Api-Secret", "votre_api_secret");
+var payload = new
+{
+amount = 10000,
+orderReference = "CMD-12345",
+successUrl = "https://monsite.sn/success",
+webhookUrl = "https://monsite.sn/webhooks/senepay"
+};
+var json = JsonSerializer.Serialize(payload);
+var content = new StringContent(json, Encoding.UTF8, "application/json");
+var response = await client.PostAsync(
+"https://api.sene-pay.com/api/v1/checkout/sessions", content);
+var result = await response.Content.ReadAsStringAsync();
+var data = JsonSerializer.Deserialize<JsonElement>(result);
+var checkoutUrl = data.GetProperty("checkoutUrl").GetString();
+// Rediriger le client vers checkoutUrl
+
+import requests
+response = requests.post(
+'https://api.sene-pay.com/api/v1/checkout/sessions',
+headers={
+'Content-Type': 'application/json',
+'X-Api-Key': 'votre_api_key',
+'X-Api-Secret': 'votre_api_secret'
+},
+json={
+'amount': 10000,
+'orderReference': 'CMD-12345',
+'successUrl': 'https://monsite.sn/success',
+'webhookUrl': 'https://monsite.sn/webhooks/senepay'
+}
+)
+data = response.json()
+checkout_url = data['checkoutUrl']
+# Rediriger le client vers checkout_url
+
+3. Vérifier le statut d'une session
+GET
+/api/v1/checkout/sessions/{sessionToken}
+
+Headers requis
+X-Api-Key: votre_api_key
+X-Api-Secret: votre_api_secret
+
+Réponse
+{
+"sessionToken": "chk_abc123xyz789",
+"status": "Complete",
+"amount": 10000,
+"currency": "XOF",
+"orderReference": "CMD-12345",
+"createdAt": "2026-03-06T14:00:00Z",
+"completedAt": "2026-03-06T14:05:00Z",
+
+"payment": {
+"transactionId": "PAY_xyz789",
+"operator": "wave",
+"country": "SN",
+"phoneNumber": "77*****67",
+"amountPaid": 10000,
+"fees": 150,
+"netAmount": 9850,
+"paidAt": "2026-03-06T14:05:00Z"
+}
+}
+
+Statuts possibles
+Statut
+
+Description
+
+Open
+
+Session créée, en attente de paiement
+
+Pending
+
+Paiement initié, en cours de traitement
+
+Complete
+
+Paiement réussi
+
+Failed
+
+Paiement échoué
+
+Cancelled
+
+Annulé par le client
+
+Expired
+
+Session expirée
+
+4. Notifications Webhook
+Quand un paiement est complété ou échoue, SenePay envoie une notification HTTP
+POST à votre webhookUrl .
+Payload du webhook
+{
+"event": "checkout.session.complete",
+"sessionToken": "chk_abc123xyz789",
+"orderReference": "CMD-12345",
+"status": "Completed",
+"amount": 10000,
+"currency": "XOF",
+"fees": 150,
+
+"netAmount": 9850,
+"transactionId": "PAY_xyz789",
+"metadata": {
+"client_id": "123",
+"product": "T-shirt"
+},
+"timestamp": "2026-03-06T14:05:00Z"
+}
+
+Types d'événements
+Événement
+
+Description
+
+checkout.session.completed
+
+Paiement réussi
+
+checkout.session.failed
+
+Paiement échoué
+
+checkout.session.expired
+
+Session expirée sans paiement
+
+Exemple de traitement
+// Express.js
+app.post('/api/webhooks/senepay', (req, res) => {
+const payload = req.body;
+if (payload.event === 'checkout.session.completed') {
+// Paiement réussi
+const orderRef = payload.orderReference;
+const netAmount = payload.netAmount;
+// Mettre à jour votre base de données
+// updateOrder(orderRef, { status: 'paid' });
+}
+if (payload.event === 'checkout.session.failed') {
+// Paiement échoué - notifier le client
+}
+// Toujours répondre 200 OK
+res.status(200).json({ received: true });
+});
+
+<?php
+$payload = json_decode(file_get_contents('php://input'), true);
+
+if ($payload['event'] === 'checkout.session.completed') {
+// Paiement réussi
+$orderRef = $payload['orderReference'];
+$netAmount = $payload['netAmount'];
+// Mettre à jour la commande dans votre BDD
+// $db->query("UPDATE orders SET status='paid' WHERE
+reference='$orderRef'");
+}
+// Répondre 200 OK
+http_response_code(200);
+echo json_encode(['received' => true]);
+
+// ASP.NET Core Controller
+[HttpPost("/api/webhooks/senepay")]
+public IActionResult HandleWebhook([FromBody] JsonElement payload)
+{
+var eventType = payload.GetProperty("event").GetString();
+if (eventType == "checkout.session.completed")
+{
+var orderRef =
+payload.GetProperty("orderReference").GetString();
+var netAmount = payload.GetProperty("netAmount").GetDecimal();
+// Mettre à jour la commande
+// _orderService.MarkAsPaid(orderRef);
+}
+return Ok(new { received = true });
+}
+
+# Flask
+@app.route('/api/webhooks/senepay', methods=['POST'])
+def handle_webhook():
+payload = request.get_json()
+if payload['event'] == 'checkout.session.completed':
+order_ref = payload['orderReference']
+net_amount = payload['netAmount']
+# Mettre à jour la commande
+
+# update_order(order_ref, status='paid')
+return jsonify({'received': True}), 200
+
+Bonnes pratiques:
+Toujours répondre 200 OK rapidement
+Vérifier que le sessionToken existe dans votre système
+Gérer les doublons (le webhook peut être envoyé plusieurs fois)
+
+5. Gestion des erreurs
+Codes HTTP
+Code
+
+Description
+
+400
+
+Requête invalide. Le corps de la réponse contient un objet JSON avec :
+code : "INVALID_PARAMETER"
+message : description détaillée de l'erreur (ex: "Pays non supporté", "Devise incompatible")
+
+401
+
+Authentification échouée (vérifiez vos clés API)
+
+404
+
+Ressource non trouvée
+
+500
+
+Erreur serveur (contactez le support)
+
+Format des erreurs
+{
+"error": "Description de l'erreur"
+}
+
+6. Environnement de test
+Appels API
+
+Vous appelez les mêmes endpoints qu'en production. Notre système détecte
+automatiquement l'environnement (Sandbox ou Production) en fonction de vos clés API :
+Clés Sandbox (ex: pk_test_* / sk_test_* ) → Environnement de test
+Clés Production (ex: pk_live_* / sk_live_* ) → Environnement réel
+Numéros de test (Sandbox)
+En mode Sandbox, utilisez les numéros de téléphone suivants pour simuler différents
+comportements de paiement. L'API reproduira le comportement correspondant (succès,
+échec, attente).
+Pays
+
+Numéro à saisir
+(sans l'indicatif, déjà pré‑rempli)
+
+Résultat simulé
+
+Sénégal (SN)
+
+700000001
+
+Succès (Completed)
+
+Sénégal (SN)
+
+700000002
+
+En attente (Pending → Completed après 10s)
+
+Sénégal (SN)
+
+700000003
+
+Échec (Failed)
+
+Côte d'Ivoire (CI)
+
+210000001
+
+Succès
+
+Côte d'Ivoire (CI)
+
+210000002
+
+En attente
+
+Côte d'Ivoire (CI)
+
+210000003
+
+Échec
+
+Burkina Faso (BF)
+
+60000001
+
+Succès
+
+Burkina Faso (BF)
+
+60000002
+
+En attente
+
+Burkina Faso (BF)
+
+60000003
+
+Échec
+
+Cameroun (CM)
+
+660000001
+
+Succès
+
+Cameroun (CM)
+
+660000002
+
+En attente
+
+Cameroun (CM)
+
+660000003
+
+Échec
+
+Guinée (GN)
+
+600000001
+
+Succès
+
+Guinée (GN)
+
+600000002
+
+En attente
+
+Guinée (GN)
+
+600000003
+
+Échec
+
+R.D. Congo (CD) – CDF
+
+120000011
+
+Succès
+
+Pays
+
+Numéro à saisir
+(sans l'indicatif, déjà pré‑rempli)
+
+Résultat simulé
+
+R.D. Congo (CD) – CDF
+
+120000012
+
+En attente
+
+R.D. Congo (CD) – CDF
+
+120000013
+
+Échec
+
+R.D. Congo (CD) – USD
+
+120000001
+
+Succès
+
+R.D. Congo (CD) – USD
+
+120000002
+
+En attente
+
+R.D. Congo (CD) – USD
+
+120000003
+
+Échec
+
+Togo (TG)
+
+60000001
+
+Succès
+
+Togo (TG)
+
+60000002
+
+En attente
+
+Togo (TG)
+
+60000003
+
+Échec
+
+Bénin (BJ)
+
+60000001
+
+Succès
+
+Bénin (BJ)
+
+60000002
+
+En attente
+
+Bénin (BJ)
+
+60000003
+
+Échec
+
+Mali (ML)
+
+60000001
+
+Succès
+
+Mali (ML)
+
+60000002
+
+En attente
+
+Mali (ML)
+
+60000003
+
+Échec
+
+Niger (NE)
+
+60000001
+
+Succès
+
+Niger (NE)
+
+60000002
+
+En attente
+
+Niger (NE)
+
+60000003
+
+Échec
+
+Tchad (TD)
+
+60000001
+
+Succès
+
+Tchad (TD)
+
+60000002
+
+En attente
+
+Tchad (TD)
+
+60000003
+
+Échec
+
+Centrafrique (CF)
+
+60000001
+
+Succès
+
+Centrafrique (CF)
+
+60000002
+
+En attente
+
+Centrafrique (CF)
+
+60000003
+
+Échec
+
+Pays
+
+Numéro à saisir
+(sans l'indicatif, déjà pré‑rempli)
+
+Résultat simulé
+
+Gabon (GA)
+
+60000001
+
+Succès
+
+Gabon (GA)
+
+60000002
+
+En attente
+
+Gabon (GA)
+
+60000003
+
+Échec
+
+Congo (CG)
+
+60000001
+
+Succès
+
+Congo (CG)
+
+60000002
+
+En attente
+
+Congo (CG)
+
+60000003
+
+Échec
+
+Gambie (GM)
+
+60000001
+
+Succès
+
+Gambie (GM)
+
+60000002
+
+En attente
+
+Gambie (GM)
+
+60000003
+
+Échec
+
+Guinée-Bissau (GW)
+
+60000001
+
+Succès
+
+Guinée-Bissau (GW)
+
+60000002
+
+En attente
+
+Guinée-Bissau (GW)
+
+60000003
+
+Échec
+
+Test des codes OTP
+Pour les opérateurs nécessitant un OTP (Orange, MTN, Moov), utilisez n'importe quel
+code à 6 chiffres (ex: 123456 ) pour simuler un succès, sauf les codes suivants qui
+déclenchent un échec :
+000000
+111111
+222222
+333333
+444444
+
+Important : Les numéros de test doivent être saisis sans l'indicatif (seulement les
+chiffres après l'indicatif). L'indicatif est automatiquement pré‑rempli selon le pays
+choisi. Par exemple, pour le Sénégal, saisissez 700000001 (l'indicatif +221 est déjà
+affiché).
+
+Webhooks en mode test
+Les webhooks sont envoyés normalement en mode Sandbox. Traitez-les exactement
+comme en production et répondez rapidement avec un 200 OK . Les mêmes règles de
+signature et d'idempotence s'appliquent.
+Conseil: Testez d'abord en Sandbox, vérifiez les webhooks et la logique
+d'idempotence, puis passez en production.
+
+7. Checklist d'intégration
+Compte marchand créé et validé
+Clés API générées
+Endpoint de création de session implémenté
+Redirection vers checkoutUrl fonctionnelle
+Webhook endpoint configuré et accessible
+Traitement des événements webhook
+Gestion des erreurs
+Tests effectués
+
+API Payout - Envoi d'argent
+Envoyez de l'argent vers des comptes mobile money (Wave, Orange Money, MTN, Moov,
+Free Money, etc.) pour vos besoins de paiement de fournisseurs, remboursements
+clients, commissions d'affiliés, ou tout autre cas d'usage de décaissement.
+URL de base
+https://api.sene-pay.com/api/v1/payouts
+
+Cas d'usage
+Marketplaces - Payer les vendeurs automatiquement
+Remboursements - Rembourser les clients vers leur mobile money
+Salaires - Payer les employés ou freelances
+Commissions - Distribuer les commissions d'affiliés
+Cashback - Envoyer des récompenses aux clients
+
+1. Authentification Payout
+L'API Payout utilise la même authentification par clés API que l'API Payin.
+Headers requis
+Header
+
+Description
+
+X-Api-Key
+
+Votre clé API publique
+
+X-Api-Secret
+
+Votre clé API secrète
+
+Content-Type
+
+application/json
+
+Important: Gardez vos clés API secrètes. Utilisez les clés Sandbox pour les tests et
+les clés Production pour les paiements réels.
+
+2. Envoi simple
+Envoyez de l'argent vers un seul bénéficiaire.
+POST
+/api/v1/payouts
+
+Corps de la requête
+
+Champ
+
+Type
+
+Requis
+
+Description
+
+externalId
+
+string
+
+✓
+
+Identifiant unique de votre côté (idempotence)
+
+amount
+
+decimal
+
+✓
+
+Montant en XOF (min: 500, max: 5 000 000)
+
+recipientPhone
+
+string
+
+✓
+
+Numéro du bénéficiaire (ex: "221771234567")
+
+recipientName
+
+string
+
+country
+
+string
+
+✓
+
+Code pays ISO (SN, CI, ML, BF, BJ, TG, GN, CM)
+
+operator
+
+string
+
+✓
+
+Opérateur mobile (WAVE, ORANGE_MONEY, MTN, MOOV, FREE_
+
+description
+
+string
+
+Description du paiement
+
+callbackUrl
+
+string
+
+URL de callback pour recevoir le résultat
+
+metadata
+
+object
+
+Données personnalisées (retournées dans le callback)
+
+Nom du bénéficiaire (pour traçabilité)
+
+Exemples de code
+curl -X POST https://api.sene-pay.com/api/v1/payouts \
+-H "X-Api-Key: pk_live_xxxx" \
+-H "X-Api-Secret: sk_live_xxxx" \
+-H "Content-Type: application/json" \
+-d '{
+"externalId": "PAY-2024-001",
+"amount": 25000,
+"recipientPhone": "221771234567",
+"recipientName": "Amadou Diallo",
+"country": "SN",
+"operator": "WAVE",
+"description": "Commission vendeur Mars 2024",
+"callbackUrl": "https://votre-site.com/webhooks/payout",
+"metadata": {
+"vendorId": "V-123",
+"orderId": "ORD-456"
+}
+}'
+
+const axios = require('axios');
+const response = await axios.post(
+'https://api.sene-pay.com/api/v1/payouts',
+
+{
+externalId: 'PAY-2024-001',
+amount: 25000,
+recipientPhone: 'Amadou Diallo',
+country: 'WAVE',
+description: 'https://votre-site.com/webhooks/payout',
+metadata: { vendorId: 'X-Api-Key': 'pk_live_xxxx',
+'X-Api-Secret': 'sk_live_xxxx'
+}
+}
+);
+console.log(response.data);
+
+<?php
+$ch = curl_init('https://api.sene-pay.com/api/v1/payouts');
+curl_setopt_array($ch, [
+CURLOPT_POST => true,
+CURLOPT_RETURNTRANSFER => true,
+CURLOPT_HTTPHEADER => [
+'X-Api-Key: pk_live_xxxx',
+'X-Api-Secret: sk_live_xxxx',
+'Content-Type: application/json'
+],
+CURLOPT_POSTFIELDS => json_encode([
+'externalId' => 'PAY-2024-001',
+25000,
+'221771234567',
+'Amadou Diallo',
+'SN',
+'WAVE',
+'Commission vendeur',
+'https://votre-site.com/webhooks/payout'
+])
+]);
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+echo $data['internalId'];
+
+import requests
+
+response = requests.post(
+'https://api.sene-pay.com/api/v1/payouts',
+headers={
+'X-Api-Key': 'pk_live_xxxx',
+'X-Api-Secret': 'sk_live_xxxx'
+},
+json={
+'PAY-2024-001',
+25000,
+'221771234567',
+'Amadou Diallo',
+'SN',
+'WAVE',
+'Commission vendeur Mars 2024',
+'https://votre-site.com/webhooks/payout',
+'vendorId': "internalId": "DISB_abc123xyz",
+"externalId": "PAY-2024-001",
+"status": "Processing",
+"amount": 25000,
+"fees": 1075,
+"totalDebited": 26075,
+"recipientPhone": "221771234567",
+"country": "SN",
+"operator": "WAVE",
+"createdAt": "2024-03-15T10:30:00Z",
+"message": "Payout initiated successfully"
+}
+
+Statuts possibles
+Statut
+
+Description
+
+Pending
+
+En attente de traitement
+
+Processing
+
+En cours d'exécution chez l'opérateur
+
+Submitted
+
+Soumis à l'opérateur mobile
+
+Completed
+
+Paiement effectué avec succès
+
+Failed
+
+Échec du paiement
+
+Cancelled
+
+Annulé (remboursé au wallet)
+
+3. Envoi en lot (Batch)
+Envoyez de l'argent à plusieurs bénéficiaires en une seule requête (max 100 par lot).
+POST
+/api/v1/payouts/batch
+
+Corps de la requête
+Champ
+
+Type
+
+Description
+
+batchExternalId
+
+string
+
+Identifiant unique du lot
+
+callbackUrl
+
+string
+
+URL pour recevoir les résultats
+
+items
+
+array
+
+Liste des paiements (max 100)
+
+Exemple
+curl -X POST https://api.sene-pay.com/api/v1/payouts/batch \
+-H "X-Api-Key: pk_live_xxxx" \
+-H "X-Api-Secret: sk_live_xxxx" \
+-H "Content-Type: application/json" \
+-d '{
+"batchExternalId": "BATCH-2024-001",
+"callbackUrl": "https://votre-site.com/webhooks/payout",
+"items": [
+{
+"externalId": "PAY-001",
+"amount": 15000,
+"recipientPhone": "221771111111",
+"recipientName": "Mamadou Sow",
+"country": "SN",
+"operator": "WAVE"
+},
+{
+"externalId": "PAY-002",
+"amount": 25000,
+"recipientPhone": "221772222222",
+"recipientName": "Fatou Diop",
+"country": "SN",
+"operator": "ORANGE_MONEY"
+},
+
+{
+"externalId": "PAY-003",
+"amount": 10000,
+"recipientPhone": "22507123456",
+"recipientName": "Kouassi Jean",
+"country": "CI",
+"operator": "MTN"
+}
+]
+}'
+
+Réponse
+{
+"batchId": "BATCH_abc123",
+"batchExternalId": "BATCH-2024-001",
+"totalItems": 3,
+"acceptedItems": 3,
+"rejectedItems": 0,
+"totalAmount": 50000,
+"totalFees": 2150,
+"totalDebited": 52150,
+"items": [
+{
+"internalId": "DISB_item001",
+"externalId": "PAY-001",
+"status": "Processing",
+"amount": 15000
+},
+// ... autres items
+]
+}
+
+Consulter le statut d'un lot
+GET
+/api/v1/payouts/batch/{batchId}
+
+4. Consulter le statut
+
+Par ID interne
+GET
+/api/v1/payouts/{internalId}
+
+Réponse
+{
+"internalId": "DISB_abc123xyz",
+"externalId": "PAY-2024-001",
+"status": "Completed",
+"amount": 25000,
+"fees": 1075,
+"totalDebited": 26075,
+"recipientPhone": "221771234567",
+"recipientName": "Amadou Diallo",
+"country": "SN",
+"operator": "WAVE",
+"description": "Commission vendeur Mars 2024",
+"providerTransactionId": "TXN123456789",
+"createdAt": "2024-03-15T10:30:00Z",
+"completedAt": "2024-03-15T10:30:45Z",
+"metadata": {
+"vendorId": "V-123"
+}
+}
+
+Lister les payouts
+GET
+/api/v1/payouts
+
+Paramètres de requête (optionnels)
+Paramètre
+
+Description
+
+status
+
+Filtrer par statut (Pending, Processing, Completed, Failed)
+
+from
+
+Date de début (ISO 8601)
+
+to
+
+Date de fin (ISO 8601)
+
+Paramètre
+
+Description
+
+page
+
+Numéro de page (défaut: 1)
+
+pageSize
+
+Taille de page (défaut: 20, max: 100)
+
+Estimer les frais
+POST
+/api/v1/payouts/estimate
+
+// Requête
+{
+"amount": 25000,
+"country": "SN",
+"operator": "WAVE"
+}
+// Réponse
+{
+"amount": 25000,
+"fees": 1075,
+"totalDebited": 26075,
+"currency": "XOF"
+}
+
+5. Opérateurs disponibles
+GET
+/api/v1/payouts/operators
+
+Opérateurs par pays
+Pays
+
+Code
+
+Opérateurs
+
+Sénégal
+
+SN
+
+WAVE, ORANGE_MONEY, FREE_MONEY, EXPRESSO
+
+Côte d'Ivoire
+
+CI
+
+WAVE, ORANGE_MONEY, MTN, MOOV
+
+Pays
+
+Code
+
+Opérateurs
+
+Mali
+
+ML
+
+WAVE, ORANGE_MONEY, MOOV
+
+Burkina Faso
+
+BF
+
+WAVE, ORANGE_MONEY, MOOV
+
+Bénin
+
+BJ
+
+MTN, MOOV
+
+Togo
+
+TG
+
+TMONEY, MOOV
+
+Guinée
+
+GN
+
+ORANGE_MONEY, MTN
+
+Cameroun
+
+CM
+
+ORANGE_MONEY, MTN
+
+6. Webhooks Payout
+Recevez des notifications en temps réel sur le statut de vos payouts.
+Événements
+Événement
+
+Description
+
+payout.completed
+
+Le paiement a été effectué avec succès
+
+payout.failed
+
+Le paiement a échoué
+
+Payload du webhook
+{
+"event": "payout.completed",
+"timestamp": "2024-03-15T10:30:45Z",
+"data": {
+"internalId": "DISB_abc123xyz",
+"externalId": "PAY-2024-001",
+"status": "Completed",
+"amount": 25000,
+"fees": 1075,
+"recipientPhone": "221771234567",
+"country": "SN",
+"operator": "WAVE",
+"providerTransactionId": "TXN123456789",
+"completedAt": "2024-03-15T10:30:45Z",
+"metadata": {
+
+"vendorId": "V-123"
+}
+}
+}
+
+Vérifier la signature
+Le webhook inclut un header X-Webhook-Signature pour vérifier l'authenticité du
+message.
+// Calculer la signature attendue
+const crypto = require('crypto');
+const expectedSignature = crypto
+.createHmac('sha256', API_SECRET)
+.update(rawBody)
+.digest('hex');
+if (receivedSignature !== expectedSignature) {
+throw new Error('Invalid webhook signature');
+}
+
+Réponse attendue: Retournez un code HTTP 200 pour confirmer la réception. En
+cas d'échec, le webhook sera réessayé jusqu'à 3 fois.
+
+7. Limites et quotas
+GET
+/api/v1/payouts/limits
+
+Limites par défaut
+Limite
+
+Valeur
+
+Montant minimum
+
+500 XOF
+
+Montant maximum par payout
+
+5 000 000 XOF
+
+Payouts par jour
+
+100
+
+Limite
+
+Valeur
+
+Volume quotidien max
+
+50 000 000 XOF
+
+Items par batch
+
+100
+
+Augmenter les limites: Contactez support@sene-pay.com pour demander une
+augmentation de vos limites.
+
+8. Environnement Sandbox
+Testez vos intégrations sans effectuer de vrais paiements. Utilisez vos clés API Sandbox.
+Appels API
+Vous appelez les mêmes endpoints qu'en production. Notre système détecte
+automatiquement l'environnement (Sandbox ou Production) en fonction de vos clés API :
+Clés Sandbox (ex: pk_test_* / sk_test_* ) → Environnement de test
+Clés Production (ex: pk_live_* / sk_live_* ) → Environnement réel
+Comportement du Sandbox
+En mode Sandbox, la plupart des validations métier (montant min/max, pays/opérateur,
+idempotence via externalId , limites journalières, KYC/account status) restent actives
+pour que vos tests restent fidèles à la production. Toutefois :
+La vérification et le débit réel du wallet sont ignorés en Sandbox : vous n'avez pas
+besoin d'un solde réel et vous n'avez pas besoin de numéros spécifiques pour tester.
+Les appels au provider sont simulés et retournent généralement un succès.
+Les webhooks et callbacks sont envoyés normalement (simulés) pour que vous
+puissiez tester vos handlers.
+Erreurs courantes (exemples)
+Chaque erreur expose un code stable exploitable par vos intégrations (champ code ) et
+un statut HTTP approprié.
+
+HTTP
+
+Code
+
+Description
+
+Cause
+
+401
+
+INVALID_API_KEY
+
+Authentification échouée
+
+Clé publique/privée manquante
+
+400
+
+DUPLICATE_EXTERNAL_ID
+
+Identifiant de transaction dupliqué
+
+externalId déjà utilisé — as
+
+400
+
+INVALID_AMOUNT
+
+Montant invalide
+
+Montant hors plage autorisée (
+
+400
+
+UNSUPPORTED_COUNTRY
+
+Pays non supporté
+
+Le code pays fourni n'est pas p
+
+400
+
+UNSUPPORTED_OPERATOR
+
+Opérateur non disponible
+
+L'opérateur choisi n'est pas su
+
+400
+
+INSUFFICIENT_BALANCE
+
+Solde insuffisant
+
+Le wallet du marchand ne cont
+
+403
+
+KYC_NOT_VERIFIED
+
+KYC non vérifié
+
+Le profil marchand n'a pas de
+
+403
+
+ACCOUNT_NOT_ACTIVE
+
+Compte non actif
+
+Le compte marchand est suspe
+
+429
+
+DAILY_LIMIT_REACHED
+
+Limite quotidienne atteinte
+
+Nombre ou montant de décaiss
+
+502
+
+PROVIDER_ERROR
+
+Erreur fournisseur / provider
+
+Le provider (AfribaPay, Money
+
+500
+
+INTERNAL_ERROR
+
+Erreur interne
+
+Erreur serveur non prévue — c
+
+Besoin d'aide? support@sene-pay.com
+
+

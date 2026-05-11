@@ -64,13 +64,13 @@ class ProfileScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: Colors.grey[200],
+                              color: Theme.of(context).brightness == Brightness.light ? Colors.grey[200] : Colors.grey[800],
                               shape: BoxShape.circle,
                             ),
-                            child: const CircleAvatar(
+                            child: CircleAvatar(
                               radius: 60,
-                              backgroundColor: Colors.white,
-                              child: Icon(Icons.person, size: 70, color: Colors.grey),
+                              backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey[900],
+                              child: const Icon(Icons.person, size: 70, color: Colors.grey),
                             ),
                           ),
                           Positioned(
@@ -89,9 +89,9 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 30),
-                    _buildInfoCard('Nom complet', name, Icons.person_outline, trailing: isVerified ? const Icon(Icons.verified, color: Colors.blue, size: 20) : null),
-                    _buildInfoCard('Téléphone', phone, Icons.phone_outlined),
-                    _buildInfoCard('Rôle', auth?.role.toUpperCase() ?? '', Icons.badge_outlined),
+                    _buildInfoCard(context, 'Nom complet', name, Icons.person_outline, trailing: isVerified ? const Icon(Icons.verified, color: Colors.blue, size: 20) : null),
+                    _buildInfoCard(context, 'Téléphone', phone, Icons.phone_outlined),
+                    _buildInfoCard(context, 'Rôle', auth?.role.toUpperCase() ?? '', Icons.badge_outlined),
                     
                     if (auth?.role == 'driver' && !isVerified) ...[
                       const SizedBox(height: 30),
@@ -112,9 +112,9 @@ class ProfileScreen extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            const Text(
+                            Text(
                               "Le module de vérification des documents (CNI, Permis) est en cours de construction. Vous pourrez bientôt télécharger vos documents directement dans l'application.",
-                              style: TextStyle(fontSize: 13, color: Colors.black87),
+                              style: TextStyle(fontSize: 13, color: Theme.of(context).brightness == Brightness.light ? Colors.black87 : Colors.white70),
                             ),
                             const SizedBox(height: 15),
                             ElevatedButton.icon(
@@ -227,12 +227,13 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoCard(String label, String value, IconData icon, {Widget? trailing}) {
+  Widget _buildInfoCard(BuildContext context, String label, String value, IconData icon, {Widget? trailing}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.grey[900] : Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -250,8 +251,15 @@ class ProfileScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(label, style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 12)),
+                Text(
+                  value, 
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 16,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
               ],
             ),
           ),

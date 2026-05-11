@@ -1,6 +1,3 @@
-import "package:flutter/foundation.dart";
-import "package:firebase_core/firebase_core.dart";
-import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:math';
 

@@ -3,6 +3,7 @@ import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/senepay_service.dart';
 
 class PaymentRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
@@ -75,6 +76,127 @@ class PaymentRepository {
       final data = doc.data() as Map<String, dynamic>;
       return (data['walletBalance'] ?? 0).toDouble();
     });
+  }
+
+  Future<String?> createSenePaySession({
+    required double amount,
+    required String orderId,
+    required String description,
+    String? customerName,
+    String? customerPhone,
+    String? providerId,
+  }) async {
+    return SenePayService().createCheckoutSession(
+      amount: amount,
+      orderId: orderId,
+      description: description,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      providerId: providerId,
+    );
+  }
+
+  Future<Map<String, dynamic>?> requestPayout({
+    required String userId,
+    required double amount,
+    required String recipientPhone,
+    required String recipientName,
+    required String operator,
+    String? description,
+  }) async {
+    try {
+      // 1. Vérifier le solde
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final currentBalance = (userDoc.data()?['walletBalance'] ?? 0).toDouble();
+      
+      if (currentBalance < amount) {
+        throw Exception("Solde insuffisant pour ce retrait.");
+      }
+
+      // 2. Créer le payout via SenePay
+      final externalId = "PO-${DateTime.now().millisecondsSinceEpoch}-$userId";
+      final result = await SenePayService().createPayout(
+        externalId: externalId,
+        amount: amount,
+        recipientPhone: recipientPhone,
+        recipientName: recipientName,
+        operator: operator,
+        description: description ?? "Retrait TranSen",
+        metadata: {"userId": userId},
+      );
+
+      if (result != null && result['internalId'] != null) {
+        // 3. Enregistrer dans Firestore
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('payouts')
+            .doc(result['internalId'])
+            .set({
+          ...result,
+          'requestedAt': FieldValue.serverTimestamp(),
+          'status': result['status'] ?? 'Processing',
+        });
+
+        // Optionnel : On pourrait déduire le montant immédiatement ou attendre le callback
+        // Pour TranSen, on va déduire immédiatement pour éviter les doubles retraits
+        await updateWalletBalance(userId, -amount, "Retrait en cours : ${result['internalId']}");
+      }
+      
+      return result;
+    } catch (e) {
+      debugPrint("Erreur lors de la demande de payout: $e");
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> syncPayoutStatus(String userId, String internalId) async {
+    final status = await SenePayService().getPayoutStatus(internalId);
+    if (status != null) {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('payouts')
+          .doc(internalId)
+          .update({
+        'status': status['status'],
+        'updatedAt': FieldValue.serverTimestamp(),
+        if (status['completedAt'] != null) 'completedAt': status['completedAt'],
+      });
+
+      // Si le payout a échoué, on recrédite le wallet
+      if (status['status'] == 'Failed' || status['status'] == 'Cancelled') {
+         final amount = (status['amount'] as num).toDouble();
+         await updateWalletBalance(userId, amount, "Remboursement retrait échoué : $internalId");
+      }
+    }
+    return status;
+  }
+
+  Future<bool> verifyAndCreditDeposit(String userId, String orderReference) async {
+    try {
+      // 1. Vérifier si déjà traité (Idempotence)
+      final existing = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('transactions')
+          .where('description', isEqualTo: "Dépôt SenePay réussi : $orderReference")
+          .get();
+
+      if (existing.docs.isNotEmpty) return true;
+
+      // 2. Vérifier auprès de SenePay
+      final session = await SenePayService().checkCheckoutStatus(orderReference);
+      if (session != null && (session['status'] == 'Completed' || session['status'] == 'PAID')) {
+        final amount = (session['amount'] as num).toDouble();
+        await updateWalletBalance(userId, amount, "Dépôt SenePay réussi : $orderReference");
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Erreur vérification dépôt: $e");
+      return false;
+    }
   }
 }
 

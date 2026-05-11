@@ -265,14 +265,36 @@ class _DriverPoolDetailSheetState
                                       phoneToCall = data['phone'];
                                     }
                                   }
-                                  return IconButton(
-                                    icon: const Icon(Icons.phone,
-                                        color: TranSenColors.primaryGreen,
-                                        size: 20),
-                                    onPressed: () =>
-                                        DeviceUtils.launchPhoneCall(phoneToCall),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
+                                  return Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.message_outlined, color: Colors.green, size: 20),
+                                        onPressed: () => DeviceUtils.launchWhatsApp(phoneToCall),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      IconButton(
+                                        icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen, size: 20),
+                                        onPressed: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => ChatScreen(
+                                            tripId: pool.id, 
+                                            otherPartyName: name,
+                                            passengerId: entry.key,
+                                          )),
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      IconButton(
+                                        icon: const Icon(Icons.phone, color: Colors.blue, size: 20),
+                                        onPressed: () => DeviceUtils.launchPhoneCall(phoneToCall),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                    ],
                                   );
                                 }
                               ),
@@ -290,7 +312,7 @@ class _DriverPoolDetailSheetState
                       iconColor: Colors.amber.shade700,
                       label: 'Gains estimés',
                       value:
-                          '${(pool.currentFilling * 1000).toInt()} FCFA (commission incluse)',
+                          '${(pool.currentFilling * 10000).toInt()} FCFA (commission incluse)',
                     ),
                   ]),
 

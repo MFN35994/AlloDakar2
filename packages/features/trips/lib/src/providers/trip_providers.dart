@@ -121,3 +121,7 @@ final driverActiveDeliveriesProvider = StreamProvider<List<TripModel>>((ref) {
         }).map((doc) => TripModel.fromFirestore(doc)).toList();
       });
 });
+
+final tripHistoryProvider = StreamProvider.family<List<TripModel>, String>((ref, userId) {
+  return ref.watch(tripRepositoryProvider).watchUserTrips(userId);
+});

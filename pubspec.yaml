@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   transen_core:
     path: packages/core
   transen_auth:
@@ -62,10 +64,15 @@ flutter_launcher_icons:
   remove_alpha_ios: true
 
 flutter:
+  generate: true
   uses-material-design: true
 
   assets:
     - assets/images/logo.png
+    - assets/images/logo_menu.png
+    - assets/images/wave.png
+    - assets/images/om.png
+    - assets/images/fm.png
     - assets/images/car_top.png
     - assets/legal/cgu.md
     - assets/legal/politique_confidentialite.md

@@ -133,7 +133,86 @@ app.post('/webhook/payout', async (req, res) => {
     res.status(200).send("Statut ignoré");
 });
 
-const PORT = process.env.PORT || 10000; // Render utilise souvent 10000 par défaut
+// CONFIGURATION SENEPAY
+const SENEPAY_CONFIG = {
+    apiKey: process.env.SENEPAY_API_KEY || 'votre_cle_pk_ici',
+    apiSecret: process.env.SENEPAY_API_SECRET || 'votre_cle_sk_ici',
+    baseUrl: 'https://api.sene-pay.com'
+};
+
+// Endpoint pour créer une session de paiement (Payin)
+app.post('/api/payment/create-session', async (req, res) => {
+    try {
+        const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': SENEPAY_CONFIG.apiKey,
+                'X-Api-Secret': SENEPAY_CONFIG.apiSecret
+            },
+            body: JSON.stringify(req.body)
+        });
+        const data = await response.json();
+        res.status(response.status).send(data);
+    } catch (error) {
+        console.error("Erreur SenePay Session:", error);
+        res.status(500).send({ error: "Erreur serveur proxy" });
+    }
+});
+
+// Endpoint pour créer un retrait (Payout)
+app.post('/api/payment/create-payout', async (req, res) => {
+    try {
+        const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': SENEPAY_CONFIG.apiKey,
+                'X-Api-Secret': SENEPAY_CONFIG.apiSecret
+            },
+            body: JSON.stringify(req.body)
+        });
+        const data = await response.json();
+        res.status(response.status).send(data);
+    } catch (error) {
+        console.error("Erreur SenePay Payout:", error);
+        res.status(500).send({ error: "Erreur serveur proxy" });
+    }
+});
+
+// Endpoint pour vérifier le statut d'un paiement (Payin)
+app.get('/api/payment/check-status/:orderReference', async (req, res) => {
+    try {
+        const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions/${req.params.orderReference}`, {
+            headers: {
+                'X-Api-Key': SENEPAY_CONFIG.apiKey,
+                'X-Api-Secret': SENEPAY_CONFIG.apiSecret
+            }
+        });
+        const data = await response.json();
+        res.status(response.status).send(data);
+    } catch (error) {
+        res.status(500).send({ error: "Erreur status proxy" });
+    }
+});
+
+// Endpoint pour vérifier le statut d'un retrait (Payout)
+app.get('/api/payment/payout-status/:internalId', async (req, res) => {
+    try {
+        const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts/${req.params.internalId}`, {
+            headers: {
+                'X-Api-Key': SENEPAY_CONFIG.apiKey,
+                'X-Api-Secret': SENEPAY_CONFIG.apiSecret
+            }
+        });
+        const data = await response.json();
+        res.status(response.status).send(data);
+    } catch (error) {
+        res.status(500).send({ error: "Erreur payout status proxy" });
+    }
+});
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Serveur Webhook TranSen lancé sur le port ${PORT}`);
 });

@@ -17,7 +17,7 @@ class ReferralScreen extends ConsumerWidget {
     if (auth == null) return const Scaffold(body: Center(child: Text("Non connecté")));
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text('Parrainage & Gains'),
         backgroundColor: TranSenColors.primaryGreen,
@@ -29,6 +29,7 @@ class ReferralScreen extends ConsumerWidget {
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           final data = snapshot.data!.data() as Map<String, dynamic>;
           String referralCode = data['referralCode'] ?? "TS${auth.userId.substring(0, 4).toUpperCase()}";
           int points = (data['bonusPoints'] ?? 0).toInt();
@@ -102,43 +103,52 @@ class ReferralScreen extends ConsumerWidget {
 
                 const SizedBox(height: 40),
                 
-                const Text(
+                Text(
                   "Invitez vos amis et gagnez !",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 22, 
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  "Gagnez 1 point (100 FCFA) pour chaque course effectuée par vos amis parrainés.",
+                Text(
+                  "Gagnez des points pour chaque course effectuée par vos amis parrainés.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  style: TextStyle(color: isDark ? Colors.white70 : Colors.grey, fontSize: 14),
                 ),
                 
                 const SizedBox(height: 30),
                 
                 // Card du Code
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(25),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: isDark ? const Color(0xFF252525) : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
                   ),
                   child: Column(
                     children: [
                       const Text(
                         "VOTRE CODE DE PARRAINAGE",
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 15),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             referralCode,
-                            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 4, color: TranSenColors.primaryGreen),
+                            style: TextStyle(
+                              fontSize: 32, 
+                              fontWeight: FontWeight.w900, 
+                              letterSpacing: 4, 
+                              color: isDark ? Colors.white : TranSenColors.primaryGreen,
+                            ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 15),
                           IconButton(
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: referralCode));
@@ -158,16 +168,14 @@ class ReferralScreen extends ConsumerWidget {
                 
                 ElevatedButton.icon(
                   onPressed: () {
-                    SharePlus.instance.share(
-                      ShareParams(
-                        text: "🚗 TranSen : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et gagne des bonus sur tes trajets.\n\n📲 Télécharge l'application maintenant !",
-                      ),
+                    Share.share(
+                      "🚗 TranSen : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et gagne des bonus sur tes trajets.\n\n📲 Télécharge l'application maintenant !",
                     );
                   },
                   icon: const Icon(Icons.share),
                   label: const Text("PARTAGER MON CODE"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black87,
+                    backgroundColor: TranSenColors.primaryGreen,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -175,14 +183,18 @@ class ReferralScreen extends ConsumerWidget {
                 ),
                 
                 const SizedBox(height: 40),
-                const Text(
+                Text(
                   "Comment ça marche ?",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 16,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 15),
-                _buildStep(Icons.send, "Partagez votre code à vos proches."),
-                _buildStep(Icons.person_add, "Ils l'entrent lors de leur inscription."),
-                _buildStep(Icons.celebration, "Vous gagnez 100 FCFA à chaque fois qu'ils voyagent !"),
+                _buildStep(context, Icons.send, "Partagez votre code à vos proches."),
+                _buildStep(context, Icons.person_add, "Ils l'entrent lors de leur inscription."),
+                _buildStep(context, Icons.celebration, "Vous gagnez des bonus à chaque fois qu'ils voyagent !"),
               ],
             ),
           );
@@ -220,7 +232,8 @@ class ReferralScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStep(IconData icon, String text) {
+  Widget _buildStep(BuildContext context, IconData icon, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Row(
@@ -234,7 +247,15 @@ class ReferralScreen extends ConsumerWidget {
             child: Icon(icon, color: TranSenColors.primaryGreen, size: 18),
           ),
           const SizedBox(width: 15),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
+          Expanded(
+            child: Text(
+              text, 
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ),
         ],
       ),
     );

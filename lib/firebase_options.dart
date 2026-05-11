@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '743590908369',
     projectId: 'allo-dakar-b6a20',
     storageBucket: 'allo-dakar-b6a20.firebasestorage.app',
-    iosBundleId: 'com.example.alloDakar',
+    iosBundleId: 'com.transen.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

@@ -12,6 +12,16 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Global Admin Rule
+    match /{path=**} {
+      allow read, write: if isAdmin();
+    }
+
     // ── USERS ──────────────────────────────────────────────────────────────────
 
     match /users/{userId} {
@@ -54,14 +64,8 @@ service cloud.firestore {
         request.resource.data.status == 'pending';
 
       allow update: if isSignedIn() && (
-        // Le chauffeur accepte/modifie mais ne touche pas au client ni au prix
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['clientId', 'price']))
-        ||
-        // Le client peut annuler sa propre course si elle est encore 'pending'
-        (isOwner(resource.data.clientId) &&
-          resource.data.status == 'pending' &&
-          request.resource.data.status == 'cancelled' &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+        // Autorise la mise à jour si on ne touche pas aux champs critiques (clientId, price)
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['clientId', 'price'])
       );
 
       allow delete: if isOwner(resource.data.clientId) &&
@@ -98,6 +102,28 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn() &&
         resource.data.userId == request.auth.uid;
+    }
+
+    // ── FAVORITES (In Users subcollections) ────────────────────────────────────
+
+    match /users/{userId}/favorite_addresses/{favId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/favorite_drivers/{favId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── CHAT MESSAGES (In Trips subcollections) ────────────────────────────────
+
+    match /trips/{tripId}/messages/{msgId} {
+      allow read: if isSignedIn(); 
+      allow create: if isSignedIn();
+    }
+
+    match /pools/{poolId}/messages/{msgId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
     }
   }
 }

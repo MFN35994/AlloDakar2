@@ -23,6 +23,8 @@ class TripModel {
   final String? driverPhone;
   final int? rating;
   final String? comment;
+  final String? paymentMethod;
+  final Map<String, dynamic>? passengerDetails; // New for Phase 11 pools
 
   TripModel({
     required this.id,
@@ -45,6 +47,8 @@ class TripModel {
     this.driverPhone,
     this.rating,
     this.comment,
+    this.paymentMethod,
+    this.passengerDetails,
   });
 
   factory TripModel.fromFirestore(DocumentSnapshot doc) {
@@ -70,6 +74,8 @@ class TripModel {
       driverPhone: data['driverPhone'],
       rating: data['rating'],
       comment: data['comment'],
+      paymentMethod: data['paymentMethod'],
+      passengerDetails: data['passengerDetails'],
     );
   }
 
@@ -94,6 +100,8 @@ class TripModel {
       'driverPhone': driverPhone,
       'rating': rating,
       'comment': comment,
+      'paymentMethod': paymentMethod,
+      'passengerDetails': passengerDetails,
     };
   }
 }

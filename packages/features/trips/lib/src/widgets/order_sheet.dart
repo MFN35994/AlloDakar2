@@ -8,6 +8,7 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_trips/transen_trips.dart' as providers;
+import 'package:flutter/services.dart';
 
 class OrderSheet extends ConsumerStatefulWidget {
   final String? initialDeparture;
@@ -61,7 +62,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   int _selectedSeats = 1;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
-  String _paymentMethod = 'Espèces';
+  String _paymentMethod = 'Espèces'; // Par défaut
   bool _isProcessing = false;
 
   TimeOfDay _roundToNearest15Mins(TimeOfDay time) {
@@ -86,15 +87,37 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     }
   }
 
+  String? _preferredDriverName;
+  String? _preferredDriverId;
+
   @override
   void initState() {
     super.initState();
     _selectedTime = _roundToNearest15Mins(TimeOfDay.now());
     _selectedDeparture = widget.initialDeparture;
     _selectedDestination = widget.initialDestination;
+    _preferredDriverId = widget.driverId;
     
+    if (_preferredDriverId != null) {
+      _fetchDriverName();
+    }
+
     if (_selectedDeparture == null) {
       _autoDetectLocation();
+    }
+  }
+
+  Future<void> _fetchDriverName() async {
+    try {
+      final doc = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+          .collection('users').doc(widget.driverId).get();
+      if (doc.exists && mounted) {
+        setState(() {
+          _preferredDriverName = doc.data()?['name'] ?? doc.data()?['firstName'] ?? 'Chauffeur favori';
+        });
+      }
+    } catch (e) {
+      debugPrint("Erreur fetch driver name: $e");
     }
   }
 
@@ -176,7 +199,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                 ),
                 const Expanded(
                   child: Text(
-                    'Où allez-vous ?',
+                    'Où allez-vous ? (Paiement Espèces)',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -188,7 +211,35 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
               ],
             ),
             const SizedBox(height: 20),
-            
+            if (_preferredDriverName != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 15),
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Chauffeur favori : $_preferredDriverName",
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => setState(() {
+                        _preferredDriverName = null;
+                        _preferredDriverId = null;
+                      }),
+                    ),
+                  ],
+                ),
+              ),
             // Liste déroulante : Point de départ
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
@@ -217,6 +268,49 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
               },
             ),
             const SizedBox(height: 15),
+
+            // --- FAVORIS RAPIDES ---
+            Consumer(builder: (context, ref, child) {
+              final auth = ref.watch(authProvider);
+              final favoritesAsync = ref.watch(favoriteAddressesProvider(auth?.userId ?? ''));
+              
+              return favoritesAsync.when(
+                data: (favs) {
+                  if (favs.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Favoris", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 5),
+                      SizedBox(
+                        height: 35,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: favs.length,
+                          itemBuilder: (context, index) {
+                            final fav = favs[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ActionChip(
+                                avatar: Icon(fav.icon, size: 14, color: TranSenColors.primaryGreen),
+                                label: Text(fav.label, style: const TextStyle(fontSize: 11)),
+                                onPressed: () => setState(() => _selectedDestination = fav.address),
+                                backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.grey[100] : Colors.grey[850],
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: EdgeInsets.zero,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              );
+            }),
 
             // Liste déroulante : Destination
             DropdownButtonFormField<String>(
@@ -422,7 +516,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
 
             // Sélection du mode de paiement
             const Text(
-              'Mode de paiement',
+              'Mode de paiement (Remise espèces au chauffeur)',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -433,7 +527,13 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                   _buildPaymentTile('Espèces', Icons.payments, Colors.green),
+                   _buildPaymentIconTile('Espèces', null, Colors.green),
+                   const SizedBox(width: 10),
+                   _buildPaymentIconTile('Wave', 'assets/images/wave.png', Colors.blue),
+                   const SizedBox(width: 10),
+                   _buildPaymentIconTile('Orange Money', 'assets/images/om.png', Colors.orange),
+                   const SizedBox(width: 10),
+                   _buildPaymentIconTile('Free Money', 'assets/images/fm.png', Colors.red),
                 ],
               ),
             ),
@@ -447,7 +547,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
               final hasActivePool = activePool != null;
 
               return ElevatedButton(
-                onPressed: (_selectedDeparture != null && _selectedDestination != null)
+                onPressed: (_selectedDeparture != null && _selectedDestination != null && !_isProcessing)
                     ? () => _handleConfirmation(ref, hasActivePool: hasActivePool)
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -512,7 +612,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     
     try {
       setState(() => _isProcessing = true);
-
       final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).get();
       final data = userData.data();
       String phoneToValidate = data?['phone'] ?? (data?['phoneNumber'] ?? (auth?.phone ?? ''));
@@ -532,11 +631,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         return;
       }
 
-      // Simulation de paiement externe (si pas portefeuille)
-      if (_paymentMethod != 'Portefeuille') {
-        await Future.delayed(const Duration(seconds: 1));
-      }
-
       final userFirstName = userData.data()?['firstName'];
       final userLastName = userData.data()?['lastName'];
       final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
@@ -545,6 +639,12 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       String finalPhone = userPhoneDigits;
       if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
         finalPhone = finalPhone.substring(3);
+      }
+
+      // Gestion SenePay reportée à l'écran de suivi
+      if (_paymentMethod != 'Espèces' && _paymentMethod != 'Portefeuille') {
+        // On enregistre juste l'intention de paiement
+        await Future.delayed(const Duration(milliseconds: 500));
       }
 
       final tripRepo = ref.read(tripRepositoryProvider);
@@ -575,11 +675,13 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         lat: lat,
         lng: lng,
         seats: _selectedSeats,
+        preferredDriverId: _preferredDriverId,
         userDetails: {
           'name': userName,
           'firstName': userFirstName,
           'lastName': userLastName,
           'phone': finalPhone,
+          'paymentMethod': _paymentMethod,
         },
       );
 
@@ -617,26 +719,35 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   }
 
 
-  Widget _buildPaymentTile(String name, IconData icon, Color color) {
+  Widget _buildPaymentIconTile(String name, String? assetPath, Color color) {
     final isSelected = _paymentMethod == name;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
-      onTap: () => setState(() => _paymentMethod = name),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _paymentMethod = name);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? color.withValues(alpha: 0.1) : (isDark ? Colors.grey[850] : Colors.grey[100]),
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: isSelected ? color : Colors.transparent, width: 2),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: isSelected ? color : Colors.grey, size: 20),
+            if (assetPath != null)
+              Image.asset(assetPath, width: 24, height: 24, errorBuilder: (_, __, ___) => Icon(Icons.payment, color: color, size: 20))
+            else
+              Icon(Icons.payments, color: isSelected ? color : Colors.grey, size: 20),
             const SizedBox(width: 8),
             Text(
               name,
               style: TextStyle(
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? color : (isDark ? Colors.white70 : Colors.black87),
               ),

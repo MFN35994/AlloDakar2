@@ -25,7 +25,6 @@ class SettingsScreen extends ConsumerWidget {
             [
               _buildSettingsTile(context, ref, Icons.notifications_outlined, 'Notifications', true),
               _buildSettingsTile(context, ref, Icons.dark_mode_outlined, 'Mode Sombre', false),
-              _buildSettingsTile(context, ref, Icons.language_outlined, 'Langue (Français)', null),
             ],
           ),
           const SizedBox(height: 20),

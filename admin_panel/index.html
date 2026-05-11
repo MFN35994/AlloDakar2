@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TranSen Admin - Centre de Commandement</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card glass">
+            <div class="login-logo">
+                <img src="assets/images/logo.png" alt="TranSen Logo">
+                <h2>Admin Excellence</h2>
+                <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 10px;">Authentification Sécurisée via OTP</p>
+            </div>
+            <form id="loginForm">
+                <div id="phone-step">
+                    <div class="input-group">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" id="phoneNumber" placeholder="+221770000000" required>
+                    </div>
+                    <button type="button" id="sendCodeBtn">Confirmer <i class="fas fa-arrow-right"></i></button>
+                </div>
+                <div id="otp-step" style="display: none;">
+                    <div class="input-group">
+                        <i class="fas fa-key"></i>
+                        <input type="text" id="otpCode" placeholder="Code à 6 chiffres">
+                    </div>
+                    <button type="submit" id="verifyCodeBtn">Vérifier & Entrer <i class="fas fa-check-circle"></i></button>
+                    <button type="button" class="btn-text" id="changePhoneBtn" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-dim);">Changer de numéro</button>
+                </div>
+                <div id="recaptcha-container"></div>
+                <p id="loginError" class="error-msg"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="admin-app" class="admin-container" style="display: none;">
+        <aside class="sidebar glass">
+            <div class="logo">
+                <img src="assets/images/logo.png" alt="Logo">
+                <span>TranSen Admin</span>
+            </div>
+            <nav id="mainNav">
+                <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Aperçu</a>
+                <a href="#" data-section="trips"><i class="fas fa-tower-broadcast"></i> Flux Live</a>
+                <a href="#" data-section="drivers"><i class="fas fa-id-card"></i> Chauffeurs</a>
+                <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications <span class="badge red" id="pendingDocBadge">0</span></a>
+                <a href="#" data-section="users"><i class="fas fa-user-group"></i> Clients</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="admin-profile">
+                    <div class="avatar" id="adminInitial">A</div>
+                    <div class="admin-details">
+                        <span id="adminName">Admin</span>
+                        <small id="adminRole">Super Admin</small>
+                    </div>
+                </div>
+                <button id="logoutBtn"><i class="fas fa-power-off"></i></button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header>
+                <div class="header-left">
+                    <h1 id="sectionTitle">Tableau de Bord</h1>
+                    <p id="currentDate">--</p>
+                </div>
+                <div class="header-actions">
+                    <div class="search-bar glass">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="globalSearch" placeholder="Rechercher une course, un client...">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard -->
+            <div id="section-dashboard" class="admin-section">
+                <section class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-car-side"></i></div>
+                        <div class="stat-info"><p>Courses Totales</p><h3 id="totalTrips">--</h3></div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                        <div class="stat-info"><p>Utilisateurs</p><h3 id="totalUsers">--</h3></div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-wallet"></i></div>
+                        <div class="stat-info"><p>Volume Affaires</p><h3 id="totalRevenue">-- F</h3></div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon red"><i class="fas fa-percent"></i></div>
+                        <div class="stat-info"><p>Commissions (5%)</p><h3 id="estCommissions">-- F</h3></div>
+                    </div>
+                </section>
+
+                <div class="dashboard-grid">
+                    <section class="table-container glass-card">
+                        <div class="table-header"><h2>Activités Récentes</h2></div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Service</th>
+                                        <th>Client</th>
+                                        <th>Prix</th>
+                                        <th>Com (5%)</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activityTableBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Live Feed -->
+            <div id="section-trips" class="admin-section" style="display: none;">
+                <div class="filters glass-card mb-20">
+                    <button class="filter-chip active" data-type="all">Toutes</button>
+                    <button class="filter-chip" data-type="pending">En attente</button>
+                    <button class="filter-chip" data-type="active">En cours</button>
+                    <button class="filter-chip" data-type="completed">Terminées</button>
+                </div>
+                <div class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Service</th>
+                                    <th>Trajet</th>
+                                    <th>Chauffeur</th>
+                                    <th>Paiement</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="liveTripsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drivers -->
+            <div id="section-drivers" class="admin-section" style="display: none;">
+                <div class="stats-grid mini">
+                    <div class="stat-card glass-card small">
+                        <div class="stat-info"><p>Actifs</p><h3 id="activeDriversCount">--</h3></div>
+                    </div>
+                    <div class="stat-card glass-card small">
+                        <div class="stat-info"><p>Inactifs</p><h3 id="inactiveDriversCount">--</h3></div>
+                    </div>
+                </div>
+                <section class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Chauffeur</th>
+                                    <th>Véhicule</th>
+                                    <th>Note</th>
+                                    <th>Wallet</th>
+                                    <th>Vérifié</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="driversTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Users (Clients) -->
+            <div id="section-users" class="admin-section" style="display: none;">
+                <section class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Client</th>
+                                    <th>Téléphone</th>
+                                    <th>Email</th>
+                                    <th>Parrainages</th>
+                                    <th>Points</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Documents -->
+            <div id="section-documents" class="admin-section" style="display: none;">
+                <div class="doc-grid" id="docValidationList"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="docModal" class="modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header"><h2>Dossier Chauffeur</h2><span class="close-modal">&times;</span></div>
+            <div class="modal-body">
+                <img id="modalDocImg" src="" alt="Document">
+                <div id="modalDriverInfo" class="mt-20"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-reject" id="rejectDocBtn">Rejeter</button>
+                <button class="btn-approve" id="approveDocBtn">Approuver</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

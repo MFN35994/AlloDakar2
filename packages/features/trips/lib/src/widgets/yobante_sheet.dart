@@ -9,12 +9,20 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_trips/transen_trips.dart' as providers;
+import 'package:flutter/services.dart';
 
 
 class YobanteSheet extends ConsumerStatefulWidget {
-  const YobanteSheet({super.key});
+  final String? initialDeparture;
+  final String? initialDestination;
 
-  static void show(BuildContext context) {
+  const YobanteSheet({
+    super.key,
+    this.initialDeparture,
+    this.initialDestination,
+  });
+
+  static void show(BuildContext context, {String? departure, String? destination}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -27,7 +35,10 @@ class YobanteSheet extends ConsumerStatefulWidget {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: const YobanteSheet(),
+          child: YobanteSheet(
+            initialDeparture: departure,
+            initialDestination: destination,
+          ),
         ),
       ),
     );
@@ -82,7 +93,12 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
   void initState() {
     super.initState();
     _selectedTime = _roundToNearest15Mins(TimeOfDay.now());
-    _autoDetectLocation();
+    _selectedDeparture = widget.initialDeparture;
+    _selectedDestination = widget.initialDestination;
+    
+    if (_selectedDeparture == null) {
+      _autoDetectLocation();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final fbUser = FirebaseAuth.instance.currentUser;
       String? phone = fbUser?.phoneNumber;
@@ -168,7 +184,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                 ),
                 const Expanded(
                   child: Text(
-                    'Yobanté (colis) 📦',
+                    'Yobanté (Paiement Espèces) 📦',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
@@ -226,7 +242,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
             const SizedBox(height: 20),
 
             const Text(
-              'Mode de paiement',
+              'Mode de paiement (Espèces au chauffeur)',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -234,154 +250,145 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildPaymentTile('Espèces', Icons.payments, Colors.green),
-                  /* COMMENTÉ POUR LE LANCEMENT GRATUIT
-                  if (ref.read(authProvider)?.role == 'driver') ...[
-                    _buildPaymentTile('Portefeuille', Icons.account_balance_wallet, Colors.green),
-                    const SizedBox(width: 10),
-                  ],
-                  _buildPaymentTile('Wave', Icons.tsunami, Colors.blue),
-                  const SizedBox(width: 10),
-                  _buildPaymentTile('Orange Money', Icons.money, Colors.orange),
-                  */
+                   _buildPaymentIconTile('Espèces', null, Colors.green),
+                   const SizedBox(width: 10),
+                   _buildPaymentIconTile('Wave', 'assets/images/wave.png', Colors.blue),
+                   const SizedBox(width: 10),
+                   _buildPaymentIconTile('Orange Money', 'assets/images/om.png', Colors.orange),
+                   const SizedBox(width: 10),
+                   _buildPaymentIconTile('Free Money', 'assets/images/fm.png', Colors.red),
                 ],
               ),
             ),
             const SizedBox(height: 25),
 
             ElevatedButton(
-              onPressed: (_selectedDeparture != null &&
-                      _selectedDestination != null)
+              onPressed: (_selectedDeparture != null && _selectedDestination != null && !_isProcessing)
                   ? () async {
-                      final activeTrip = ref.read(providers.activeTripProvider).value;
-                      if (activeTrip != null) {
-                        _showSnackBar("Vous avez déjà une livraison en cours. Attendez qu'elle se termine.", Colors.orange);
-                        return;
-                      }
-                      /* COMMENTÉ POUR LE LANCEMENT GRATUIT
-                    if (_paymentMethod == 'Portefeuille') {
-                      final wallet = ref.read(walletProvider);
-                      if (wallet.balance < 10000) {
-                        _showSnackBar("Solde insuffisant ! Veuillez recharger.", Colors.red);
-                        return;
-                      }
-                    }
-                    */
-
-                      final auth = ref.read(authProvider);
-                      final userId = auth?.userId ?? '';
-                      final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-                          .collection('users')
-                          .doc(userId)
-                          .get();
-                      
-                      final data = userData.data();
-                      String existingPhone = data?['phone'] ?? (data?['phoneNumber'] ?? (auth?.phone ?? ''));
-                      
-                      if (existingPhone.isEmpty && _userPhoneController.text.isNotEmpty) {
-                        existingPhone = _userPhoneController.text.trim();
-                      }
-
-                      final userPhoneDigits = existingPhone.replaceAll(RegExp(r'\D'), '');
-                      
-                      if (userPhoneDigits.length < 9) {
-                        _showSnackBar("Votre numéro de téléphone est incomplet. Veuillez le corriger.", Colors.red);
-                        return;
-                      }
-
-                      // Nettoyage des téléphones expéditeur/destinataire
-                      String senderPhone = _senderPhoneController.text.trim().replaceAll(RegExp(r'\D'), '');
-                      String receiverPhone = _receiverPhoneController.text.trim().replaceAll(RegExp(r'\D'), '');
-
-                      if (senderPhone.length < 9 || receiverPhone.length < 9) {
-                        _showSnackBar("Les numéros expéditeur/destinataire doivent avoir 9 chiffres.", Colors.red);
-                        return;
-                      }
-
-                      // Normalisation Sénégal : on ne garde que les 9 chiffres
-                      String cleanUserPhone = userPhoneDigits;
-                      if (cleanUserPhone.startsWith('221') && cleanUserPhone.length >= 12) {
-                        cleanUserPhone = cleanUserPhone.substring(3);
-                      }
-                      
-                      String cleanSenderPhone = senderPhone;
-                      if (cleanSenderPhone.startsWith('221') && cleanSenderPhone.length >= 12) {
-                        cleanSenderPhone = cleanSenderPhone.substring(3);
-                      }
-                      
-                      String cleanReceiverPhone = receiverPhone;
-                      if (cleanReceiverPhone.startsWith('221') && cleanReceiverPhone.length >= 12) {
-                        cleanReceiverPhone = cleanReceiverPhone.substring(3);
-                      }
-
-                      final finalUserPhone = cleanUserPhone;
-                      final finalSenderPhone = cleanSenderPhone;
-                      final finalReceiverPhone = cleanReceiverPhone;
-
-                      // Simulation de paiement externe
-                      if (_paymentMethod != 'Portefeuille') {
+                      try {
                         setState(() => _isProcessing = true);
-                        await Future.delayed(const Duration(seconds: 2));
-                        if (!mounted) return;
-                        setState(() => _isProcessing = false);
-                      }
+                        final activeTrip = ref.read(providers.activeTripProvider).value;
+                        if (activeTrip != null) {
+                          _showSnackBar("Vous avez déjà une livraison en cours. Attendez qu'elle se termine.", Colors.orange);
+                          setState(() => _isProcessing = false);
+                          return;
+                        }
 
-                      if (_userPhoneController.text.isNotEmpty) {
-                        await ref.read(authProvider.notifier).updateUserData(
-                            phone: finalUserPhone);
-                      }
+                        final auth = ref.read(authProvider);
+                        final userId = auth?.userId ?? '';
+                        final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                            .collection('users')
+                            .doc(userId)
+                            .get();
+                        
+                        final data = userData.data();
+                        String existingPhone = data?['phone'] ?? (data?['phoneNumber'] ?? (auth?.phone ?? ''));
+                        
+                        if (existingPhone.isEmpty && _userPhoneController.text.isNotEmpty) {
+                          existingPhone = _userPhoneController.text.trim();
+                        }
 
-                      final userName = userData.data()?['name'] ??
-                          "Client ${userId.substring(0, 5)}";
-                      final userPhone = finalUserPhone;
+                        final userPhoneDigits = existingPhone.replaceAll(RegExp(r'\D'), '');
+                        
+                        if (userPhoneDigits.length < 9) {
+                          _showSnackBar("Votre numéro de téléphone est incomplet. Veuillez le corriger.", Colors.red);
+                          setState(() => _isProcessing = false);
+                          return;
+                        }
 
-                      /* COMMENTÉ POUR LE LANCEMENT GRATUIT
-                    if (_paymentMethod == 'Portefeuille') {
-                      ref.read(walletProvider.notifier).debit(10000, "Yobanté $_selectedDeparture - $_selectedDestination");
-                    }
-                    */
+                        // Nettoyage des téléphones expéditeur/destinataire
+                        String senderPhone = _senderPhoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+                        String receiverPhone = _receiverPhoneController.text.trim().replaceAll(RegExp(r'\D'), '');
 
-                      final tripId = await ref
-                          .read(tripRepositoryProvider)
-                          .createTrip(TripModel(
-                            id: '',
-                            departure: _selectedDeparture!,
-                            destination: _selectedDestination!,
-                            type: 'Livraison de colis',
-                            price: 5000,
-                            status: 'pending',
-                            createdAt: DateTime.now(),
-                            scheduledDate:
-                                "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}",
-                            baggageDescription: _baggageController.text,
-                            clientName: userName,
-                            clientPhone: userPhone,
-                            clientId: userId,
-                            senderPhone: finalSenderPhone,
-                            receiverPhone: finalReceiverPhone,
-                          ));
+                        if (senderPhone.length < 9 || receiverPhone.length < 9) {
+                          _showSnackBar("Les numéros expéditeur/destinataire doivent avoir 9 chiffres.", Colors.red);
+                          setState(() => _isProcessing = false);
+                          return;
+                        }
 
-                      if (context.mounted) {
-                        final navigator = Navigator.of(context);
-                        navigator.pop();
+                        // Normalisation Sénégal : on ne garde que les 9 chiffres
+                        String cleanUserPhone = userPhoneDigits;
+                        if (cleanUserPhone.startsWith('221') && cleanUserPhone.length >= 12) {
+                          cleanUserPhone = cleanUserPhone.substring(3);
+                        }
+                        
+                        String cleanSenderPhone = senderPhone;
+                        if (cleanSenderPhone.startsWith('221') && cleanSenderPhone.length >= 12) {
+                          cleanSenderPhone = cleanSenderPhone.substring(3);
+                        }
+                        
+                        String cleanReceiverPhone = receiverPhone;
+                        if (cleanReceiverPhone.startsWith('221') && cleanReceiverPhone.length >= 12) {
+                          cleanReceiverPhone = cleanReceiverPhone.substring(3);
+                        }
 
-                        SuccessDialog.show(
-                          context,
-                          title: 'Livraison programmée !',
-                          message: 'Votre colis a été enregistré. Un chauffeur vous contactera bientôt.',
-                          onDismiss: () {
-                            navigator.push(MaterialPageRoute(
-                              builder: (_) => ReceiptScreen(
-                                orderId: 'YOB-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-                                departure: _selectedDeparture!,
-                                destination: _selectedDestination!,
-                                price: '5 000 FCFA',
-                                type: 'Livraison de colis',
-                                tripId: tripId,
-                              ),
+                        final finalUserPhone = cleanUserPhone;
+                        final finalSenderPhone = cleanSenderPhone;
+                        final finalReceiverPhone = cleanReceiverPhone;
+                        final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
+
+                        // Gestion SenePay reportée à l'écran de suivi
+                        if (_paymentMethod != 'Espèces' && _paymentMethod != 'Portefeuille') {
+                          // On enregistre juste l'intention de paiement
+                          await Future.delayed(const Duration(milliseconds: 500));
+                        }
+
+                        if (_userPhoneController.text.isNotEmpty) {
+                          await ref.read(authProvider.notifier).updateUserData(
+                              phone: finalUserPhone);
+                        }
+
+                        final userPhone = finalUserPhone;
+
+                        final tripId = await ref
+                            .read(tripRepositoryProvider)
+                            .createTrip(TripModel(
+                              id: '',
+                              departure: _selectedDeparture!,
+                              destination: _selectedDestination!,
+                              type: 'Livraison de colis',
+                              price: 5000,
+                              status: 'pending',
+                              createdAt: DateTime.now(),
+                              scheduledDate:
+                                  "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}",
+                              baggageDescription: _baggageController.text,
+                              clientName: userName,
+                              clientPhone: userPhone,
+                              clientId: userId,
+                              senderPhone: finalSenderPhone,
+                              receiverPhone: finalReceiverPhone,
+                              paymentMethod: _paymentMethod,
                             ));
-                          },
-                        );
+
+                        if (mounted) {
+                          setState(() => _isProcessing = false);
+                          final navigator = Navigator.of(context);
+                          navigator.pop();
+
+                          SuccessDialog.show(
+                            context,
+                            title: 'Livraison programmée !',
+                            message: 'Votre colis a été enregistré. Un chauffeur vous contactera bientôt.',
+                            onDismiss: () {
+                              navigator.push(MaterialPageRoute(
+                                builder: (_) => ReceiptScreen(
+                                  orderId: 'YOB-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                                  departure: _selectedDeparture!,
+                                  destination: _selectedDestination!,
+                                  price: '5 000 FCFA',
+                                  type: 'Livraison de colis',
+                                  tripId: tripId,
+                                ),
+                              ));
+                            },
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() => _isProcessing = false);
+                          _showSnackBar("Erreur : $e", Colors.red);
+                        }
                       }
                     }
                   : null,
@@ -534,33 +541,37 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
     );
   }
 
-  Widget _buildPaymentTile(String name, IconData icon, Color color) {
+  Widget _buildPaymentIconTile(String name, String? assetPath, Color color) {
     final isSelected = _paymentMethod == name;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
-      onTap: () => setState(() => _paymentMethod = name),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _paymentMethod = name);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? color.withValues(alpha: 0.1)
-              : (isDark ? Colors.grey[850] : Colors.grey[100]),
+          color: isSelected ? color.withValues(alpha: 0.1) : (isDark ? Colors.grey[850] : Colors.grey[100]),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-              color: isSelected ? color : Colors.transparent, width: 2),
+          border: Border.all(color: isSelected ? color : Colors.transparent, width: 2),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: isSelected ? color : Colors.grey, size: 20),
+            if (assetPath != null)
+              Image.asset(assetPath, width: 24, height: 24, errorBuilder: (_, __, ___) => Icon(Icons.payment, color: color, size: 20))
+            else
+              Icon(Icons.payments, color: isSelected ? color : Colors.grey, size: 20),
             const SizedBox(width: 8),
             Text(
               name,
               style: TextStyle(
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected
-                    ? color
-                    : (isDark ? Colors.white70 : Colors.black87),
+                color: isSelected ? color : (isDark ? Colors.white70 : Colors.black87),
               ),
             ),
           ],

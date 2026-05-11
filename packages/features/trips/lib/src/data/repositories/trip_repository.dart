@@ -23,6 +23,7 @@ class TripRepository {
     required double lat,
     required double lng,
     int seats = 1,
+    String? preferredDriverId,
   }) async {
     try {
       final query = await _firestore.collection('pools')
@@ -91,6 +92,7 @@ class TripRepository {
           'passengerDetails': {userId: fullUserDetails},
           'currentFilling': seats,
           'maxCapacity': 4,
+          'preferredDriverId': preferredDriverId,
           'createdAt': FieldValue.serverTimestamp(),
         });
         return doc.id;
@@ -140,6 +142,15 @@ class TripRepository {
       if (currentStatus != 'open' && currentStatus != 'full') {
         throw Exception("Ce trajet n'est plus disponible ou a déjà été accepté.");
       }
+
+      // VÉRIFICATION COMMISSION 5%
+      final price = 10000.0; // Prix fixe pour covoiturage par défaut
+      final commission = price * 0.05;
+      final driverBalance = (userData['walletBalance'] ?? 0).toDouble();
+      if (driverBalance < commission) {
+        throw Exception("Solde insuffisant (${driverBalance.toInt()} FCFA). La commission de 5% (${commission.toInt()} FCFA) est requise pour accepter ce trajet.");
+      }
+
       transaction.update(poolRef, {
         'status': 'accepted',
         'driverId': driverId,
@@ -277,6 +288,17 @@ class TripRepository {
         throw Exception("Cette course n'est plus disponible (Statut: $currentStatus).");
       }
 
+      // VÉRIFICATION COMMISSION 5%
+      final price = (snap.data()?['price'] as num?)?.toDouble() ?? 0.0;
+      final commission = price * 0.05;
+      
+      final driverDoc = await _firestore.collection('users').doc(driverId).get();
+      final balance = (driverDoc.data()?['walletBalance'] ?? 0).toDouble();
+      
+      if (balance < commission) {
+        throw Exception("Solde insuffisant (${balance.toInt()} FCFA). La commission de 5% (${commission.toInt()} FCFA) est requise pour accepter cette course. Veuillez recharger votre portefeuille TransPay.");
+      }
+
       // Update direct
       await tripRef.update({
         'status': 'accepted',
@@ -321,6 +343,21 @@ class TripRepository {
       for (var uid in passengerIds) {
         await _checkAndAwardReferralPoints(uid, "Covoiturage");
       }
+      
+      // DÉDUCTION COMMISSION 5%
+      final driverId = data['driverId'];
+      final price = 10000.0;
+      final commission = price * 0.05;
+      if (driverId != null) {
+        await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (5%) - Covoiturage $tripId");
+        
+        // VERSER DANS LE COMPTE PLATEFORME
+        await _firestore.collection('system_stats').doc('earnings').set({
+          'totalCommissions': FieldValue.increment(commission),
+          'lastUpdate': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
       await _firestore.collection('pools').doc(tripId).update({
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
@@ -332,6 +369,21 @@ class TripRepository {
         final clientId = data['clientId'];
         final type = data['type'] ?? 'Course';
         await _checkAndAwardReferralPoints(clientId, type);
+        
+        // DÉDUCTION COMMISSION 5%
+        final driverId = data['driverId'];
+        final price = (data['price'] as num?)?.toDouble() ?? 0.0;
+        final commission = price * 0.05;
+        if (driverId != null && commission > 0) {
+           await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (5%) - $type $tripId");
+           
+           // VERSER DANS LE COMPTE PLATEFORME
+           await _firestore.collection('system_stats').doc('earnings').set({
+             'totalCommissions': FieldValue.increment(commission),
+             'lastUpdate': FieldValue.serverTimestamp(),
+           }, SetOptions(merge: true));
+        }
+
         await _firestore.collection('trips').doc(tripId).update({
           'status': 'completed',
           'completedAt': FieldValue.serverTimestamp(),
@@ -358,6 +410,7 @@ class TripRepository {
           driverName: data['driverName'],
           driverPhone: data['driverPhone'],
           scheduledDate: data['scheduledDate'],
+          passengerDetails: data['passengerDetails'],
           createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );
       }
@@ -409,7 +462,7 @@ class TripRepository {
           departure: data['departure'] ?? '',
           destination: data['destination'] ?? '',
           price: 10000,
-          status: data['status'] ?? 'completed',
+          status: data['status'] ?? 'open',
           type: 'Covoiturage',
           createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         ));

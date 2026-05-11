@@ -7,11 +7,13 @@ import '../data/repositories/chat_repository.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final String tripId;
   final String otherPartyName;
+  final String? passengerId;
 
   const ChatScreen({
     super.key,
     required this.tripId,
     required this.otherPartyName,
+    this.passengerId,
   });
 
   @override
@@ -22,18 +24,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
     final userId = ref.read(authProvider)?.userId ?? '';
-    ref.read(chatRepositoryProvider).sendMessage(widget.tripId, userId, text);
-    _controller.clear();
+    final controller = _controller;
+    controller.clear();
+
+    try {
+      await ref.read(chatRepositoryProvider).sendMessage(
+        widget.tripId, 
+        userId, 
+        text, 
+        passengerId: widget.passengerId,
+      );
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur d'envoi: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final messagesAsync = ref.watch(chatMessagesProvider(widget.tripId));
+    final chatKey = widget.passengerId != null ? "${widget.tripId}|${widget.passengerId}" : widget.tripId;
+    final messagesAsync = ref.watch(chatMessagesProvider(chatKey));
     final userId = ref.watch(authProvider)?.userId ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

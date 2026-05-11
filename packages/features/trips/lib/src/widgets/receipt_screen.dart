@@ -6,6 +6,8 @@ import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_core/transen_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 
 class ReceiptScreen extends StatefulWidget {
@@ -113,13 +115,70 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                     ),
                     child: Column(
                       children: [
-                        Text(
-                          'Commande Réussi',
-                          style: TextStyle(
-                            color: isDark ? Colors.white70 : Colors.grey.shade600,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips').doc(widget.tripId).snapshots(),
+                          builder: (context, snapshot) {
+                            String statusText = "En attente";
+                            Color statusColor = Colors.grey;
+                            
+                            if (snapshot.hasData && snapshot.data!.exists) {
+                              final status = snapshot.data!.get('status');
+                              if (status == 'accepted' || status == 'departed') {
+                                statusText = "En cours";
+                                statusColor = Colors.orange;
+                              } else if (status == 'completed') {
+                                statusText = "Effectué";
+                                statusColor = Colors.green;
+                              } else if (status == 'cancelled') {
+                                statusText = "Annulé";
+                                statusColor = Colors.red;
+                              }
+                            } else {
+                              // Try checking pools if trip not found
+                              return StreamBuilder<DocumentSnapshot>(
+                                stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('pools').doc(widget.tripId).snapshots(),
+                                builder: (context, poolSnapshot) {
+                                   String pText = "En attente";
+                                   if (poolSnapshot.hasData && poolSnapshot.data!.exists) {
+                                     final pStatus = poolSnapshot.data!.get('status');
+                                     if (pStatus == 'accepted' || pStatus == 'departed') {
+                                       pText = "En cours";
+                                     } else if (pStatus == 'completed') {
+                                       pText = "Effectué";
+                                     } else if (pStatus == 'cancelled') {
+                                       pText = "Annulé";
+                                     }
+                                   }
+                                   return Text(
+                                      pText,
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white70 : Colors.grey.shade600,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                   );
+                                }
+                              );
+                            }
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                              ),
+                              child: Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            );
+                          }
                         ),
                         const SizedBox(height: 10),
                         Text(

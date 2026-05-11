@@ -14,9 +14,12 @@ import 'presentation/onboarding/onboarding_screen.dart';
 import 'presentation/splash/splash_screen.dart';
 import 'presentation/home/home_screen.dart';
 import 'presentation/driver/driver_home_screen.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'src/generated/l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -36,8 +39,11 @@ void main() async {
     debugPrint("Firebase init failed: $e");
   }
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      overrides: [
+        localeProvider.overrideWith(() => LocaleNotifier()..init(prefs)),
+      ],
+      child: const MyApp(),
     ),
   );
 }
@@ -49,9 +55,21 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
 
+    final locale = ref.watch(localeProvider);
+
     return MaterialApp(
       title: 'TranSen',
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('fr'),
+      ],
       themeMode: themeMode,
       theme: ThemeData(
         colorScheme: const ColorScheme.light(
@@ -72,10 +90,10 @@ class MyApp extends ConsumerWidget {
           primary: TranSenColors.primaryGreen,
           onPrimary: Colors.white,
           secondary: TranSenColors.accentGold,
-          surface: const Color(0xFF1A1A1A),
+          surface: Color(0xFF1A1A1A),
           onSurface: Colors.white,
         ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
+        scaffoldBackgroundColor: Color(0xFF121212),
         useMaterial3: true,
         textTheme: GoogleFonts.montserratTextTheme(
           Theme.of(context)

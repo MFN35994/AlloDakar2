@@ -10,3 +10,5 @@ export 'src/widgets/pool_progress_indicator.dart';
 export 'src/widgets/receipt_screen.dart';
 export 'src/utils/itinerary_optimizer.dart';
 export 'src/screens/chat_screen.dart';
+export 'src/widgets/favorites_sheet.dart';
+export 'src/widgets/referral_sheet.dart';

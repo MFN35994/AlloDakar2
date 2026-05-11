@@ -1,0 +1,18 @@
+{
+  "appTitle": "TranSen",
+  "welcome": "Welcome to TranSen",
+  "whereAreYouGoing": "Where are you going?",
+  "orderTrip": "Order a trip",
+  "sendPackage": "Send a package",
+  "history": "History",
+  "profile": "My Profile",
+  "settings": "Settings",
+  "logout": "Logout",
+  "home": "Home",
+  "work": "Work",
+  "favorites": "Favorites",
+  "payDriver": "Pay Driver",
+  "cancel": "CANCEL",
+  "confirm": "Confirm",
+  "completed": "COMPLETED"
+}

@@ -17,4 +17,4 @@ jobs:
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseToken: '${{ secrets.FIREBASE_TOKEN }}'
-          projectId: allo-dakar-b6a20
+          projectId: transen-pro

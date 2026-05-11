@@ -4,12 +4,63 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-class WalletScreen extends ConsumerWidget {
+class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends ConsumerState<WalletScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Lancer la synchronisation automatique au chargement
+    Future.microtask(() => _handleSync());
+  }
+
+  Future<void> _handleSync() async {
+    final auth = ref.read(authProvider);
+    if (auth == null) return;
+    
+    try {
+      final pendingDeps = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+          .collection('users')
+          .doc(auth.userId)
+          .collection('pending_deposits')
+          .get();
+
+      if (pendingDeps.docs.isEmpty) return;
+
+      int creditedCount = 0;
+      for (var doc in pendingDeps.docs) {
+        final orderId = doc.id;
+        final success = await ref.read(paymentRepositoryProvider).verifyAndCreditDeposit(auth.userId, orderId);
+        if (success) {
+          creditedCount++;
+          await doc.reference.delete();
+        }
+      }
+
+      if (mounted && creditedCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$creditedCount dépôt(s) crédité(s) automatiquement !'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Erreur sync auto: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final walletState = ref.watch(walletProvider);
 
     return Scaffold(
@@ -17,6 +68,13 @@ class WalletScreen extends ConsumerWidget {
         title: const Text('Mon Portefeuille'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Actualiser le solde',
+            onPressed: () => _handleSync(),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -228,23 +286,34 @@ class WalletScreen extends ConsumerWidget {
             ),
           ),
 
-          // Boutons de rechargement
+          // Boutons d'actions
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
               children: [
-                _buildRechargeButton(
+                _buildActionButton(
                   context,
-                  'Wave',
+                  'Déposer (Wave)',
                   Colors.lightBlue,
-                  Icons.waves,
+                  Icons.add_circle_outline,
+                  () => _showRechargeDialog(context, 'Wave'),
                 ),
-                _buildRechargeButton(
+                _buildActionButton(
                   context,
-                  'Orange Money',
+                  'Déposer (OM)',
                   TranSenColors.primaryGreen,
-                  Icons.account_balance_wallet,
+                  Icons.add_circle_outline,
+                  () => _showRechargeDialog(context, 'Orange Money'),
+                ),
+                _buildActionButton(
+                  context,
+                  'Retirer',
+                  Colors.redAccent,
+                  Icons.outbox,
+                  () => _showWithdrawDialog(context, walletState.balance),
                 ),
               ],
             ),
@@ -390,51 +459,75 @@ class WalletScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              final amount = amountController.text.trim();
-              if (amount.isEmpty) return;
-              
+              final amountStr = amountController.text.trim();
+              if (amountStr.isEmpty) return;
+              final amount = double.tryParse(amountStr) ?? 0;
+              if (amount < 100) {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Le montant minimum est de 100 FCFA.')));
+                 return;
+              }
+
               Navigator.pop(context);
               
-              if (method == 'Wave') {
-                // Deeplink Wave : ouvre l'app Wave ou le Play Store
-                const wavePackage = 'com.wave.personal';
-                final waveUrl = Uri.parse('https://play.google.com/store/apps/details?id=$wavePackage');
-                try {
-                  // Essayer d'ouvrir l'app Wave directement
-                  final appUri = Uri.parse('wave://');
-                  if (await canLaunchUrl(appUri)) {
-                    await launchUrl(appUri, mode: LaunchMode.externalApplication);
-                  } else {
-                    await launchUrl(waveUrl, mode: LaunchMode.externalApplication);
-                  }
-                } catch (_) {
-                  await launchUrl(waveUrl, mode: LaunchMode.externalApplication);
-                }
-              } else {
-                // Orange Money : ouvre l'app OM ou le Play Store
-                const omPackage = 'com.orange.money.senegal';
-                final omUrl = Uri.parse('https://play.google.com/store/apps/details?id=$omPackage');
-                try {
-                  final appUri = Uri.parse('orangemoney://');
-                  if (await canLaunchUrl(appUri)) {
-                    await launchUrl(appUri, mode: LaunchMode.externalApplication);
-                  } else {
-                    await launchUrl(omUrl, mode: LaunchMode.externalApplication);
-                  }
-                } catch (_) {
-                  await launchUrl(omUrl, mode: LaunchMode.externalApplication);
-                }
-              }
-              
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Effectuez le transfert de $amount FCFA via $method vers le compte TranSen.'),
-                    backgroundColor: color,
-                    behavior: SnackBarBehavior.floating,
-                    duration: const Duration(seconds: 5),
-                  ),
+              // Afficher loader
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
+              );
+
+              try {
+                final auth = ref.read(authProvider);
+                final orderId = "DEP-${DateTime.now().millisecondsSinceEpoch}-${auth?.userId}";
+                
+                final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
+                  amount: amount,
+                  orderId: orderId,
+                  description: "Dépôt Portefeuille TransPay via $method",
+                  customerName: auth?.name,
+                  customerPhone: auth?.phone,
+                  providerId: method == 'Wave' ? 'WAVE' : 'ORANGE_MONEY',
                 );
+
+                if (context.mounted) Navigator.pop(context); // Enlever loader
+
+                if (checkoutUrl != null) {
+                  // Sauvegarder le dépôt en attente
+                  await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                      .collection('users')
+                      .doc(auth!.userId)
+                      .collection('pending_deposits')
+                      .doc(orderId)
+                      .set({
+                    'amount': amount,
+                    'method': method,
+                    'status': 'Pending',
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
+
+                  final uri = Uri.parse(checkoutUrl);
+                  try {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    debugPrint("Erreur launchUrl: $e");
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Impossible d\'ouvrir le lien de paiement. Veuillez copier ce lien : $checkoutUrl'), duration: const Duration(seconds: 10))
+                      );
+                    }
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Impossible de générer le lien de paiement. Réessayez plus tard.'))
+                    );
+                  }
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context); // Enlever loader au cas où
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -442,28 +535,183 @@ class WalletScreen extends ConsumerWidget {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('OUVRIR $method'.toUpperCase()),
+            child: Text('PAYER AVEC $method'.toUpperCase()),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRechargeButton(BuildContext context, String name, Color color, IconData icon) {
+  void _showWithdrawDialog(BuildContext context, double balance) {
+    if (balance < 500) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le montant minimum pour un retrait est de 500 FCFA.'))
+      );
+      return;
+    }
+
+    final amountController = TextEditingController();
+    final phoneController = TextEditingController();
+    final nameController = TextEditingController();
+    String selectedOperator = 'WAVE';
+    bool isProcessing = false;
+
+    // Pré-remplir le téléphone si possible
+    final auth = ref.read(authProvider);
+    if (auth?.phone != null) {
+      phoneController.text = auth!.phone!.replaceAll(RegExp(r'\D'), '');
+      if (phoneController.text.startsWith('221') && phoneController.text.length >= 12) {
+        phoneController.text = phoneController.text.substring(3);
+      }
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.account_balance, color: Colors.redAccent),
+              SizedBox(width: 10),
+              Text('Retirer mes gains'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Solde disponible : ${balance.toInt()} FCFA',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen),
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Montant à retirer',
+                    suffixText: 'FCFA',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Numéro de réception',
+                    prefixText: '+221 ',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nom du bénéficiaire',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedOperator,
+                  decoration: InputDecoration(
+                    labelText: 'Opérateur',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'WAVE', child: Text('Wave')),
+                    DropdownMenuItem(value: 'ORANGE_MONEY', child: Text('Orange Money')),
+                    DropdownMenuItem(value: 'FREE_MONEY', child: Text('Free Money')),
+                  ],
+                  onChanged: (val) => setDialogState(() => selectedOperator = val!),
+                ),
+                if (isProcessing)
+                  const Padding(
+                    padding: EdgeInsets.all(15.0),
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isProcessing ? null : () => Navigator.pop(context),
+              child: const Text('ANNULER'),
+            ),
+            ElevatedButton(
+              onPressed: isProcessing ? null : () async {
+                final amountStr = amountController.text.trim();
+                final phone = phoneController.text.trim();
+                final name = nameController.text.trim();
+
+                if (amountStr.isEmpty || phone.isEmpty || name.isEmpty) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Veuillez remplir tous les champs.')));
+                   return;
+                }
+
+                final amount = double.tryParse(amountStr) ?? 0;
+                if (amount < 500 || amount > balance) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Montant invalide (min 500, max solde).')));
+                   return;
+                }
+
+                setDialogState(() => isProcessing = true);
+
+                try {
+                  final result = await ref.read(paymentRepositoryProvider).requestPayout(
+                    userId: auth!.userId,
+                    amount: amount,
+                    recipientPhone: "221$phone",
+                    recipientName: name,
+                    operator: selectedOperator,
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    if (result != null) {
+                      SuccessDialog.show(
+                        context,
+                        title: 'Retrait initié !',
+                        message: 'Votre demande de retrait de ${amount.toInt()} FCFA est en cours de traitement.',
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Échec de la demande. Veuillez réessayer.')));
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    setDialogState(() => isProcessing = false);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+              child: const Text('RETIRER'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(BuildContext context, String name, Color color, IconData icon, VoidCallback onPressed) {
     return ElevatedButton.icon(
-      onPressed: () => _showRechargeDialog(context, name),
-      icon: Icon(icon, color: color),
+      onPressed: onPressed,
+      icon: Icon(icon, color: color, size: 20),
       label: Text(
         name,
-        style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
-        elevation: 5,
-        shadowColor: color.withValues(alpha: 0.3),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        elevation: 2,
+        shadowColor: color.withValues(alpha: 0.2),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(15),
           side: BorderSide(color: color.withValues(alpha: 0.1)),
         ),
       ),

@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "transen-pro"
-  }
+  },
+  "targets": {
+    "transen-pro": {
+      "hosting": {
+        "admin": [
+          "transen-admin-pro"
+        ],
+        "app": [
+          "transen-pro"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

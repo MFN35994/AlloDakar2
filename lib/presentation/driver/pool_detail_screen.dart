@@ -368,6 +368,27 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               icon: const Icon(Icons.navigation, color: Colors.blue),
               onPressed: () => launchUrl(Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${passenger['lat']},${passenger['lng']}&travelmode=driving")),
             ),
+            IconButton(
+              icon: const Icon(Icons.message_outlined, color: Colors.green, size: 20),
+              onPressed: () => DeviceUtils.launchWhatsApp(initialPhone),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen, size: 20),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ChatScreen(
+                  tripId: widget.pool.id, 
+                  otherPartyName: name,
+                  passengerId: passengerId,
+                )),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(width: 8),
             StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(passengerId).snapshots(),
               builder: (context, snapshot) {
@@ -379,8 +400,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   }
                 }
                 return IconButton(
-                  icon: const Icon(Icons.phone, color: Colors.green),
+                  icon: const Icon(Icons.phone, color: Colors.blue, size: 20),
                   onPressed: () => DeviceUtils.launchPhoneCall(phoneToCall),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 );
               }
             ),

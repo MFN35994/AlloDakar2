@@ -1,4 +1,5 @@
 {
     "java.configuration.updateBuildConfiguration": "interactive",
-    "java.jdt.ls.java.home": "/snap/android-studio/current/jbr"
+    "java.jdt.ls.java.home": "/snap/android-studio/current/jbr",
+    "cmake.sourceDirectory": "/home/koparexpress/TranSen/linux"
 }

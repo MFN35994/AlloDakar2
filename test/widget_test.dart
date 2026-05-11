@@ -1,8 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen/main.dart';
-import 'package:transen_auth/transen_auth.dart';
-import 'package:transen_core/transen_core.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
