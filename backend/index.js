@@ -87,7 +87,53 @@ app.post('/webhook/senepay', async (req, res) => {
     res.status(200).send("Statut ignoré");
 });
 
-const PORT = process.env.PORT || 3000;
+app.post('/webhook/payout', async (req, res) => {
+    const { externalId, status, amount, internalId } = req.body;
+
+    console.log(`[SenePay] Payout Webhook reçu: ${externalId} - Status: ${status}`);
+
+    if (status === 'Failed' || status === 'Cancelled' || status === 'REJECTED') {
+        try {
+            // Extraire l'ID utilisateur de externalId (PO-timestamp-userId)
+            const parts = externalId.split('-');
+            if (parts.length < 3) return res.status(400).send("Format externalId invalide");
+            const userId = parts[2];
+
+            // 1. Vérifier si on a déjà remboursé (Idempotence)
+            const transactionRef = db.collection('users').doc(userId).collection('transactions');
+            const existing = await transactionRef.where('description', '==', `Remboursement retrait échoué : ${internalId}`).get();
+
+            if (!existing.empty) {
+                console.log("Remboursement déjà effectué.");
+                return res.status(200).send("OK (Déjà remboursé)");
+            }
+
+            // 2. Recréditer le solde
+            const userRef = db.collection('users').doc(userId);
+            await db.runTransaction(async (t) => {
+                const userDoc = await t.get(userRef);
+                const currentBalance = userDoc.data().walletBalance || 0;
+                t.update(userRef, { walletBalance: currentBalance + Number(amount) });
+                t.set(transactionRef.doc(), {
+                    amount: Number(amount),
+                    description: `Remboursement retrait échoué : ${internalId}`,
+                    date: admin.firestore.FieldValue.serverTimestamp(),
+                    type: 'refund'
+                });
+            });
+
+            console.log(`↩️ Retrait échoué remboursé pour ${userId}: +${amount} FCFA`);
+            return res.status(200).send("OK - Remboursé");
+        } catch (error) {
+            console.error("❌ Erreur traitement payout webhook:", error);
+            return res.status(500).send("Internal Error");
+        }
+    }
+
+    res.status(200).send("Statut ignoré");
+});
+
+const PORT = process.env.PORT || 10000; // Render utilise souvent 10000 par défaut
 app.listen(PORT, () => {
     console.log(`Serveur Webhook TranSen lancé sur le port ${PORT}`);
 });
