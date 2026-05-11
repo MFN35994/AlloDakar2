@@ -182,7 +182,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () => Navigator.pop(context),
                 ),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Yobanté (Paiement Espèces) 📦',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -361,16 +361,18 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                               paymentMethod: _paymentMethod,
                             ));
 
-                        if (mounted) {
-                          setState(() => _isProcessing = false);
-                          final navigator = Navigator.of(context);
-                          navigator.pop();
+                        if (!mounted) return;
+                        setState(() => _isProcessing = false);
+                        
+                        final navigator = Navigator.of(context);
+                        navigator.pop();
 
-                          SuccessDialog.show(
-                            context,
-                            title: 'Livraison programmée !',
-                            message: 'Votre colis a été enregistré. Un chauffeur vous contactera bientôt.',
-                            onDismiss: () {
+                        if (!context.mounted) return;
+                        SuccessDialog.show(
+                          context,
+                          title: 'Livraison programmée !',
+                          message: 'Votre colis a été enregistré. Un chauffeur vous contactera bientôt.',
+                          onDismiss: () {
                               navigator.push(MaterialPageRoute(
                                 builder: (_) => ReceiptScreen(
                                   orderId: 'YOB-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
@@ -383,7 +385,6 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                               ));
                             },
                           );
-                        }
                       } catch (e) {
                         if (mounted) {
                           setState(() => _isProcessing = false);

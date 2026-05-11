@@ -1,4 +1,7 @@
 import 'dart:ui' as ui;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -441,51 +444,121 @@ class _PremiumActionCardState extends State<PremiumActionCard> with SingleTicker
   }
 }
 
-class _TripDetailsSheet extends StatelessWidget {
+class _TripDetailsSheet extends StatefulWidget {
   final TripModel trip;
   const _TripDetailsSheet({required this.trip});
+
+  @override
+  State<_TripDetailsSheet> createState() => _TripDetailsSheetState();
+}
+
+class _TripDetailsSheetState extends State<_TripDetailsSheet> {
+  final GlobalKey _receiptKey = GlobalKey();
+  bool _isGenerating = false;
+
+  Future<void> _shareReceiptImage() async {
+    setState(() => _isGenerating = true);
+    try {
+      // 1. Capture du widget
+      RenderRepaintBoundary boundary = _receiptKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // 2. Sauvegarde temporaire
+      final directory = await getTemporaryDirectory();
+      final imagePath = await File('${directory.path}/recu_transen_${widget.trip.id.substring(0,8)}.png').create();
+      await imagePath.writeAsBytes(pngBytes);
+
+      // 3. Partage
+      await Share.shareXFiles(
+        [XFile(imagePath.path)], 
+        text: 'Reçu de trajet TranSen - ${widget.trip.price.toInt()} FCFA',
+      );
+    } catch (e) {
+      debugPrint("Erreur partage reçu: $e");
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.8,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      padding: const EdgeInsets.all(25),
+      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
       child: Column(
         children: [
           Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-          const SizedBox(height: 30),
-          Icon(trip.type.contains('Yobanté') ? Icons.inventory_2 : Icons.directions_car, size: 48, color: TranSenColors.primaryGreen),
-          const SizedBox(height: 10),
-          Text("-${trip.price.toInt()} F", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-          Text("Payé à ${trip.driverName ?? 'Chauffeur'}", style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 30),
-          _buildStatusDisplay(trip),
-          _buildDetailRow("Date et heure", "${trip.createdAt.day} ${_getMonth(trip.createdAt.month)} ${trip.createdAt.year} ${trip.createdAt.hour}:${trip.createdAt.minute}", null),
-          _buildDetailRow("Départ", trip.departure, null),
-          _buildDetailRow("Destination", trip.destination, null),
-          _buildDetailRow("Mode de paiement", trip.paymentMethod ?? "Cash / SenePay", null),
-          _buildDetailRow("ID Transaction", "TR-${trip.id.substring(0, 8).toUpperCase()}", null),
-          const Spacer(),
+          const SizedBox(height: 20),
+          
+          // LA ZONE DE CAPTURE (LE REÇU)
+          Expanded(
+            child: SingleChildScrollView(
+              child: RepaintBoundary(
+                key: _receiptKey,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF252525) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3), width: 1),
+                  ),
+                  child: Column(
+                    children: [
+                      // LOGO & HEADER
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Image.asset('assets/images/logo.png', height: 40),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text("REÇU", style: TextStyle(fontWeight: FontWeight.w900, color: TranSenColors.primaryGreen, fontSize: 18, letterSpacing: 2)),
+                              Text("DE PAIEMENT", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 30),
+                      
+                      // MONTANT
+                      Text("-${widget.trip.price.toInt()} F", style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen)),
+                      Text("Payé à ${widget.trip.driverName ?? 'Chauffeur'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(height: 25),
+                      
+                      // DETAILS
+                      _buildStatusDisplay(widget.trip),
+                      _buildDetailRow("Date", "${widget.trip.createdAt.day} ${_getMonth(widget.trip.createdAt.month)} ${widget.trip.createdAt.year}", null),
+                      _buildDetailRow("Heure", "${widget.trip.createdAt.hour}:${widget.trip.createdAt.minute.toString().padLeft(2,'0')}", null),
+                      _buildDetailRow("Départ", widget.trip.departure, null),
+                      _buildDetailRow("Destination", widget.trip.destination, null),
+                      _buildDetailRow("ID Trans.", "TR-${widget.trip.id.substring(0, 8).toUpperCase()}", null),
+                      
+                      const SizedBox(height: 30),
+                      const Text("Merci d'avoir choisi TranSen !", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    final text = "Reçu de trajet TranSen\n"
-                        "De : ${trip.departure}\n"
-                        "À : ${trip.destination}\n"
-                        "Montant : ${trip.price.toInt()} FCFA\n"
-                        "Date : ${trip.createdAt.day}/${trip.createdAt.month}/${trip.createdAt.year}\n"
-                        "ID : TR-${trip.id.substring(0, 8).toUpperCase()}";
-                    Share.share(text);
-                  },
-                  icon: const Icon(Icons.share, size: 18),
-                  label: const Text("PARTAGER"),
+                  onPressed: _isGenerating ? null : _shareReceiptImage,
+                  icon: _isGenerating 
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.share, size: 18),
+                  label: Text(_isGenerating ? "GÉNÉRATION..." : "PARTAGER L'IMAGE"),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: TranSenColors.primaryGreen,
                     side: const BorderSide(color: TranSenColors.primaryGreen),
