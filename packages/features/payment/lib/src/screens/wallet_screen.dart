@@ -480,6 +480,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 final auth = ref.read(authProvider);
                 final orderId = "DEP-${DateTime.now().millisecondsSinceEpoch}-${auth?.userId}";
                 
+                debugPrint("WalletScreen: Appel SenePayService...");
                 final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
                   amount: amount,
                   orderId: orderId,
@@ -488,8 +489,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   customerPhone: auth?.phone,
                   providerId: method == 'Wave' ? 'WAVE' : 'ORANGE_MONEY',
                 );
+                debugPrint("WalletScreen: Réponse SenePay reçue: $checkoutUrl");
 
-                if (context.mounted) Navigator.pop(context); // Enlever loader
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).pop(); // Force le pop du dialog
+                }
 
                 if (checkoutUrl != null) {
                   // Sauvegarder le dépôt en attente
@@ -506,26 +510,17 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   });
 
                   final uri = Uri.parse(checkoutUrl);
-                  try {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } catch (e) {
-                    debugPrint("Erreur launchUrl: $e");
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Impossible d\'ouvrir le lien de paiement. Veuillez copier ce lien : $checkoutUrl'), duration: const Duration(seconds: 10))
-                      );
-                    }
-                  }
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Impossible de générer le lien de paiement. Réessayez plus tard.'))
+                      const SnackBar(content: Text('Impossible de générer le lien de paiement. Réessayez.'))
                     );
                   }
                 }
               } catch (e) {
                 if (context.mounted) {
-                  Navigator.pop(context); // Enlever loader au cas où
+                  Navigator.pop(context); // Enlever loader
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
                 }
               }
