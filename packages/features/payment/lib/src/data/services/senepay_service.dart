@@ -3,10 +3,13 @@ import 'package:flutter/foundation.dart';
 
 class SenePayService {
   static const String backendUrl = "https://transen-api.onrender.com";
+  
   final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 15),
+    connectTimeout: const Duration(seconds: 20),
+    receiveTimeout: const Duration(seconds: 20),
     headers: {"Content-Type": "application/json"},
+    // Optionnel: On peut désactiver la vérification SSL si vraiment on soupçonne un problème de certif sur Android
+    // (Mais Let's Encrypt de Render devrait être ok)
   ));
 
   Future<String?> createCheckoutSession({
@@ -30,8 +33,6 @@ class SenePayService {
         "webhookUrl": "$backendUrl/webhook/senepay",
         "metadata": {
           "order_id": orderId,
-          "customer_name": customerName ?? "Client TranSen",
-          "customer_phone": customerPhone ?? "",
           "platform": "mobile_app"
         },
         "expiresInMinutes": 60
@@ -41,29 +42,36 @@ class SenePayService {
         body["providerId"] = providerId;
       }
       
-      debugPrint("Appel Proxy Render (Dio): $url");
+      debugPrint(">>> SenePayService: POST $url");
+      debugPrint(">>> SenePayService: Body: $body");
+
       final response = await _dio.post(url, data: body);
-      debugPrint("Réponse Proxy Render (Dio): ${response.statusCode}");
+      
+      debugPrint(">>> SenePayService: Statut: ${response.statusCode}");
+      debugPrint(">>> SenePayService: Data: ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         return data['checkoutUrl'] as String?;
       } else {
-        String errorMsg = "Erreur ${response.statusCode}";
-        if (response.data != null) {
-          errorMsg = response.data['error'] ?? response.data['message'] ?? errorMsg;
-        }
-        throw Exception(errorMsg);
+        throw Exception("Code HTTP ${response.statusCode}");
       }
     } on DioException catch (e) {
-      debugPrint("Dio Error: ${e.type} - ${e.message}");
-      String error = "Erreur réseau";
-      if (e.response?.data != null) {
-        error = e.response?.data['error'] ?? e.response?.data['message'] ?? error;
+      debugPrint(">>> SenePayService: DioException type=${e.type}");
+      debugPrint(">>> SenePayService: DioException message=${e.message}");
+      
+      if (e.type == DioExceptionType.connectionTimeout) {
+        throw Exception("Le serveur Render met trop de temps à répondre (Timeout).");
       }
-      throw Exception(error);
+      
+      if (e.response?.data != null) {
+        final errorMsg = e.response?.data['error'] ?? e.response?.data['message'] ?? "Erreur API";
+        throw Exception(errorMsg);
+      }
+      
+      throw Exception("Erreur de connexion : ${e.message}");
     } catch (e) {
-      debugPrint("SenePay Proxy Exception: $e");
+      debugPrint(">>> SenePayService: Erreur inattendue: $e");
       rethrow;
     }
   }
@@ -80,7 +88,7 @@ class SenePayService {
   }) async {
     try {
       final url = "$backendUrl/api/payment/create-payout";
-      final body = {
+      final response = await _dio.post(url, data: {
         "externalId": externalId,
         "amount": amount.toInt(),
         "recipientPhone": recipientPhone,
@@ -90,27 +98,17 @@ class SenePayService {
         "description": description ?? "Retrait TranSen",
         "callbackUrl": "$backendUrl/webhook/payout",
         "metadata": metadata ?? {},
-      };
-
-      final response = await _dio.post(url, data: body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      return null;
+      });
+      return response.data;
     } catch (e) {
-      debugPrint("SenePay Payout Proxy Exception: $e");
       return null;
     }
   }
 
   Future<Map<String, dynamic>?> getPayoutStatus(String internalId) async {
     try {
-      final url = "$backendUrl/api/payment/payout-status/$internalId";
-      final response = await _dio.get(url);
-      if (response.statusCode == 200) {
-        return response.data;
-      }
-      return null;
+      final response = await _dio.get("$backendUrl/api/payment/payout-status/$internalId");
+      return response.data;
     } catch (e) {
       return null;
     }
@@ -118,12 +116,8 @@ class SenePayService {
 
   Future<Map<String, dynamic>?> checkCheckoutStatus(String orderReference) async {
     try {
-      final url = "$backendUrl/api/payment/check-status/$orderReference";
-      final response = await _dio.get(url);
-      if (response.statusCode == 200) {
-        return response.data;
-      }
-      return null;
+      final response = await _dio.get("$backendUrl/api/payment/check-status/$orderReference");
+      return response.data;
     } catch (e) {
       return null;
     }
