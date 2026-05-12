@@ -1,11 +1,13 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 class SenePayService {
-  // PLUS DE CLÉS ICI ! Sécurité maximale.
-  // Vos clés sont maintenant dans les variables d'environnement de Render.
   static const String backendUrl = "https://transen-api.onrender.com";
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 15),
+    headers: {"Content-Type": "application/json"},
+  ));
 
   Future<String?> createCheckoutSession({
     required double amount,
@@ -16,7 +18,7 @@ class SenePayService {
     String? providerId,
   }) async {
     try {
-      final url = Uri.parse("$backendUrl/api/payment/create-session");
+      final url = "$backendUrl/api/payment/create-session";
       
       final body = {
         "amount": amount.toInt(),
@@ -39,30 +41,30 @@ class SenePayService {
         body["providerId"] = providerId;
       }
       
-      debugPrint("Appel Proxy Render: $url");
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15));
-      debugPrint("Réponse Proxy Render: ${response.statusCode}");
+      debugPrint("Appel Proxy Render (Dio): $url");
+      final response = await _dio.post(url, data: body);
+      debugPrint("Réponse Proxy Render (Dio): ${response.statusCode}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = response.data;
         return data['checkoutUrl'] as String?;
       } else {
         String errorMsg = "Erreur ${response.statusCode}";
-        try {
-          final errorData = jsonDecode(response.body);
-          errorMsg = errorData['error'] ?? errorData['message'] ?? errorMsg;
-        } catch (_) {}
-        debugPrint("SenePay Proxy Error: $errorMsg");
-        // On pourrait lever une exception pour la catcher dans l'UI
+        if (response.data != null) {
+          errorMsg = response.data['error'] ?? response.data['message'] ?? errorMsg;
+        }
         throw Exception(errorMsg);
       }
+    } on DioException catch (e) {
+      debugPrint("Dio Error: ${e.type} - ${e.message}");
+      String error = "Erreur réseau";
+      if (e.response?.data != null) {
+        error = e.response?.data['error'] ?? e.response?.data['message'] ?? error;
+      }
+      throw Exception(error);
     } catch (e) {
       debugPrint("SenePay Proxy Exception: $e");
-      rethrow; // Laisser l'UI gérer l'erreur
+      rethrow;
     }
   }
 
@@ -77,7 +79,7 @@ class SenePayService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final url = Uri.parse("$backendUrl/api/payment/create-payout");
+      final url = "$backendUrl/api/payment/create-payout";
       final body = {
         "externalId": externalId,
         "amount": amount.toInt(),
@@ -90,35 +92,23 @@ class SenePayService {
         "metadata": metadata ?? {},
       };
 
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      );
-
+      final response = await _dio.post(url, data: body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return jsonDecode(response.body);
-      } else {
-        debugPrint("SenePay Payout Proxy Error: ${response.statusCode} - ${response.body}");
-        return null;
+        return response.data;
       }
+      return null;
     } catch (e) {
       debugPrint("SenePay Payout Proxy Exception: $e");
       return null;
     }
   }
 
-  // Pour les statuts, nous pouvons continuer à appeler SenePay directement 
-  // car ce sont des requêtes GET moins sensibles, MAIS par souci de cohérence
-  // et pour cacher l'API Key, il vaudrait mieux les passer aussi par le proxy.
-  // Pour l'instant, laissons-les ainsi ou passons les via le proxy si besoin.
-  
   Future<Map<String, dynamic>?> getPayoutStatus(String internalId) async {
     try {
-      final url = Uri.parse("$backendUrl/api/payment/payout-status/$internalId");
-      final response = await http.get(url);
+      final url = "$backendUrl/api/payment/payout-status/$internalId";
+      final response = await _dio.get(url);
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        return response.data;
       }
       return null;
     } catch (e) {
@@ -128,10 +118,10 @@ class SenePayService {
 
   Future<Map<String, dynamic>?> checkCheckoutStatus(String orderReference) async {
     try {
-      final url = Uri.parse("$backendUrl/api/payment/check-status/$orderReference");
-      final response = await http.get(url);
+      final url = "$backendUrl/api/payment/check-status/$orderReference";
+      final response = await _dio.get(url);
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        return response.data;
       }
       return null;
     } catch (e) {

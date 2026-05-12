@@ -472,7 +472,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
 
       // 3. Partage
       await Share.shareXFiles(
-        [XFile(imagePath.path)], 
+        [XFile(imagePath.path)],
         text: 'Reçu de trajet TranSen - ${widget.trip.price.toInt()} FCFA',
       );
     } catch (e) {

@@ -339,6 +339,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                         }
 
                         final userPhone = finalUserPhone;
+                        final navigator = Navigator.of(context);
 
                         final tripId = await ref
                             .read(tripRepositoryProvider)
@@ -364,7 +365,6 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                         if (!mounted) return;
                         setState(() => _isProcessing = false);
                         
-                        final navigator = Navigator.of(context);
                         navigator.pop();
 
                         if (!context.mounted) return;
