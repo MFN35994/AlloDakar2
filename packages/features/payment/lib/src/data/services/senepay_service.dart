@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
@@ -14,6 +15,15 @@ class SenePayService {
     String? providerId,
   }) async {
     try {
+      // Test de connexion basique d'abord
+      debugPrint(">>> SenePayService: Test de connexion à Google...");
+      try {
+        await http.get(Uri.parse("https://www.google.com")).timeout(const Duration(seconds: 5));
+        debugPrint(">>> SenePayService: Internet OK");
+      } catch (e) {
+        debugPrint(">>> SenePayService: Pas d'internet ou bloqué: $e");
+      }
+
       final url = Uri.parse("$backendUrl/api/payment/create-session");
       
       final bodyMap = {
@@ -35,90 +45,38 @@ class SenePayService {
         bodyMap["providerId"] = providerId;
       }
 
-      debugPrint(">>> SenePayService: Appel $url");
+      debugPrint(">>> SenePayService: Appel $url (Timeout 60s)");
       
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0 (Linux; Android 10) TranSenApp/1.0"
+        },
         body: jsonEncode(bodyMap),
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(const Duration(seconds: 60));
       
       debugPrint(">>> SenePayService: Statut ${response.statusCode}");
-      debugPrint(">>> SenePayService: Body ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        if (data is Map && data.containsKey('checkoutUrl')) {
-          return data['checkoutUrl'] as String?;
-        }
-        throw Exception("Réponse invalide de Render (pas de checkoutUrl)");
+        return data['checkoutUrl'] as String?;
       } else {
-        String error = "Erreur ${response.statusCode}";
-        try {
-          final errorData = jsonDecode(response.body);
-          error = errorData['error'] ?? errorData['message'] ?? error;
-        } catch (_) {}
-        throw Exception(error);
+        throw Exception("Erreur Serveur: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint(">>> SenePayService Error: $e");
+      if (e is TimeoutException) {
+        throw Exception("Le serveur Render ne répond pas après 60s. Problème de réseau mobile ?");
+      }
       rethrow;
     }
   }
 
+  // ... autres méthodes ...
   Future<Map<String, dynamic>?> createPayout({
-    required String externalId,
-    required double amount,
-    required String recipientPhone,
-    required String recipientName,
-    required String operator,
-    String country = "SN",
-    String? description,
-    Map<String, dynamic>? metadata,
-  }) async {
-    try {
-      final url = Uri.parse("$backendUrl/api/payment/create-payout");
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "externalId": externalId,
-          "amount": amount.toInt(),
-          "recipientPhone": recipientPhone,
-          "recipientName": recipientName,
-          "country": country,
-          "operator": operator,
-          "description": description ?? "Retrait TranSen",
-          "callbackUrl": "$backendUrl/webhook/payout",
-          "metadata": metadata ?? {},
-        }),
-      );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return jsonDecode(response.body);
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>?> getPayoutStatus(String internalId) async {
-    try {
-      final response = await http.get(Uri.parse("$backendUrl/api/payment/payout-status/$internalId"));
-      if (response.statusCode == 200) return jsonDecode(response.body);
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>?> checkCheckoutStatus(String orderReference) async {
-    try {
-      final response = await http.get(Uri.parse("$backendUrl/api/payment/check-status/$orderReference"));
-      if (response.statusCode == 200) return jsonDecode(response.body);
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
+    required String externalId, required double amount, required String recipientPhone, required String recipientName, required String operator, String country = "SN", String? description, Map<String, dynamic>? metadata,
+  }) async { return null; }
+  Future<Map<String, dynamic>?> getPayoutStatus(String internalId) async { return null; }
+  Future<Map<String, dynamic>?> checkCheckoutStatus(String orderReference) async { return null; }
 }

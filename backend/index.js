@@ -155,6 +155,7 @@ app.post('/webhook/payout', async (req, res) => {
 // PROXY ENDPOINTS
 app.post('/api/payment/create-session', async (req, res) => {
     try {
+        console.log(`[Proxy] create-session called with body:`, req.body);
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions`, {
             method: 'POST',
             headers: {
@@ -165,8 +166,11 @@ app.post('/api/payment/create-session', async (req, res) => {
             body: JSON.stringify(req.body)
         });
         const data = await response.json();
+        console.log(`[Proxy] create-session response status:`, response.status);
+        console.log(`[Proxy] create-session response data:`, data);
         res.status(response.status).send(data);
     } catch (error) {
+        console.error(`[Proxy] create-session error:`, error);
         res.status(500).send({ error: "Erreur serveur proxy" });
     }
 });

@@ -32,7 +32,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
       final pendingDeps = await db.collection('users').doc(auth.userId).collection('pending_deposits').get();
       if (pendingDeps.docs.isEmpty) return;
-
       int creditedCount = 0;
       for (var doc in pendingDeps.docs) {
         final success = await ref.read(paymentRepositoryProvider).verifyAndCreditDeposit(auth.userId, doc.id);
@@ -92,7 +91,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   ],
                 ),
               ),
-              const Expanded(child: SizedBox()), // Historique...
+              const Expanded(child: SizedBox()),
             ],
           ),
           if (_isLoading)
@@ -108,6 +107,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                         CircularProgressIndicator(color: TranSenColors.primaryGreen),
                         SizedBox(height: 15),
                         Text("Connexion SenePay...", style: TextStyle(fontWeight: FontWeight.bold)),
+                        SizedBox(height: 5),
+                        Text("Veuillez patienter (max 1 min)", style: TextStyle(fontSize: 12)),
                       ],
                     ),
                   ),
@@ -140,7 +141,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 final auth = ref.read(authProvider);
                 final orderId = "D-${DateTime.now().millisecondsSinceEpoch}";
                 
-                messenger.showSnackBar(const SnackBar(content: Text('⏳ Requête Render en cours...')));
+                messenger.showSnackBar(const SnackBar(content: Text('⏳ Envoi de la demande...')));
                 
                 final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
                   amount: amount,
@@ -153,25 +154,20 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 if (!context.mounted) return;
 
                 if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
-                  messenger.showSnackBar(SnackBar(content: Text('✅ URL reçue: ${checkoutUrl.substring(0, 20)}...'), backgroundColor: Colors.green));
+                  messenger.showSnackBar(const SnackBar(content: Text('✅ URL reçue ! Ouverture...'), backgroundColor: Colors.green));
                   
                   await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
                       .collection('users').doc(auth!.userId).collection('pending_deposits').doc(orderId).set({
                     'amount': amount, 'method': 'SenePay', 'status': 'Pending', 'createdAt': FieldValue.serverTimestamp(),
                   });
 
-                  // Tenter d'ouvrir l'URL avec protection contre les crashs
-                  try {
-                    final uri = Uri.parse(checkoutUrl);
-                    await launchUrl(uri, mode: LaunchMode.platformDefault);
-                  } catch (launchErr) {
-                    messenger.showSnackBar(SnackBar(content: Text('❌ Erreur Browser: $launchErr'), backgroundColor: Colors.orange));
-                  }
+                  final uri = Uri.parse(checkoutUrl);
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else {
-                  messenger.showSnackBar(const SnackBar(content: Text('❌ Pas d\'URL de paiement reçue.'), backgroundColor: Colors.red));
+                  messenger.showSnackBar(const SnackBar(content: Text('❌ Pas de réponse du serveur.'), backgroundColor: Colors.red));
                 }
               } catch (e) {
-                if (mounted) messenger.showSnackBar(SnackBar(content: Text('❌ Erreur: $e'), backgroundColor: Colors.red));
+                if (mounted) messenger.showSnackBar(SnackBar(content: Text('❌ $e'), backgroundColor: Colors.red));
               } finally {
                 if (mounted) setState(() => _isLoading = false);
               }
