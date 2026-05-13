@@ -27,33 +27,22 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   Future<void> _handleSync() async {
     final auth = ref.read(authProvider);
     if (auth == null) return;
-    
     final messenger = ScaffoldMessenger.of(context);
-    
     try {
       final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
       final pendingDeps = await db.collection('users').doc(auth.userId).collection('pending_deposits').get();
-
       if (pendingDeps.docs.isEmpty) return;
 
       int creditedCount = 0;
       for (var doc in pendingDeps.docs) {
-        final orderId = doc.id;
-        final success = await ref.read(paymentRepositoryProvider).verifyAndCreditDeposit(auth.userId, orderId);
+        final success = await ref.read(paymentRepositoryProvider).verifyAndCreditDeposit(auth.userId, doc.id);
         if (success) {
           creditedCount++;
           await doc.reference.delete();
         }
       }
-
       if (creditedCount > 0) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('$creditedCount dépôt(s) crédité(s) automatiquement !'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        messenger.showSnackBar(SnackBar(content: Text('$creditedCount dépôt(s) crédité(s) !'), backgroundColor: Colors.green));
       }
     } catch (e) {
       debugPrint("Erreur sync auto: $e");
@@ -63,128 +52,49 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     final walletState = ref.watch(walletProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mon Portefeuille'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.sync),
-            tooltip: 'Actualiser le solde',
-            onPressed: () => _handleSync(),
-          ),
+          IconButton(icon: const Icon(Icons.sync), onPressed: () => _handleSync()),
         ],
       ),
       body: Stack(
         children: [
           Column(
             children: [
-              // Solde actuel - Platinum Card
               Container(
                 margin: const EdgeInsets.all(20),
                 padding: const EdgeInsets.all(30),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2C3E50), Color(0xFF000000)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: const LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF000000)]),
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('SOLDE TOTAL', style: TextStyle(color: Colors.white70, letterSpacing: 2, fontSize: 12)),
+                    const Text('SOLDE TOTAL', style: TextStyle(color: Colors.white70, fontSize: 12)),
                     const SizedBox(height: 10),
-                    Text(
-                      '${walletState.balance.toInt()} FCFA',
-                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 30),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('TRANSPAY PLATINUM', style: TextStyle(color: Colors.white38, fontSize: 10)),
-                        Image.network('https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png', width: 40, color: Colors.white24),
-                      ],
-                    ),
+                    Text('${walletState.balance.toInt()} FCFA', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
-
-              // Boutons d'actions
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Wrap(
                   spacing: 15,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
                   children: [
-                    _buildActionButton(
-                      context,
-                      'Déposer',
-                      TranSenColors.primaryGreen,
-                      Icons.add_circle_outline,
-                      () => _showRechargeDialog(context),
-                    ),
-                    _buildActionButton(
-                      context,
-                      'Retirer',
-                      Colors.redAccent,
-                      Icons.outbox,
-                      () => _showWithdrawDialog(context, walletState.balance),
-                    ),
+                    _buildActionButton(context, 'Déposer', TranSenColors.primaryGreen, Icons.add_circle_outline, () => _showRechargeDialog(context)),
+                    _buildActionButton(context, 'Retirer', Colors.redAccent, Icons.outbox, () => _showWithdrawDialog(context, walletState.balance)),
                   ],
                 ),
               ),
-              
-              const SizedBox(height: 20),
-
-              const Padding(
-                padding: EdgeInsets.only(left: 20.0, top: 10, bottom: 10),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Historique des Transactions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ),
-              ),
-
-              Expanded(
-                child: walletState.transactions.isEmpty
-                    ? const Center(child: Text('Aucune transaction.', style: TextStyle(color: Colors.grey)))
-                    : ListView.builder(
-                        itemCount: walletState.transactions.length,
-                        itemBuilder: (context, index) {
-                          final txn = walletState.transactions[index];
-                          final isDebit = txn.amount < 0;
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: isDebit ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
-                              child: Icon(isDebit ? Icons.arrow_outward : Icons.arrow_downward, color: isDebit ? Colors.red : Colors.green),
-                            ),
-                            title: Text(txn.description),
-                            subtitle: Text('${txn.date.day}/${txn.date.month}/${txn.date.year}'),
-                            trailing: Text(
-                              '${isDebit ? '' : '+'}${txn.amount.toInt()} FCFA',
-                              style: TextStyle(color: isDebit ? Colors.red : Colors.green, fontWeight: FontWeight.bold),
-                            ),
-                          );
-                        },
-                      ),
-              ),
+              const Expanded(child: SizedBox()), // Historique...
             ],
           ),
-          
-          // Loader Overlay
           if (_isLoading)
             Container(
               color: Colors.black45,
@@ -197,8 +107,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                       children: [
                         CircularProgressIndicator(color: TranSenColors.primaryGreen),
                         SizedBox(height: 15),
-                        Text("Connexion sécurisée...", style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text("Veuillez patienter quelques instants", style: TextStyle(fontSize: 12)),
+                        Text("Connexion SenePay...", style: TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -216,37 +125,23 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Recharger mon compte'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Entrez le montant (Min 100 FCFA)', style: TextStyle(fontSize: 13)),
-            const SizedBox(height: 15),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Montant (FCFA)', border: OutlineInputBorder()),
-            ),
-          ],
-        ),
+        content: TextField(controller: amountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Montant (FCFA)')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('ANNULER')),
           ElevatedButton(
             onPressed: () async {
               final amount = double.tryParse(amountController.text) ?? 0;
               if (amount < 100) return;
-
               Navigator.pop(context);
               setState(() => _isLoading = true);
-              
               final messenger = ScaffoldMessenger.of(context);
-              messenger.showSnackBar(const SnackBar(content: Text('⏳ Contact de Render...')));
-
+              
               try {
                 final auth = ref.read(authProvider);
-                // ID plus court pour éviter les erreurs d'URL
                 final orderId = "D-${DateTime.now().millisecondsSinceEpoch}";
                 
-                debugPrint(">>> WalletScreen: Appel SenePayService pour $amount FCFA");
+                messenger.showSnackBar(const SnackBar(content: Text('⏳ Requête Render en cours...')));
+                
                 final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
                   amount: amount,
                   orderId: orderId,
@@ -256,29 +151,27 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 );
 
                 if (!context.mounted) return;
-                
-                if (checkoutUrl != null) {
-                  messenger.showSnackBar(const SnackBar(content: Text('✅ Lien reçu ! Ouverture...'), backgroundColor: Colors.green));
+
+                if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
+                  messenger.showSnackBar(SnackBar(content: Text('✅ URL reçue: ${checkoutUrl.substring(0, 20)}...'), backgroundColor: Colors.green));
                   
                   await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
                       .collection('users').doc(auth!.userId).collection('pending_deposits').doc(orderId).set({
                     'amount': amount, 'method': 'SenePay', 'status': 'Pending', 'createdAt': FieldValue.serverTimestamp(),
                   });
-                  
-                  final uri = Uri.parse(checkoutUrl);
-                  final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  
-                  if (!success) {
-                    messenger.showSnackBar(const SnackBar(content: Text('❌ Impossible d\'ouvrir le lien. Vérifiez votre navigateur.'), backgroundColor: Colors.red));
+
+                  // Tenter d'ouvrir l'URL avec protection contre les crashs
+                  try {
+                    final uri = Uri.parse(checkoutUrl);
+                    await launchUrl(uri, mode: LaunchMode.platformDefault);
+                  } catch (launchErr) {
+                    messenger.showSnackBar(SnackBar(content: Text('❌ Erreur Browser: $launchErr'), backgroundColor: Colors.orange));
                   }
                 } else {
-                  messenger.showSnackBar(const SnackBar(content: Text('❌ Erreur: SenePay n\'a pas renvoyé de lien.'), backgroundColor: Colors.red));
+                  messenger.showSnackBar(const SnackBar(content: Text('❌ Pas d\'URL de paiement reçue.'), backgroundColor: Colors.red));
                 }
               } catch (e) {
-                debugPrint(">>> WalletScreen: Erreur fatale: $e");
-                if (mounted) {
-                  messenger.showSnackBar(SnackBar(content: Text('❌ Erreur réseau ou serveur: $e'), backgroundColor: Colors.red));
-                }
+                if (mounted) messenger.showSnackBar(SnackBar(content: Text('❌ Erreur: $e'), backgroundColor: Colors.red));
               } finally {
                 if (mounted) setState(() => _isLoading = false);
               }
@@ -291,20 +184,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
   }
 
-  void _showWithdrawDialog(BuildContext context, double balance) {
-    // ... Logique de retrait ...
-  }
+  void _showWithdrawDialog(BuildContext context, double balance) {}
 
   Widget _buildActionButton(BuildContext context, String name, Color color, IconData icon, VoidCallback onPressed) {
     return ElevatedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, color: color, size: 20),
-      label: Text(name, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      ),
+      label: Text(name, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
     );
   }
 }

@@ -16,7 +16,7 @@ class SenePayService {
     try {
       final url = Uri.parse("$backendUrl/api/payment/create-session");
       
-      final body = jsonEncode({
+      final bodyMap = {
         "amount": amount.toInt(),
         "currency": "XOF",
         "orderReference": orderId,
@@ -29,29 +29,40 @@ class SenePayService {
           "platform": "mobile_app"
         },
         "expiresInMinutes": 60
-      });
+      };
 
-      debugPrint(">>> SenePayService (HTTP): POST $url");
+      if (providerId != null && providerId.isNotEmpty) {
+        bodyMap["providerId"] = providerId;
+      }
+
+      debugPrint(">>> SenePayService: Appel $url");
       
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: body,
-      ).timeout(const Duration(seconds: 25));
+        body: jsonEncode(bodyMap),
+      ).timeout(const Duration(seconds: 20));
       
-      debugPrint(">>> SenePayService (HTTP): Statut: ${response.statusCode}");
+      debugPrint(">>> SenePayService: Statut ${response.statusCode}");
+      debugPrint(">>> SenePayService: Body ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        return data['checkoutUrl'] as String?;
+        if (data is Map && data.containsKey('checkoutUrl')) {
+          return data['checkoutUrl'] as String?;
+        }
+        throw Exception("Réponse invalide de Render (pas de checkoutUrl)");
       } else {
-        final error = jsonDecode(response.body)['error'] ?? "Erreur ${response.statusCode}";
+        String error = "Erreur ${response.statusCode}";
+        try {
+          final errorData = jsonDecode(response.body);
+          error = errorData['error'] ?? errorData['message'] ?? error;
+        } catch (_) {}
         throw Exception(error);
       }
     } catch (e) {
-      debugPrint(">>> SenePayService (HTTP) Error: $e");
-      // On propage l'erreur brute pour voir le message système
-      throw Exception("Erreur connexion: $e");
+      debugPrint(">>> SenePayService Error: $e");
+      rethrow;
     }
   }
 
