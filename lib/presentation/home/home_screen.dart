@@ -18,6 +18,7 @@ import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:transen/presentation/widgets/profile_drawer.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shimmer/shimmer.dart';
 
 final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
   return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
@@ -230,7 +231,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         );
                       },
-                      loading: () => const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))),
+                      loading: () => SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildHistoryShimmer(context),
+                          childCount: 5,
+                        ),
+                      ),
                       error: (e, _) => SliverToBoxAdapter(child: Center(child: Text("Erreur: $e"))),
                     ),
                     
@@ -270,7 +276,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildHistoryItem(BuildContext context, TripModel trip) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
-      onTap: () => _showTripDetails(context, trip),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _showTripDetails(context, trip);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
         decoration: BoxDecoration(
@@ -278,12 +287,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: trip.type.contains('Yobanté') ? Colors.blue.withValues(alpha: 0.1) : TranSenColors.primaryGreen.withValues(alpha: 0.1),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: trip.type.contains('Yobanté') ? Colors.blue.withValues(alpha: 0.1) : TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Icon(
                 trip.type.contains('Yobanté') ? Icons.inventory_2 : Icons.directions_car,
-                size: 18,
+                size: 20,
                 color: trip.type.contains('Yobanté') ? Colors.blue : TranSenColors.primaryGreen,
               ),
             ),
@@ -301,9 +313,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             Text(
-              "-${trip.price.toInt()} F",
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              "${trip.price.toInt()} F",
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryShimmer(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.white10 : Colors.grey[300]!,
+      highlightColor: isDark ? Colors.white24 : Colors.grey[100]!,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        child: Row(
+          children: [
+            Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 150, height: 12, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Container(width: 80, height: 10, color: Colors.white),
+                ],
+              ),
+            ),
+            Container(width: 60, height: 14, color: Colors.white),
           ],
         ),
       ),
@@ -316,10 +360,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showTripDetails(BuildContext context, TripModel trip) {
+    HapticFeedback.selectionClick();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      enableDrag: true,
+      useSafeArea: true,
       builder: (context) => _TripDetailsSheet(trip: trip),
     );
   }
@@ -328,18 +375,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildActiveTripCard(BuildContext context, TripModel trip, {required bool isYobante}) {
     final color = isYobante ? Colors.blue : TranSenColors.primaryGreen;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color, width: 1.5),
+        gradient: LinearGradient(
+          colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: ListTile(
-        leading: CircleAvatar(backgroundColor: color, child: Icon(isYobante ? Icons.inventory_2 : Icons.directions_car, color: Colors.white)),
-        title: Text(isYobante ? "Livraison en cours..." : "Course en cours...", style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-        subtitle: Text("${trip.departure} ➔ ${trip.destination}"),
-        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: color),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TripTrackingScreen(tripId: trip.id))),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+              child: Icon(isYobante ? Icons.inventory_2 : Icons.directions_car, color: Colors.white, size: 22),
+            ),
+            title: Text(
+              isYobante ? "LIVRAISON EN COURS" : "COURSE EN COURS",
+              style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 12, letterSpacing: 1.2),
+            ),
+            subtitle: Text(
+              "${trip.departure} ➔ ${trip.destination}",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: Icon(Icons.arrow_forward_ios, size: 14, color: color),
+            ),
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              Navigator.push(context, MaterialPageRoute(builder: (_) => TripTrackingScreen(tripId: trip.id)));
+            },
+          ),
+        ),
       ),
     );
   }
@@ -457,6 +541,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
   bool _isGenerating = false;
 
   Future<void> _shareReceiptImage() async {
+    HapticFeedback.mediumImpact();
     setState(() => _isGenerating = true);
     try {
       // 1. Capture du widget

@@ -11,6 +11,9 @@ import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_rating/transen_rating.dart';
+import 'package:transen_payment/transen_payment.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:transen_profile/transen_profile.dart';
 import 'package:transen/presentation/widgets/profile_drawer.dart';
 import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
@@ -249,6 +252,52 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       drawer: const ProfileDrawer(),
       body: Column(
         children: [
+          // ── BANNIÈRE ABONNEMENT ──────────────────────────────────────
+          StreamBuilder<SubscriptionInfo>(
+            stream: SubscriptionService().watchSubscription(currentUserId),
+            builder: (context, snapshot) {
+              final info = snapshot.data;
+              if (info == null || info.isActive && !info.expiresSOon) {
+                return const SizedBox.shrink();
+              }
+              final isExpired = info.isExpired || info.isNone;
+              return GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  color: isExpired ? Colors.red.shade700 : Colors.orange.shade700,
+                  child: Row(
+                    children: [
+                      Icon(
+                        isExpired ? Icons.lock : Icons.warning_amber,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          isExpired
+                              ? '⛔ Abonnement expiré — Appuyez pour renouveler'
+                              : '⚠️ Abonnement expire dans ${info.daysRemaining}j ${info.hoursRemaining}h — Appuyez pour renouveler',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Colors.white),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          // ────────────────────────────────────────────────────────────
           Expanded(
             flex: 4,
             child: Container(
@@ -369,133 +418,180 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                               error: (_, __) => const SizedBox.shrink(),
                             );
                           }),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: TranSenColors.primaryGreen
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: TranSenColors.primaryGreen
-                                      .withValues(alpha: 0.3)),
+                          // ── CARTE TRAJET COMPACTE ────────────────────────────
+                          GestureDetector(
+                            onTap: () => _showRouteBottomSheet(context, ref, currentUserId),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    TranSenColors.darkGreen,
+                                    TranSenColors.primaryGreen.withValues(alpha: 0.85),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: TranSenColors.primaryGreen.withValues(alpha: 0.25),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.route, color: Colors.white, size: 18),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _pubDeparture == null && _pubDestination == null
+                                          ? 'Définir mon trajet du jour...'
+                                          : '${_pubDeparture ?? '—'}  →  ${_pubDestination ?? '—'}',
+                                      style: TextStyle(
+                                        color: _pubDeparture == null
+                                            ? Colors.white60
+                                            : Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'Modifier',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(15),
-                                  child: Column(
+                          ),
+
+                          // ── BOUTONS D'ACTION RAPIDE 2×2 ──────────────────────
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            child: Consumer(builder: (context, ref, child) {
+                              final wallet = ref.watch(walletProvider);
+                              final subStream = SubscriptionService().watchSubscription(currentUserId);
+                              return StreamBuilder<SubscriptionInfo>(
+                                stream: subStream,
+                                builder: (context, subSnap) {
+                                  final subInfo = subSnap.data;
+                                  return Column(
                                     children: [
-                                      const Row(
+                                      Row(
                                         children: [
-                                          Icon(Icons.auto_awesome,
-                                              color: TranSenColors.accentGold,
-                                              size: 20),
-                                          SizedBox(width: 10),
-                                          Text("Mon trajet d'aujourd'hui",
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14)),
+                                          // ── TransPay
+                                          Expanded(
+                                            child: _buildQuickActionTile(
+                                              context: context,
+                                              icon: Icons.account_balance_wallet_rounded,
+                                              label: 'TransPay',
+                                              sublabel: wallet.balance == 0.0 && wallet.transactions.isEmpty
+                                                  ? 'chargement...'
+                                                  : '${wallet.balance.toInt()} FCFA',
+                                              isLoading: wallet.balance == 0.0 && wallet.transactions.isEmpty,
+                                              gradientColors: const [Color(0xFF1A3A5C), Color(0xFF0D6EFD)],
+                                              iconColor: const Color(0xFF5BB8FF),
+                                              onTap: () {
+                                                HapticFeedback.lightImpact();
+                                                Navigator.push(context,
+                                                    MaterialPageRoute(builder: (_) => const WalletScreen()));
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          // ── Abonnement
+                                          Expanded(
+                                            child: _buildQuickActionTile(
+                                              context: context,
+                                              icon: Icons.workspace_premium_rounded,
+                                              label: 'Abonnement',
+                                              sublabel: subSnap.connectionState == ConnectionState.waiting
+                                                  ? 'chargement...'
+                                                  : subInfo == null
+                                                      ? 'Souscrire'
+                                                      : subInfo.isActive
+                                                          ? '${subInfo.daysRemaining}j restants'
+                                                          : 'Renouveler',
+                                              isLoading: subSnap.connectionState == ConnectionState.waiting,
+                                              gradientColors: subInfo != null && subInfo.isExpired
+                                                  ? const [Color(0xFF5C1A1A), Color(0xFFB71C1C)]
+                                                  : const [Color(0xFF3A2A00), Color(0xFFF9A825)],
+                                              iconColor: subInfo != null && subInfo.isExpired
+                                                  ? Colors.red.shade300
+                                                  : const Color(0xFFFFD54F),
+                                              badge: subInfo != null && (subInfo.isExpired || subInfo.expiresSOon)
+                                                  ? '!'
+                                                  : null,
+                                              onTap: () {
+                                                HapticFeedback.lightImpact();
+                                                Navigator.push(context,
+                                                    MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                                              },
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       const SizedBox(height: 10),
                                       Row(
                                         children: [
+                                          // ── Parrainage
                                           Expanded(
-                                            child: DropdownButtonHideUnderline(
-                                              child: DropdownButton<String>(
-                                                hint: const Text("Départ"),
-                                                value: _pubDeparture,
-                                                isExpanded: true,
-                                                items: _regions
-                                                    .map((r) => DropdownMenuItem(
-                                                        value: r, child: Text(r)))
-                                                    .toList(),
-                                                onChanged: (val) {
-                                                  setState(() => _pubDeparture = val);
-                                                  ref
-                                                      .read(tripRepositoryProvider)
-                                                      .publishDriverRoute(
-                                                          currentUserId,
-                                                          val!,
-                                                          _pubDestination,
-                                                          _noteController.text
-                                                              .trim());
-                                                },
-                                              ),
+                                            child: _buildQuickActionTile(
+                                              context: context,
+                                              icon: Icons.card_giftcard_rounded,
+                                              label: 'Parrainage',
+                                              sublabel: 'Gagner des points',
+                                              gradientColors: const [Color(0xFF1A3A2A), Color(0xFF2E7D32)],
+                                              iconColor: const Color(0xFF81C784),
+                                              onTap: () {
+                                                HapticFeedback.lightImpact();
+                                                Navigator.push(context,
+                                                    MaterialPageRoute(builder: (_) => const ReferralScreen()));
+                                              },
                                             ),
                                           ),
-                                          const Icon(Icons.arrow_forward,
-                                              size: 16, color: Colors.grey),
-                                          const SizedBox(width: 5),
+                                          const SizedBox(width: 10),
+                                          // ── Historique
                                           Expanded(
-                                            child: DropdownButtonHideUnderline(
-                                              child: DropdownButton<String>(
-                                                hint: const Text("Arrivée"),
-                                                value: _pubDestination,
-                                                isExpanded: true,
-                                                items: _regions
-                                                    .map((r) => DropdownMenuItem(
-                                                        value: r, child: Text(r)))
-                                                    .toList(),
-                                                onChanged: (val) {
-                                                  setState(
-                                                      () => _pubDestination = val);
-                                                  if (_pubDeparture != null) {
-                                                    ref
-                                                        .read(tripRepositoryProvider)
-                                                        .publishDriverRoute(
-                                                            currentUserId,
-                                                            _pubDeparture!,
-                                                            val,
-                                                            _noteController.text
-                                                                .trim());
-                                                  }
-                                                },
-                                              ),
+                                            child: _buildQuickActionTile(
+                                              context: context,
+                                              icon: Icons.history_rounded,
+                                              label: 'Historique',
+                                              sublabel: 'Mes courses',
+                                              gradientColors: const [Color(0xFF1A1A3A), Color(0xFF4527A0)],
+                                              iconColor: const Color(0xFFB39DDB),
+                                              onTap: () {
+                                                HapticFeedback.lightImpact();
+                                                Navigator.push(context,
+                                                    MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                                              },
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 10),
-                                      TextField(
-                                        controller: _noteController,
-                                        decoration: InputDecoration(
-                                          hintText:
-                                              "Message (ex: Départ à 8h, Climatisé...)",
-                                          hintStyle: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade400),
-                                          prefixIcon: const Icon(
-                                              Icons.chat_bubble_outline,
-                                              size: 18),
-                                          border: InputBorder.none,
-                                          contentPadding: const EdgeInsets.symmetric(
-                                              vertical: 10),
-                                        ),
-                                        style: const TextStyle(fontSize: 13),
-                                        onSubmitted: (val) {
-                                          if (_pubDeparture != null) {
-                                            ref
-                                                .read(tripRepositoryProvider)
-                                                .publishDriverRoute(
-                                                  currentUserId,
-                                                  _pubDeparture!,
-                                                  _pubDestination,
-                                                  val.trim(),
-                                                );
-                                          }
-                                        },
-                                      ),
                                     ],
-                                  ),
-                                ),
-                              ),
-                            ),
+                                  );
+                                },
+                              );
+                            }),
                           ),
+                          // ─────────────────────────────────────────────────────
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Row(
@@ -1450,6 +1546,242 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                             color: TranSenColors.primaryGreen)),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // QUICK ACTION TILE — tuile d'action rapide avec gradient premium
+  // ────────────────────────────────────────────────────────────────────────
+  Widget _buildQuickActionTile({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String sublabel,
+    required List<Color> gradientColors,
+    required Color iconColor,
+    required VoidCallback onTap,
+    String? badge,
+    bool isLoading = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: Colors.white.withValues(alpha: 0.1),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: gradientColors.last.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Row(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: iconColor, size: 20),
+                    ),
+                    if (badge != null)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          child: Center(
+                            child: Text(badge,
+                                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      if (isLoading)
+                        Shimmer.fromColors(
+                          baseColor: Colors.white.withValues(alpha: 0.2),
+                          highlightColor: Colors.white.withValues(alpha: 0.4),
+                          child: Container(
+                            height: 10,
+                            width: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        )
+                      else
+                        Text(sublabel,
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 11),
+                            overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.white.withValues(alpha: 0.4), size: 16),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // BOTTOM SHEET : Sélection du trajet du jour
+  // ────────────────────────────────────────────────────────────────────────
+  void _showRouteBottomSheet(BuildContext context, WidgetRef ref, String driverId) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      useSafeArea: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.route, color: TranSenColors.primaryGreen, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Mon trajet du jour',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('Ville de départ',
+                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    hint: const Text('Sélectionner le départ'),
+                    value: _pubDeparture,
+                    isExpanded: true,
+                    items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (val) { setState(() => _pubDeparture = val); setModalState(() {}); },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text("Ville d'arrivée",
+                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    hint: const Text("Sélectionner l'arrivée"),
+                    value: _pubDestination,
+                    isExpanded: true,
+                    items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (val) { setState(() => _pubDestination = val); setModalState(() {}); },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text('Message aux passagers (optionnel)',
+                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+                child: TextField(
+                  controller: _noteController,
+                  decoration: const InputDecoration(
+                    hintText: 'Ex: Départ à 8h, Climatisé...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
+                    prefixIcon: Icon(Icons.chat_bubble_outline, size: 18),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _pubDeparture == null
+                      ? null
+                      : () {
+                          HapticFeedback.mediumImpact();
+                          ref.read(tripRepositoryProvider).publishDriverRoute(
+                            driverId, _pubDeparture!, _pubDestination, _noteController.text.trim(),
+                          );
+                          Navigator.pop(ctx);
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: TranSenColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Confirmer mon trajet',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
               ),
             ],
           ),

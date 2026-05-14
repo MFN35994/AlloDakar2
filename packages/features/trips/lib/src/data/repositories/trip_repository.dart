@@ -122,6 +122,15 @@ class TripRepository {
   }
 
   Future<void> acceptPool(String poolId, String driverId) async {
+    // ── VÉRIFICATION ABONNEMENT ──
+    final subInfo = await SubscriptionService().checkSubscription(driverId);
+    if (!subInfo.isActive) {
+      final msg = subInfo.isExpired
+          ? 'Votre abonnement TranSen a expiré. Renouvelez votre abonnement pour accepter des trajets.'
+          : 'Vous n\'avez pas d\'abonnement actif. Activez votre essai gratuit ou souscrivez un plan.';
+      throw Exception(msg);
+    }
+
     final userDoc = await _firestore.collection('users').doc(driverId).get();
     final userData = userDoc.data() ?? {};
 
@@ -143,12 +152,12 @@ class TripRepository {
         throw Exception("Ce trajet n'est plus disponible ou a déjà été accepté.");
       }
 
-      // VÉRIFICATION COMMISSION 5%
+      // VÉRIFICATION COMMISSION 1%
       final price = 10000.0; // Prix fixe pour covoiturage par défaut
-      final commission = price * 0.05;
+      final commission = price * 0.01;
       final driverBalance = (userData['walletBalance'] ?? 0).toDouble();
       if (driverBalance < commission) {
-        throw Exception("Solde insuffisant (${driverBalance.toInt()} FCFA). La commission de 5% (${commission.toInt()} FCFA) est requise pour accepter ce trajet.");
+        throw Exception("Solde insuffisant (${driverBalance.toInt()} FCFA). La commission de 1% (${commission.toInt()} FCFA) est requise pour accepter ce trajet.");
       }
 
       transaction.update(poolRef, {
@@ -277,6 +286,16 @@ class TripRepository {
   Future<void> acceptTrip(String tripId, String driverId) async {
     try {
       debugPrint("AcceptTrip: Début pour $tripId");
+
+      // ── VÉRIFICATION ABONNEMENT ──
+      final subInfo = await SubscriptionService().checkSubscription(driverId);
+      if (!subInfo.isActive) {
+        final msg = subInfo.isExpired
+            ? 'Votre abonnement TranSen a expiré. Renouvelez votre abonnement pour accepter des courses.'
+            : 'Vous n\'avez pas d\'abonnement actif. Activez votre essai gratuit ou souscrivez un plan.';
+        throw Exception(msg);
+      }
+
       final tripRef = _firestore.collection('trips').doc(tripId);
       
       // On vérifie d'abord le statut sans transaction pour éviter les bugs Web
@@ -288,15 +307,15 @@ class TripRepository {
         throw Exception("Cette course n'est plus disponible (Statut: $currentStatus).");
       }
 
-      // VÉRIFICATION COMMISSION 5%
+      // VÉRIFICATION COMMISSION 1%
       final price = (snap.data()?['price'] as num?)?.toDouble() ?? 0.0;
-      final commission = price * 0.05;
+      final commission = price * 0.01;
       
       final driverDoc = await _firestore.collection('users').doc(driverId).get();
       final balance = (driverDoc.data()?['walletBalance'] ?? 0).toDouble();
       
       if (balance < commission) {
-        throw Exception("Solde insuffisant (${balance.toInt()} FCFA). La commission de 5% (${commission.toInt()} FCFA) est requise pour accepter cette course. Veuillez recharger votre portefeuille TransPay.");
+        throw Exception("Solde insuffisant (${balance.toInt()} FCFA). La commission de 1% (${commission.toInt()} FCFA) est requise pour accepter cette course. Veuillez recharger votre portefeuille TransPay.");
       }
 
       // Update direct
@@ -344,12 +363,12 @@ class TripRepository {
         await _checkAndAwardReferralPoints(uid, "Covoiturage");
       }
       
-      // DÉDUCTION COMMISSION 5%
+      // DÉDUCTION COMMISSION 1%
       final driverId = data['driverId'];
       final price = 10000.0;
-      final commission = price * 0.05;
+      final commission = price * 0.01;
       if (driverId != null) {
-        await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (5%) - Covoiturage $tripId");
+        await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (1%) - Covoiturage $tripId");
         
         // VERSER DANS LE COMPTE PLATEFORME
         await _firestore.collection('system_stats').doc('earnings').set({
@@ -370,12 +389,12 @@ class TripRepository {
         final type = data['type'] ?? 'Course';
         await _checkAndAwardReferralPoints(clientId, type);
         
-        // DÉDUCTION COMMISSION 5%
+        // DÉDUCTION COMMISSION 1%
         final driverId = data['driverId'];
         final price = (data['price'] as num?)?.toDouble() ?? 0.0;
-        final commission = price * 0.05;
+        final commission = price * 0.01;
         if (driverId != null && commission > 0) {
-           await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (5%) - $type $tripId");
+           await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (1%) - $type $tripId");
            
            // VERSER DANS LE COMPTE PLATEFORME
            await _firestore.collection('system_stats').doc('earnings').set({

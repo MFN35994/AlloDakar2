@@ -17,14 +17,16 @@ class ProfileDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final userId = auth?.userId ?? '';
-    final isDriver = auth?.role == 'driver';
+    // Sécurité : on s'assure que le rôle est bien détecté, sinon défaut à 'client'
+    final role = auth?.role ?? 'client';
+    final isDriver = role == 'driver';
     
     return Drawer(
       backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : const Color(0xFF1A1A1A),
       child: Column(
         children: [
           // En-tête Profil
-          _buildHeader(context, ref, userId, auth?.role),
+          _buildHeader(context, ref, userId, role),
           
           const SizedBox(height: 10),
 
@@ -210,31 +212,37 @@ class ProfileDrawer extends ConsumerWidget {
                   ],
                 ),
               const SizedBox(height: 15),
+              // Sécurité sur le Wallet pour éviter le crash au premier lancement
               Consumer(
                 builder: (context, ref, child) {
-                  final wallet = ref.watch(walletProvider);
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.account_balance_wallet, color: Colors.white, size: 16),
-                        const SizedBox(width: 8),
-                        Text(
-                          "${wallet.balance.toInt()} FCFA",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                  try {
+                    final wallet = ref.watch(walletProvider);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.account_balance_wallet, color: Colors.white, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "${wallet.balance.toInt()} FCFA",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
+                        ],
+                      ),
+                    );
+                  } catch (e) {
+                    // Fallback silencieux si le provider n'est pas prêt
+                    return const SizedBox.shrink();
+                  }
                 }
               ),
               const SizedBox(height: 15),

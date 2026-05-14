@@ -225,17 +225,71 @@ class AuthNotifier extends Notifier<AuthState?> {
       if (currentUser == null) throw Exception("Utilisateur non connecté");
       final uid = currentUser.uid;
       final name = "$firstName $lastName";
-      
+      final cleanPhone = phone.replaceAll(' ', '');
+
       await _firestore.collection('users').doc(uid).set({
         'role': 'driver',
         'name': name,
         'firstName': firstName,
         'lastName': lastName,
-        'phone': phone.replaceAll(' ', ''),
+        'phone': cleanPhone,
         'email': currentUser.email ?? currentUser.phoneNumber ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       state = AuthState(userId: uid, role: 'driver', isLoading: false);
+
+      // ── Activation automatique de l'essai gratuit 5 jours ──
+      // Écriture directe en Firestore pour éviter la dépendance circulaire
+      // auth ↔ payment. La logique complète avec anti-fraude est dans SubscriptionService,
+      // appelé depuis le driver_signup_screen après cet appel.
+      try {
+        final deviceId = await DeviceUtils.getDeviceId();
+        final now = DateTime.now();
+        final expiresAt = now.add(const Duration(days: 5));
+
+        // Normaliser le numéro (enlever espaces, préfixe 221 si nécessaire)
+        String digits = cleanPhone.replaceAll(RegExp(r'\D'), '');
+        while (digits.startsWith('221') && digits.length > 9) {
+          digits = digits.substring(3);
+        }
+        final phoneKey = 'phone_$digits';
+
+        // Vérifier anti-fraude : téléphone
+        final phoneDoc = await _firestore.collection('phone_trials').doc(phoneKey).get();
+        if (phoneDoc.exists && (phoneDoc.data()?['trialUsed'] == true)) {
+          debugPrint('[Auth] ℹ️ Essai non activé: numéro déjà utilisé');
+          return;
+        }
+
+        // Vérifier anti-fraude : appareil
+        final deviceDoc = await _firestore.collection('devices').doc(deviceId).get();
+        if (deviceDoc.exists && (deviceDoc.data()?['trialUsed'] == true)) {
+          debugPrint('[Auth] ℹ️ Essai non activé: appareil déjà utilisé');
+          return;
+        }
+
+        // Activation atomique (batch)
+        final batch = _firestore.batch();
+        batch.set(_firestore.collection('users').doc(uid), {
+          'subscriptionPlan': 'trial',
+          'subscriptionStart': Timestamp.fromDate(now),
+          'subscriptionExpires': Timestamp.fromDate(expiresAt),
+          'trialActivated': true,
+        }, SetOptions(merge: true));
+        batch.set(_firestore.collection('phone_trials').doc(phoneKey), {
+          'trialUsed': true, 'userId': uid, 'phone': digits,
+          'deviceId': deviceId, 'usedAt': Timestamp.fromDate(now),
+        });
+        batch.set(_firestore.collection('devices').doc(deviceId), {
+          'trialUsed': true, 'userId': uid, 'phone': digits,
+          'usedAt': Timestamp.fromDate(now),
+        });
+        await batch.commit();
+        debugPrint('[Auth] ✅ Essai gratuit 5 jours activé pour $uid');
+      } catch (trialError) {
+        debugPrint('[Auth] ℹ️ Essai non activé: $trialError');
+      }
     } catch (e) {
       debugPrint("Erreur signUpDriver: $e");
       rethrow;
