@@ -43,6 +43,7 @@ const SENEPAY_CONFIG = {
     baseUrl: 'https://api.sene-pay.com'
 };
 
+// Fonction de vérification de signature
 function verifySignature(req) {
     console.log("[SenePay] Headers reçus:", req.headers);
     
@@ -54,11 +55,14 @@ function verifySignature(req) {
         return false;
     }
 
-    const hmac = crypto.createHmac('sha256', SENEPAY_CONFIG.apiSecret);
+    // Utiliser le Webhook Secret s'il existe (SENEPAY_WEBHOOK_SECRET ou SENEPAY_WHSEC)
+    const secretKey = process.env.SENEPAY_WHSEC || process.env.SENEPAY_WEBHOOK_SECRET || SENEPAY_CONFIG.apiSecret;
+
+    const hmac = crypto.createHmac('sha256', secretKey);
     const expectedSignatureHex = hmac.update(req.rawBody).digest('hex');
     
     // Recréer le HMAC pour obtenir le base64 au cas où
-    const hmacB64 = crypto.createHmac('sha256', SENEPAY_CONFIG.apiSecret);
+    const hmacB64 = crypto.createHmac('sha256', secretKey);
     const expectedSignatureB64 = hmacB64.update(req.rawBody).digest('base64');
     
     console.log(`[SenePay] Signature reçue: ${signature}`);
@@ -81,6 +85,7 @@ app.get('/', (req, res) => {
 app.post('/webhook/senepay', async (req, res) => {
     const { orderReference, status, amount } = req.body;
     console.log(`[SenePay] Webhook reçu: ${orderReference} - Status: ${status} - Montant: ${amount}`);
+    console.log(`[SenePay] FULL Webhook Body:`, JSON.stringify(req.body));
 
     // VÉRIFICATION SÉCURISÉE VIA L'API SENEPAY DIRECTEMENT
     // Au lieu de se fier uniquement à la signature (qui échoue parfois selon les clés), 
@@ -96,13 +101,24 @@ app.post('/webhook/senepay', async (req, res) => {
         
         if (checkResponse.ok) {
             const checkData = await checkResponse.json();
-            console.log(`[SenePay] Vérification API status: ${checkData.status}`);
             
-            if (checkData.status === 'Completed' || checkData.status === 'PAID' || checkData.status === 'Closed') {
+            // L'API peut retourner un objet ou un tableau d'objets (car orderReference n'est pas l'ID principal)
+            let apiStatus;
+            if (Array.isArray(checkData) && checkData.length > 0) {
+                // Trouver la session complétée s'il y en a plusieurs, sinon prendre la première
+                const completedSession = checkData.find(s => s.status === 'Completed' || s.status === 'PAID' || s.status === 'Closed');
+                apiStatus = completedSession ? completedSession.status : checkData[0].status;
+            } else if (checkData && !Array.isArray(checkData)) {
+                apiStatus = checkData.status;
+            }
+
+            console.log(`[SenePay] Vérification API status: ${apiStatus}`);
+            
+            if (apiStatus === 'Completed' || apiStatus === 'PAID' || apiStatus === 'Closed') {
                 isVerifiedByApi = true;
                 console.log(`[SenePay] ✅ Paiement authentifié par l'API SenePay !`);
             } else {
-                console.warn(`[SenePay] ⚠️ L'API dit que le paiement n'est pas terminé (${checkData.status})`);
+                console.warn(`[SenePay] ⚠️ L'API dit que le paiement n'est pas terminé (${apiStatus})`);
                 return res.status(400).send("Paiement non terminé selon l'API");
             }
         }
