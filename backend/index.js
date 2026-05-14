@@ -79,16 +79,44 @@ app.get('/', (req, res) => {
 
 // WEBHOOK PAYIN (Dépôts)
 app.post('/webhook/senepay', async (req, res) => {
-    // Vérification de sécurité
-    if (!verifySignature(req)) {
-        console.warn("[SenePay] Signature webhook invalide");
-        return res.status(401).send("Signature invalide");
-    }
-
     const { orderReference, status, amount } = req.body;
     console.log(`[SenePay] Webhook reçu: ${orderReference} - Status: ${status} - Montant: ${amount}`);
 
-    if (status === 'Completed' || status === 'PAID') {
+    // VÉRIFICATION SÉCURISÉE VIA L'API SENEPAY DIRECTEMENT
+    // Au lieu de se fier uniquement à la signature (qui échoue parfois selon les clés), 
+    // on interroge l'API SenePay pour confirmer le statut de la transaction.
+    let isVerifiedByApi = false;
+    try {
+        const checkResponse = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions/${orderReference}`, {
+            headers: {
+                'X-Api-Key': SENEPAY_CONFIG.apiKey,
+                'X-Api-Secret': SENEPAY_CONFIG.apiSecret
+            }
+        });
+        
+        if (checkResponse.ok) {
+            const checkData = await checkResponse.json();
+            console.log(`[SenePay] Vérification API status: ${checkData.status}`);
+            
+            if (checkData.status === 'Completed' || checkData.status === 'PAID' || checkData.status === 'Closed') {
+                isVerifiedByApi = true;
+                console.log(`[SenePay] ✅ Paiement authentifié par l'API SenePay !`);
+            } else {
+                console.warn(`[SenePay] ⚠️ L'API dit que le paiement n'est pas terminé (${checkData.status})`);
+                return res.status(400).send("Paiement non terminé selon l'API");
+            }
+        }
+    } catch (e) {
+        console.error("❌ Erreur lors de la vérification API SenePay:", e);
+    }
+
+    // Fallback: Si l'API est injoignable ou plante, on essaie la signature
+    if (!isVerifiedByApi && !verifySignature(req)) {
+        console.warn("❌ [SenePay] Signature webhook invalide ET vérification API échouée");
+        return res.status(401).send("Non autorisé");
+    }
+
+    if (status === 'Completed' || status === 'PAID' || isVerifiedByApi) {
         try {
             const parts = orderReference.split('-');
             if (parts.length < 3) return res.status(400).send("Format orderReference invalide");
@@ -97,7 +125,10 @@ app.post('/webhook/senepay', async (req, res) => {
             const transactionRef = db.collection('users').doc(userId).collection('transactions');
             const existing = await transactionRef.where('description', '==', `Dépôt SenePay réussi : ${orderReference}`).get();
 
-            if (!existing.empty) return res.status(200).send("OK (Déjà traité)");
+            if (!existing.empty) {
+                console.log(`[SenePay] Dépôt déjà traité pour ${orderReference}`);
+                return res.status(200).send("OK (Déjà traité)");
+            }
 
             const userRef = db.collection('users').doc(userId);
             await db.runTransaction(async (t) => {
@@ -112,7 +143,8 @@ app.post('/webhook/senepay', async (req, res) => {
                 });
             });
 
-            await db.collection('users').doc(userId).collection('pending_deposits').doc(orderReference).delete();
+            console.log(`[SenePay] 🎉 SOLDE CRÉDITÉ AVEC SUCCÈS POUR ${userId}: +${amount} FCFA`);
+            await db.collection('users').doc(userId).collection('pending_deposits').doc(orderReference).delete().catch(() => {});
             return res.status(200).send("OK - Crédité");
         } catch (error) {
             console.error("❌ Erreur traitement webhook:", error);

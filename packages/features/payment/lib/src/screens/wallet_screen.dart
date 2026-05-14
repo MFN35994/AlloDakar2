@@ -148,8 +148,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   amount: amount,
                   orderId: orderId,
                   description: "Depot TranSen",
-                  customerName: auth?.name,
-                  customerPhone: auth?.phone,
+                  customerName: auth.name,
+                  customerPhone: auth.phone,
                 );
 
                 if (!mounted) return;
@@ -159,7 +159,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   
                   try {
                     await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-                        .collection('users').doc(auth!.userId).collection('pending_deposits').doc(orderId).set({
+                        .collection('users').doc(auth.userId).collection('pending_deposits').doc(orderId).set({
                       'amount': amount, 'method': 'SenePay', 'status': 'Pending', 'createdAt': FieldValue.serverTimestamp(),
                     });
                   } catch (fsErr) {
