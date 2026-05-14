@@ -139,7 +139,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               
               try {
                 final auth = ref.read(authProvider);
-                final orderId = "D-${DateTime.now().millisecondsSinceEpoch}";
+                if (auth == null) return;
+                final orderId = "D-${DateTime.now().millisecondsSinceEpoch}-${auth.userId}";
                 
                 messenger.showSnackBar(const SnackBar(content: Text('⏳ Envoi de la demande...')));
                 

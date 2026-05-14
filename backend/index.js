@@ -43,15 +43,33 @@ const SENEPAY_CONFIG = {
     baseUrl: 'https://api.sene-pay.com'
 };
 
-// Fonction de vérification de signature
 function verifySignature(req) {
-    const signature = req.headers['x-webhook-signature'];
-    if (!signature) return false;
+    console.log("[SenePay] Headers reçus:", req.headers);
+    
+    // Essayer plusieurs clés possibles pour la signature
+    const signature = req.headers['x-webhook-signature'] || req.headers['x-senepay-signature'] || req.headers['signature'];
+    
+    if (!signature) {
+        console.warn("[SenePay] Aucune signature trouvée dans les headers");
+        return false;
+    }
 
     const hmac = crypto.createHmac('sha256', SENEPAY_CONFIG.apiSecret);
-    const expectedSignature = hmac.update(req.rawBody).digest('hex');
+    const expectedSignatureHex = hmac.update(req.rawBody).digest('hex');
     
-    return signature === expectedSignature;
+    // Recréer le HMAC pour obtenir le base64 au cas où
+    const hmacB64 = crypto.createHmac('sha256', SENEPAY_CONFIG.apiSecret);
+    const expectedSignatureB64 = hmacB64.update(req.rawBody).digest('base64');
+    
+    console.log(`[SenePay] Signature reçue: ${signature}`);
+    console.log(`[SenePay] Signature attendue (Hex): ${expectedSignatureHex}`);
+    console.log(`[SenePay] Signature attendue (Base64): ${expectedSignatureB64}`);
+    
+    if (signature === expectedSignatureHex || signature === expectedSignatureB64) {
+        return true;
+    }
+    
+    return false;
 }
 
 // Endpoint de santé pour Render
