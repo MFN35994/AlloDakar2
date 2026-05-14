@@ -151,7 +151,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   customerPhone: auth?.phone,
                 );
 
-                if (!context.mounted) return;
+                if (!mounted) return;
 
                 if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
                   messenger.showSnackBar(const SnackBar(content: Text('✅ URL reçue ! Ouverture...'), backgroundColor: Colors.green));
