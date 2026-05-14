@@ -156,10 +156,15 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
                   messenger.showSnackBar(const SnackBar(content: Text('✅ URL reçue ! Ouverture...'), backgroundColor: Colors.green));
                   
-                  await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-                      .collection('users').doc(auth!.userId).collection('pending_deposits').doc(orderId).set({
-                    'amount': amount, 'method': 'SenePay', 'status': 'Pending', 'createdAt': FieldValue.serverTimestamp(),
-                  });
+                  try {
+                    await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                        .collection('users').doc(auth!.userId).collection('pending_deposits').doc(orderId).set({
+                      'amount': amount, 'method': 'SenePay', 'status': 'Pending', 'createdAt': FieldValue.serverTimestamp(),
+                    });
+                  } catch (fsErr) {
+                    debugPrint('>>> Firestore save pending deposit error: $fsErr');
+                    // On ne bloque pas l'ouverture de l'URL même si Firebase refuse l'écriture (règles de sécurité)
+                  }
 
                   final uri = Uri.parse(checkoutUrl);
                   try {
