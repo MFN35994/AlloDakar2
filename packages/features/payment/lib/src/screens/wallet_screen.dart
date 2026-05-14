@@ -162,7 +162,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   });
 
                   final uri = Uri.parse(checkoutUrl);
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  try {
+                    await launchUrl(uri);
+                  } catch (launchErr) {
+                    messenger.showSnackBar(SnackBar(content: Text('❌ Impossible d\'ouvrir le lien. Erreur: $launchErr'), backgroundColor: Colors.orange));
+                  }
                 } else {
                   messenger.showSnackBar(const SnackBar(content: Text('❌ Pas de réponse du serveur.'), backgroundColor: Colors.red));
                 }
