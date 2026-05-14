@@ -173,52 +173,84 @@ app.post('/webhook/senepay', async (req, res) => {
     res.status(200).send("Statut ignoré");
 });
 
-// WEBHOOK PAYOUT (Retraits)
-app.post('/webhook/payout', async (req, res) => {
-    if (!verifySignature(req)) {
-        console.warn("[SenePay] Signature payout webhook invalide");
-        return res.status(401).send("Signature invalide");
+// WEBHOOK PAYOUT (Retraits) - Format SenePay officiel (snake_case, statuts minuscules)
+// Événements : disbursement.completed | disbursement.failed
+// Header signature : X-SenePay-Signature (HMAC-SHA256 du corps brut avec SENEPAY_WHSEC)
+app.post('/webhook/payout', express.raw({ type: 'application/json' }), async (req, res) => {
+    const signature = req.headers['x-senepay-signature'];
+    const rawBody = req.body.toString('utf8');
+    const secretKey = process.env.SENEPAY_WHSEC || process.env.SENEPAY_WEBHOOK_SECRET || '';
+
+    if (signature && secretKey) {
+        const expected = crypto.createHmac('sha256', secretKey).update(rawBody).digest('hex');
+        if (signature !== expected) {
+            console.warn('[Payout Webhook] Signature invalide');
+            return res.status(401).send('Signature invalide');
+        }
+    } else {
+        console.warn('[Payout Webhook] Pas de signature ou de secret configuré — webhook accepté sans vérification');
     }
 
-    const payload = req.body.data || req.body;
-    const { externalId, status, amount, internalId } = payload;
-    console.log(`[SenePay] Payout Webhook reçu: ${externalId} - Status: ${status}`);
+    const payload = JSON.parse(rawBody);
+    const { event, external_id, disbursement_id, status, amount } = payload;
+    console.log(`[Payout Webhook] event=${event} external_id=${external_id} disbursement_id=${disbursement_id} status=${status} montant=${amount}`);
 
-    if (status === 'Completed') {
-        console.log(`✅ Payout réussi: ${externalId}`);
-        return res.status(200).send("OK - Payout terminé");
-    }
-
-    if (status === 'Failed' || status === 'Cancelled' || status === 'REJECTED') {
+    // event peut être "disbursement.completed" ou "disbursement.failed"
+    if (event === 'disbursement.completed' || status === 'completed') {
+        console.log(`✅ Payout réussi: ${external_id} (${disbursement_id})`);
+        // Mettre à jour la transaction en Firestore
         try {
-            const parts = externalId.split('-');
-            if (parts.length < 3) return res.status(400).send("Format externalId invalide");
+            const parts = (external_id || '').split('-');
+            if (parts.length >= 3) {
+                const userId = parts[2];
+                await db.collection('users').doc(userId)
+                    .collection('transactions').doc(external_id)
+                    .update({ status: 'completed', disbursement_id });
+            }
+        } catch (e) { console.warn('[Payout Webhook] Mise à jour statut ignorée:', e.message); }
+        return res.status(200).json({ received: true });
+    }
+
+    if (event === 'disbursement.failed' || status === 'failed' || status === 'cancelled') {
+        try {
+            const parts = (external_id || '').split('-');
+            if (parts.length < 3) return res.status(400).send('Format external_id invalide');
             const userId = parts[2];
 
+            // Idempotence : vérifier si déjà remboursé
             const transactionRef = db.collection('users').doc(userId).collection('transactions');
-            const existing = await transactionRef.where('description', '==', `Remboursement retrait échoué : ${internalId}`).get();
-
-            if (!existing.empty) return res.status(200).send("OK (Déjà remboursé)");
+            const existing = await transactionRef
+                .where('description', '==', `Remboursement retrait échoué : ${external_id}`).get();
+            if (!existing.empty) return res.status(200).json({ received: true, note: 'déjà traité' });
 
             const userRef = db.collection('users').doc(userId);
             await db.runTransaction(async (t) => {
                 const userDoc = await t.get(userRef);
                 const currentBalance = userDoc.data().walletBalance || 0;
                 t.update(userRef, { walletBalance: currentBalance + Number(amount) });
+                // Marquer la transaction initiale comme échouée
+                t.update(transactionRef.doc(external_id), {
+                    status: 'failed',
+                    description: `Retrait échoué (${payload.error_code || 'inconnu'}): ${payload.error_message || ''}`,
+                });
+                // Créer la transaction de remboursement
                 t.set(transactionRef.doc(), {
                     amount: Number(amount),
-                    description: `Remboursement retrait échoué : ${internalId}`,
+                    description: `Remboursement retrait échoué : ${external_id}`,
                     date: admin.firestore.FieldValue.serverTimestamp(),
                     type: 'refund'
                 });
             });
-            return res.status(200).send("OK - Remboursé");
+            console.log(`✅ Remboursement automatique pour ${userId}: +${amount} FCFA (${external_id})`);
+            return res.status(200).json({ received: true });
         } catch (error) {
-            console.error("❌ Erreur traitement payout webhook:", error);
-            return res.status(500).send("Internal Error");
+            console.error('❌ Erreur traitement payout webhook failed:', error);
+            return res.status(500).send('Internal Error');
         }
     }
-    res.status(200).send("Statut ignoré");
+
+    console.log(`[Payout Webhook] Statut ignoré: ${status}`);
+    return res.status(200).json({ received: true });
 });
 
 // PROXY ENDPOINTS
@@ -277,9 +309,27 @@ app.post('/api/payment/secure-payout', verifyFirebaseToken, async (req, res) => 
     const userId = req.user.uid;
     const amountNum = Number(amount);
 
-    if (!amountNum || amountNum < 500) {
-        return res.status(400).send({ error: "Le montant minimum de retrait est de 500 FCFA" });
+    if (!amountNum || amountNum < 200) {
+        return res.status(400).send({ error: "Le montant minimum de retrait est de 200 FCFA" });
     }
+
+    // Normaliser l'opérateur : SenePay exige des codes en minuscules SANS underscore
+    // Ex: 'WAVE' → 'wave', 'ORANGE_MONEY' → 'orange', 'FREE_MONEY' → 'free'
+    const operatorMap = {
+        'WAVE': 'wave',
+        'ORANGE_MONEY': 'orange',
+        'ORANGE': 'orange',
+        'FREE_MONEY': 'free',
+        'FREE': 'free',
+        'EXPRESSO': 'expresso',
+        'MTN': 'mtn',
+        'MOOV': 'moov',
+    };
+    const senePayOperator = operatorMap[operator.toUpperCase()] || operator.toLowerCase().replace('_money', '').replace('_', '');
+
+    // Normaliser le numéro : SenePay exige le format international sans '+'
+    // Ex: '781386405' → '221781386405'
+    const normalizedPhone = recipientPhone.startsWith('221') ? recipientPhone : `221${recipientPhone}`;
 
     const externalId = `W-${Date.now()}-${userId}`;
     const userRef = db.collection('users').doc(userId);
@@ -289,29 +339,24 @@ app.post('/api/payment/secure-payout', verifyFirebaseToken, async (req, res) => 
         // 1. Transaction Firestore : Vérifier le solde et déduire l'argent
         await db.runTransaction(async (t) => {
             const userDoc = await t.get(userRef);
-            if (!userDoc.exists) throw new Error("Utilisateur introuvable");
-            
-            const currentBalance = userDoc.data().walletBalance || 0;
-            if (currentBalance < amountNum) {
-                throw new Error("Solde insuffisant");
-            }
+            if (!userDoc.exists) throw new Error('Utilisateur introuvable');
 
-            // Déduire le solde
+            const currentBalance = userDoc.data().walletBalance || 0;
+            if (currentBalance < amountNum) throw new Error('Solde insuffisant');
+
             t.update(userRef, { walletBalance: currentBalance - amountNum });
-            
-            // Créer la transaction "en cours"
             t.set(transactionRef, {
                 amount: -amountNum,
-                description: `Retrait initié vers ${operator} (${recipientPhone})`,
+                description: `Retrait initié vers ${senePayOperator} (${normalizedPhone})`,
                 date: admin.firestore.FieldValue.serverTimestamp(),
                 type: 'withdrawal',
                 status: 'pending',
-                externalId: externalId
+                external_id: externalId
             });
         });
 
-        // 2. Appel à l'API SenePay
-        console.log(`[Payout] Initiation du retrait ${externalId} pour ${amountNum} FCFA vers ${recipientPhone}`);
+        // 2. Appel à l'API SenePay — TOUS les champs en snake_case (obligatoire)
+        console.log(`[Payout] Initiation: ${externalId} | ${amountNum} FCFA → ${senePayOperator} (${normalizedPhone})`);
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts`, {
             method: 'POST',
             headers: {
@@ -320,50 +365,55 @@ app.post('/api/payment/secure-payout', verifyFirebaseToken, async (req, res) => 
                 'X-Api-Secret': SENEPAY_CONFIG.apiSecret
             },
             body: JSON.stringify({
-                externalId: externalId,
+                external_id: externalId,       // snake_case (obligatoire)
                 amount: amountNum,
-                recipientPhone: recipientPhone,
-                recipientName: recipientName,
-                operator: operator,
+                phone: normalizedPhone,         // 'phone' pas 'recipientPhone'
+                recipient_name: recipientName,  // snake_case
+                operator: senePayOperator,      // minuscules sans underscore: wave, orange, free
                 country: 'SN',
-                description: description || 'Retrait TranSen'
+                description: description || 'Retrait TranSen',
+                callback_url: `${process.env.BACKEND_URL || 'https://transen-api.onrender.com'}/webhook/payout`,
+                metadata: { external_id: externalId, user_id: userId }
             })
         });
 
         const data = await response.json();
-        
-        // 3. Gestion de la réponse synchrone de SenePay
+        console.log(`[Payout] Réponse SenePay (HTTP ${response.status}):`, JSON.stringify(data));
+
+        // 3. Gestion de la réponse
         if (response.ok || response.status === 201) {
-            console.log(`[Payout] Retrait ${externalId} accepté par SenePay.`);
-            // Le webhook de SenePay confirmera le statut définitif plus tard
-            return res.status(200).send(data);
+            const disbId = data.disbursement_id || 'N/A';
+            const st = data.status || 'N/A';
+            const isSandbox = data.is_sandbox ? '⚠️ SANDBOX' : '✅ PRODUCTION';
+            console.log(`[Payout] ${isSandbox} | disbursement_id: ${disbId} | status: ${st}`);
+            // Sauvegarder le disbursement_id pour retrouver la transaction plus tard
+            await transactionRef.update({ disbursement_id: disbId, status: st }).catch(() => {});
+            return res.status(200).json(data);
         } else {
-            console.warn(`[Payout] Retrait ${externalId} refusé par SenePay:`, data);
-            throw new Error(`SenePay a refusé la demande: ${data.message || 'Erreur inconnue'}`);
+            const errMsg = data.message || data.error || JSON.stringify(data);
+            console.warn(`[Payout] Refusé par SenePay:`, errMsg);
+            throw new Error(`SenePay a refusé: ${errMsg}`);
         }
 
     } catch (error) {
-        console.error(`[Payout] Erreur lors du retrait ${externalId}:`, error.message);
-        
-        // ROLLBACK : Si l'erreur survient APRES la transaction (donc SenePay a refusé), on rembourse
-        if (error.message !== "Solde insuffisant" && error.message !== "Utilisateur introuvable") {
+        console.error(`[Payout] Erreur ${externalId}:`, error.message);
+
+        // ROLLBACK automatique si l'erreur vient APRÈS la déduction Firestore
+        if (error.message !== 'Solde insuffisant' && error.message !== 'Utilisateur introuvable') {
             try {
                 await db.runTransaction(async (t) => {
                     const doc = await t.get(userRef);
                     const currentBalance = doc.data().walletBalance || 0;
                     t.update(userRef, { walletBalance: currentBalance + amountNum });
-                    t.update(transactionRef, { 
-                        status: 'failed', 
-                        description: `Retrait échoué: ${error.message}` 
-                    });
+                    t.update(transactionRef, { status: 'failed', description: `Retrait échoué: ${error.message}` });
                 });
-                console.log(`[Payout] Rollback réussi pour ${externalId}. Solde remboursé.`);
+                console.log(`[Payout] Rollback réussi pour ${externalId}. +${amountNum} FCFA recrédités.`);
             } catch (rollbackError) {
-                console.error(`[Payout] ERREUR CRITIQUE DE ROLLBACK pour ${externalId}:`, rollbackError);
+                console.error(`[Payout] ERREUR CRITIQUE ROLLBACK ${externalId}:`, rollbackError);
             }
         }
 
-        return res.status(400).send({ error: error.message });
+        return res.status(400).json({ error: error.message });
     }
 });
 
