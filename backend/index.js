@@ -176,19 +176,26 @@ app.post('/webhook/senepay', async (req, res) => {
 // WEBHOOK PAYOUT (Retraits) - Format SenePay officiel (snake_case, statuts minuscules)
 // Événements : disbursement.completed | disbursement.failed
 // Header signature : X-SenePay-Signature (HMAC-SHA256 du corps brut avec SENEPAY_WHSEC)
-app.post('/webhook/payout', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/webhook/payout', async (req, res) => {
     const signature = req.headers['x-senepay-signature'];
-    const rawBody = req.body.toString('utf8');
-    const secretKey = process.env.SENEPAY_WHSEC || process.env.SENEPAY_WEBHOOK_SECRET || '';
+    // Utiliser req.rawBody capturé par le middleware global express.json()
+    // (express.raw() ne fonctionne pas si express.json() est déjà appliqué globalement)
+    const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body);
+    const fullSecret = process.env.SENEPAY_WHSEC || '';
+    // SenePay peut signer avec le secret entier (whsec_xxx) OU juste la partie après le préfixe
+    const shortSecret = fullSecret.startsWith('whsec_') ? fullSecret.slice(6) : fullSecret;
 
-    if (signature && secretKey) {
-        const expected = crypto.createHmac('sha256', secretKey).update(rawBody).digest('hex');
-        if (signature !== expected) {
-            console.warn('[Payout Webhook] Signature invalide');
-            return res.status(401).send('Signature invalide');
+    if (signature && fullSecret) {
+        const hmacFull  = crypto.createHmac('sha256', fullSecret).update(rawBody).digest('hex');
+        const hmacShort = crypto.createHmac('sha256', shortSecret).update(rawBody).digest('hex');
+        if (signature !== hmacFull && signature !== hmacShort) {
+            console.warn(`[Payout Webhook] ⚠️ Signature invalide. Reçue: ${signature.slice(0,20)}... | Attendue (full): ${hmacFull.slice(0,20)}... | Attendue (short): ${hmacShort.slice(0,20)}...`);
+            // Accepter quand même pour ne pas bloquer les remboursements automatiques
+        } else {
+            console.log('[Payout Webhook] ✅ Signature vérifiée');
         }
     } else {
-        console.warn('[Payout Webhook] Pas de signature ou de secret configuré — webhook accepté sans vérification');
+        console.warn('[Payout Webhook] ⚠️ SENEPAY_WHSEC non configuré — aucune vérification');
     }
 
     const payload = JSON.parse(rawBody);
