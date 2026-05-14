@@ -244,8 +244,63 @@ app.post('/api/payment/create-session', async (req, res) => {
     }
 });
 
-app.post('/api/payment/create-payout', async (req, res) => {
+// MIDDLEWARE DE VÉRIFICATION FIREBASE AUTH
+const verifyFirebaseToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).send("Jeton d'authentification manquant");
+    }
+    const idToken = authHeader.split('Bearer ')[1];
     try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        req.user = decodedToken;
+        next();
+    } catch (error) {
+        console.error("Erreur de vérification du jeton:", error);
+        return res.status(401).send("Jeton d'authentification invalide");
+    }
+};
+
+app.post('/api/payment/secure-payout', verifyFirebaseToken, async (req, res) => {
+    const { amount, recipientPhone, recipientName, operator, description } = req.body;
+    const userId = req.user.uid;
+    const amountNum = Number(amount);
+
+    if (!amountNum || amountNum < 500) {
+        return res.status(400).send({ error: "Le montant minimum de retrait est de 500 FCFA" });
+    }
+
+    const externalId = `W-${Date.now()}-${userId}`;
+    const userRef = db.collection('users').doc(userId);
+    const transactionRef = userRef.collection('transactions').doc(externalId);
+
+    try {
+        // 1. Transaction Firestore : Vérifier le solde et déduire l'argent
+        await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) throw new Error("Utilisateur introuvable");
+            
+            const currentBalance = userDoc.data().walletBalance || 0;
+            if (currentBalance < amountNum) {
+                throw new Error("Solde insuffisant");
+            }
+
+            // Déduire le solde
+            t.update(userRef, { walletBalance: currentBalance - amountNum });
+            
+            // Créer la transaction "en cours"
+            t.set(transactionRef, {
+                amount: -amountNum,
+                description: `Retrait initié vers ${operator} (${recipientPhone})`,
+                date: admin.firestore.FieldValue.serverTimestamp(),
+                type: 'withdrawal',
+                status: 'pending',
+                externalId: externalId
+            });
+        });
+
+        // 2. Appel à l'API SenePay
+        console.log(`[Payout] Initiation du retrait ${externalId} pour ${amountNum} FCFA vers ${recipientPhone}`);
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts`, {
             method: 'POST',
             headers: {
@@ -253,12 +308,51 @@ app.post('/api/payment/create-payout', async (req, res) => {
                 'X-Api-Key': SENEPAY_CONFIG.apiKey,
                 'X-Api-Secret': SENEPAY_CONFIG.apiSecret
             },
-            body: JSON.stringify(req.body)
+            body: JSON.stringify({
+                externalId: externalId,
+                amount: amountNum,
+                recipientPhone: recipientPhone,
+                recipientName: recipientName,
+                operator: operator,
+                country: 'SN',
+                description: description || 'Retrait TranSen'
+            })
         });
+
         const data = await response.json();
-        res.status(response.status).send(data);
+        
+        // 3. Gestion de la réponse synchrone de SenePay
+        if (response.ok || response.status === 201) {
+            console.log(`[Payout] Retrait ${externalId} accepté par SenePay.`);
+            // Le webhook de SenePay confirmera le statut définitif plus tard
+            return res.status(200).send(data);
+        } else {
+            console.warn(`[Payout] Retrait ${externalId} refusé par SenePay:`, data);
+            throw new Error(`SenePay a refusé la demande: ${data.message || 'Erreur inconnue'}`);
+        }
+
     } catch (error) {
-        res.status(500).send({ error: "Erreur serveur proxy" });
+        console.error(`[Payout] Erreur lors du retrait ${externalId}:`, error.message);
+        
+        // ROLLBACK : Si l'erreur survient APRES la transaction (donc SenePay a refusé), on rembourse
+        if (error.message !== "Solde insuffisant" && error.message !== "Utilisateur introuvable") {
+            try {
+                await db.runTransaction(async (t) => {
+                    const doc = await t.get(userRef);
+                    const currentBalance = doc.data().walletBalance || 0;
+                    t.update(userRef, { walletBalance: currentBalance + amountNum });
+                    t.update(transactionRef, { 
+                        status: 'failed', 
+                        description: `Retrait échoué: ${error.message}` 
+                    });
+                });
+                console.log(`[Payout] Rollback réussi pour ${externalId}. Solde remboursé.`);
+            } catch (rollbackError) {
+                console.error(`[Payout] ERREUR CRITIQUE DE ROLLBACK pour ${externalId}:`, rollbackError);
+            }
+        }
+
+        return res.status(400).send({ error: error.message });
     }
 });
 

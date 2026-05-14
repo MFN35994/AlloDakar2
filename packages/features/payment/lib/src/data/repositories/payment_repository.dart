@@ -105,44 +105,16 @@ class PaymentRepository {
     String? description,
   }) async {
     try {
-      // 1. Vérifier le solde
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final currentBalance = (userDoc.data()?['walletBalance'] ?? 0).toDouble();
-      
-      if (currentBalance < amount) {
-        throw Exception("Solde insuffisant pour ce retrait.");
-      }
-
-      // 2. Créer le payout via SenePay
-      final externalId = "PO-${DateTime.now().millisecondsSinceEpoch}-$userId";
+      // Le backend /api/payment/secure-payout vérifie le solde, déduit l'argent, 
+      // crée l'historique et appelle l'API SenePay de manière atomique et sécurisée.
       final result = await SenePayService().createPayout(
-        externalId: externalId,
         amount: amount,
         recipientPhone: recipientPhone,
         recipientName: recipientName,
         operator: operator,
         description: description ?? "Retrait TranSen",
-        metadata: {"userId": userId},
       );
 
-      if (result != null && result['internalId'] != null) {
-        // 3. Enregistrer dans Firestore
-        await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('payouts')
-            .doc(result['internalId'])
-            .set({
-          ...result,
-          'requestedAt': FieldValue.serverTimestamp(),
-          'status': result['status'] ?? 'Processing',
-        });
-
-        // Optionnel : On pourrait déduire le montant immédiatement ou attendre le callback
-        // Pour TranSen, on va déduire immédiatement pour éviter les doubles retraits
-        await updateWalletBalance(userId, -amount, "Retrait en cours : ${result['internalId']}");
-      }
-      
       return result;
     } catch (e) {
       debugPrint("Erreur lors de la demande de payout: $e");

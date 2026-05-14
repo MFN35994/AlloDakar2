@@ -7,6 +7,7 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
@@ -190,7 +191,120 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
   }
 
-  void _showWithdrawDialog(BuildContext context, double balance) {}
+  void _showWithdrawDialog(BuildContext context, double balance) {
+    final amountController = TextEditingController();
+    final phoneController = TextEditingController();
+    final nameController = TextEditingController();
+    String selectedOperator = 'WAVE';
+    bool isWithdrawing = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Retrait vers Mobile Money', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Solde disponible : ${balance.toStringAsFixed(0)} FCFA', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Montant (min 500 FCFA)', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedOperator,
+                    decoration: const InputDecoration(labelText: 'Opérateur', border: OutlineInputBorder()),
+                    items: const [
+                      DropdownMenuItem(value: 'WAVE', child: Text('Wave')),
+                      DropdownMenuItem(value: 'ORANGE_MONEY', child: Text('Orange Money')),
+                      DropdownMenuItem(value: 'FREE_MONEY', child: Text('Free Money')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setStateDialog(() => selectedOperator = val);
+                    },
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(labelText: 'Numéro de téléphone (ex: 771234567)', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Nom complet du destinataire', border: OutlineInputBorder()),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              if (!isWithdrawing)
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+                ),
+              ElevatedButton(
+                onPressed: isWithdrawing
+                    ? null
+                    : () async {
+                        final amountText = amountController.text;
+                        final amount = double.tryParse(amountText) ?? 0;
+                        if (amount < 500) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Le montant minimum est de 500 FCFA'), backgroundColor: Colors.red));
+                          return;
+                        }
+                        if (amount > balance) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Solde insuffisant'), backgroundColor: Colors.red));
+                          return;
+                        }
+                        if (phoneController.text.isEmpty || nameController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Veuillez remplir tous les champs'), backgroundColor: Colors.red));
+                          return;
+                        }
+
+                        setStateDialog(() => isWithdrawing = true);
+                        final messenger = ScaffoldMessenger.of(context);
+                        final nav = Navigator.of(ctx);
+
+                        try {
+                          final auth = FirebaseAuth.instance.currentUser;
+                          if (auth == null) throw Exception("Non connecté");
+                          
+                          await ref.read(paymentRepositoryProvider).requestPayout(
+                            userId: auth.uid,
+                            amount: amount,
+                            recipientPhone: phoneController.text,
+                            recipientName: nameController.text,
+                            operator: selectedOperator,
+                            description: 'Retrait TranSen',
+                          );
+                          if (nav.mounted) {
+                            nav.pop();
+                            messenger.showSnackBar(const SnackBar(content: Text('✅ Retrait initié avec succès !'), backgroundColor: Colors.green));
+                          }
+                        } catch (e) {
+                          if (nav.mounted) {
+                            messenger.showSnackBar(SnackBar(content: Text('❌ $e'), backgroundColor: Colors.red));
+                            setStateDialog(() => isWithdrawing = false);
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(backgroundColor: TranSenColors.primaryGreen, foregroundColor: Colors.white),
+                child: isWithdrawing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('RETIRER'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildActionButton(BuildContext context, String name, Color color, IconData icon, VoidCallback onPressed) {
     return ElevatedButton.icon(
