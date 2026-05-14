@@ -244,6 +244,17 @@ app.post('/api/payment/create-session', async (req, res) => {
     }
 });
 
+// REDIRECT ENDPOINTS POUR L'APPLICATION MOBILE
+// SenePay n'accepte que des URLs HTTP/HTTPS, donc l'app mobile envoie ces URLs
+// et le backend redirige vers le custom scheme "transen://" pour rouvrir l'app.
+app.get('/payment/success', (req, res) => {
+    res.redirect('transen://payment/success');
+});
+
+app.get('/payment/cancel', (req, res) => {
+    res.redirect('transen://payment/cancel');
+});
+
 // MIDDLEWARE DE VÉRIFICATION FIREBASE AUTH
 const verifyFirebaseToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;

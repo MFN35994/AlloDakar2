@@ -27,8 +27,8 @@ class SenePayService {
 
       final url = Uri.parse("$backendUrl/api/payment/create-session");
       
-      final returnUrl = kIsWeb ? "https://transen-pro.web.app/payment/success" : "transen://payment/success";
-      final failUrl = kIsWeb ? "https://transen-pro.web.app/payment/cancel" : "transen://payment/cancel";
+      final returnUrl = kIsWeb ? "https://transen-pro.web.app/payment/success" : "$backendUrl/payment/success";
+      final failUrl = kIsWeb ? "https://transen-pro.web.app/payment/cancel" : "$backendUrl/payment/cancel";
 
       final bodyMap = {
         "amount": amount.toInt(),
