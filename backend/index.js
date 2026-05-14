@@ -83,16 +83,18 @@ app.get('/', (req, res) => {
 
 // WEBHOOK PAYIN (Dépôts)
 app.post('/webhook/senepay', async (req, res) => {
-    const { orderReference, status, amount } = req.body;
+    const { orderReference, status, amount, sessionToken } = req.body;
     console.log(`[SenePay] Webhook reçu: ${orderReference} - Status: ${status} - Montant: ${amount}`);
     console.log(`[SenePay] FULL Webhook Body:`, JSON.stringify(req.body));
 
     // VÉRIFICATION SÉCURISÉE VIA L'API SENEPAY DIRECTEMENT
-    // Au lieu de se fier uniquement à la signature (qui échoue parfois selon les clés), 
-    // on interroge l'API SenePay pour confirmer le statut de la transaction.
+    // On utilise le sessionToken s'il est fourni (plus sûr que orderReference)
+    const sessionId = sessionToken || orderReference;
     let isVerifiedByApi = false;
+    let apiStatus;
+
     try {
-        const checkResponse = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions/${orderReference}`, {
+        const checkResponse = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions/${sessionId}`, {
             headers: {
                 'X-Api-Key': SENEPAY_CONFIG.apiKey,
                 'X-Api-Secret': SENEPAY_CONFIG.apiSecret
@@ -102,11 +104,8 @@ app.post('/webhook/senepay', async (req, res) => {
         if (checkResponse.ok) {
             const checkData = await checkResponse.json();
             
-            // L'API peut retourner un objet ou un tableau d'objets (car orderReference n'est pas l'ID principal)
-            let apiStatus;
             if (Array.isArray(checkData) && checkData.length > 0) {
-                // Trouver la session complétée s'il y en a plusieurs, sinon prendre la première
-                const completedSession = checkData.find(s => s.status === 'Completed' || s.status === 'PAID' || s.status === 'Closed');
+                const completedSession = checkData.find(s => s.status === 'Completed' || s.status === 'Complete' || s.status === 'PAID');
                 apiStatus = completedSession ? completedSession.status : checkData[0].status;
             } else if (checkData && !Array.isArray(checkData)) {
                 apiStatus = checkData.status;
@@ -114,25 +113,27 @@ app.post('/webhook/senepay', async (req, res) => {
 
             console.log(`[SenePay] Vérification API status: ${apiStatus}`);
             
-            if (apiStatus === 'Completed' || apiStatus === 'PAID' || apiStatus === 'Closed') {
+            if (apiStatus === 'Completed' || apiStatus === 'Complete' || apiStatus === 'PAID') {
                 isVerifiedByApi = true;
                 console.log(`[SenePay] ✅ Paiement authentifié par l'API SenePay !`);
             } else {
                 console.warn(`[SenePay] ⚠️ L'API dit que le paiement n'est pas terminé (${apiStatus})`);
-                return res.status(400).send("Paiement non terminé selon l'API");
+                // Ne pas bloquer ici, on laisse la chance à la signature
             }
+        } else {
+            console.warn(`[SenePay] API a retourné l'erreur: ${checkResponse.status}`);
         }
     } catch (e) {
         console.error("❌ Erreur lors de la vérification API SenePay:", e);
     }
 
-    // Fallback: Si l'API est injoignable ou plante, on essaie la signature
+    // Fallback: Si l'API ne valide pas, on utilise la signature
     if (!isVerifiedByApi && !verifySignature(req)) {
         console.warn("❌ [SenePay] Signature webhook invalide ET vérification API échouée");
         return res.status(401).send("Non autorisé");
     }
 
-    if (status === 'Completed' || status === 'PAID' || isVerifiedByApi) {
+    if (status === 'Completed' || status === 'Complete' || status === 'PAID' || isVerifiedByApi) {
         try {
             const parts = orderReference.split('-');
             if (parts.length < 3) return res.status(400).send("Format orderReference invalide");
@@ -167,6 +168,8 @@ app.post('/webhook/senepay', async (req, res) => {
             return res.status(500).send("Internal Error");
         }
     }
+    
+    console.log(`[SenePay] Statut ignoré: ${status}`);
     res.status(200).send("Statut ignoré");
 });
 
