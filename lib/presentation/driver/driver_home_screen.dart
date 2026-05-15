@@ -46,7 +46,10 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
   ConsumerState<DriverHomeScreen> createState() => _DriverHomeScreenState();
 }
 
-class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
+class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
   static const CameraPosition _initialPosition = CameraPosition(
     target: LatLng(14.7167, -17.4677),
     zoom: 13.0,
@@ -80,7 +83,41 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _initInitialPosition();
+    
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Déclencher le flash toutes les 10 secondes
+    Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted) {
+        _pulseController.forward().then((value) => _pulseController.reverse());
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _initInitialPosition() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+      );
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
+    _pulseController.dispose();
     _locationTimer?.cancel();
     // Marquer comme hors ligne à la fermeture
     if (_isOnline && _currentDriverId != null) {
@@ -185,6 +222,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+    final wallet = ref.watch(walletProvider);
     final currentUserId = auth?.userId ?? 'unknown_driver';
 
     return Scaffold(
@@ -257,10 +295,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             stream: SubscriptionService().watchSubscription(currentUserId),
             builder: (context, snapshot) {
               final info = snapshot.data;
-              if (info == null || info.isActive && !info.expiresSOon) {
+              if (info == null) return const SizedBox.shrink();
+              
+              // Si l'abonnement est actif et ne finit pas bientôt, on ne montre rien
+              if (info.isActive && !info.expiresSOon) {
                 return const SizedBox.shrink();
               }
+
               final isExpired = info.isExpired || info.isNone;
+              final hasBalanceForCommission = wallet.balance >= 100; // Seuil arbitraire pour le message
+
               return GestureDetector(
                 onTap: () => Navigator.push(
                   context,
@@ -269,11 +313,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  color: isExpired ? Colors.red.shade700 : Colors.orange.shade700,
+                  color: isExpired 
+                    ? (hasBalanceForCommission ? Colors.blue.shade700 : Colors.red.shade700)
+                    : Colors.orange.shade700,
                   child: Row(
                     children: [
                       Icon(
-                        isExpired ? Icons.lock : Icons.warning_amber,
+                        isExpired 
+                          ? (hasBalanceForCommission ? Icons.info_outline : Icons.lock)
+                          : Icons.warning_amber,
                         color: Colors.white,
                         size: 18,
                       ),
@@ -281,7 +329,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       Expanded(
                         child: Text(
                           isExpired
-                              ? '⛔ Abonnement expiré — Appuyez pour renouveler'
+                              ? (hasBalanceForCommission 
+                                  ? 'ℹ️ Mode Commission (1%) actif — Abonnez-vous pour l\'illimité'
+                                  : '⛔ Solde insuffisant pour la commission (1%) — Rechargez ou Abonnez-vous')
                               : '⚠️ Abonnement expire dans ${info.daysRemaining}j ${info.hoursRemaining}h — Appuyez pour renouveler',
                           style: const TextStyle(
                             color: Colors.white,
@@ -485,7 +535,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                             child: Consumer(builder: (context, ref, child) {
-                              final wallet = ref.watch(walletProvider);
                               final subStream = SubscriptionService().watchSubscription(currentUserId);
                               return StreamBuilder<SubscriptionInfo>(
                                 stream: subStream,
@@ -517,32 +566,35 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                           const SizedBox(width: 10),
                                           // ── Abonnement
                                           Expanded(
-                                            child: _buildQuickActionTile(
-                                              context: context,
-                                              icon: Icons.workspace_premium_rounded,
-                                              label: 'Abonnement',
-                                              sublabel: subSnap.connectionState == ConnectionState.waiting
-                                                  ? 'chargement...'
-                                                  : subInfo == null
-                                                      ? 'Souscrire'
-                                                      : subInfo.isActive
-                                                          ? '${subInfo.daysRemaining}j restants'
-                                                          : 'Renouveler',
-                                              isLoading: subSnap.connectionState == ConnectionState.waiting,
-                                              gradientColors: subInfo != null && subInfo.isExpired
-                                                  ? const [Color(0xFF5C1A1A), Color(0xFFB71C1C)]
-                                                  : const [Color(0xFF3A2A00), Color(0xFFF9A825)],
-                                              iconColor: subInfo != null && subInfo.isExpired
-                                                  ? Colors.red.shade300
-                                                  : const Color(0xFFFFD54F),
-                                              badge: subInfo != null && (subInfo.isExpired || subInfo.expiresSOon)
-                                                  ? '!'
-                                                  : null,
-                                              onTap: () {
-                                                HapticFeedback.lightImpact();
-                                                Navigator.push(context,
-                                                    MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                              },
+                                            child: ScaleTransition(
+                                              scale: _pulseAnimation,
+                                              child: _buildQuickActionTile(
+                                                context: context,
+                                                icon: Icons.workspace_premium_rounded,
+                                                label: 'Abonnement',
+                                                sublabel: subSnap.connectionState == ConnectionState.waiting
+                                                    ? 'chargement...'
+                                                    : subInfo == null
+                                                        ? 'Souscrire'
+                                                        : subInfo.isActive
+                                                            ? '${subInfo.daysRemaining}j restants'
+                                                            : 'Renouveler',
+                                                isLoading: subSnap.connectionState == ConnectionState.waiting,
+                                                gradientColors: subInfo != null && subInfo.isExpired
+                                                    ? const [Color(0xFF5C1A1A), Color(0xFFB71C1C)]
+                                                    : const [Color(0xFF3A2A00), Color(0xFFF9A825)],
+                                                iconColor: subInfo != null && subInfo.isExpired
+                                                    ? Colors.red.shade300
+                                                    : const Color(0xFFFFD54F),
+                                                badge: subInfo != null && (subInfo.isExpired || subInfo.expiresSOon)
+                                                    ? '!'
+                                                    : null,
+                                                onTap: () {
+                                                  HapticFeedback.lightImpact();
+                                                  Navigator.push(context,
+                                                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                                                },
+                                              ),
                                             ),
                                           ),
                                         ],

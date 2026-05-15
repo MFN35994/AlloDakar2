@@ -3,6 +3,7 @@ import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_payment/transen_payment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -12,6 +13,39 @@ class TripDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    
+    Future<bool> hasAccess() async {
+      final auth = ref.read(authProvider);
+      if (auth == null) return false;
+      
+      final subInfo = await SubscriptionService().checkSubscription(auth.userId);
+      if (subInfo.isActive) return true;
+      
+      final wallet = ref.read(walletProvider);
+      final commission = trip.price * 0.01;
+      
+      if (wallet.balance < commission) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("⚠️ Rechargez votre portefeuille TransPay (${commission.toInt()}F requis) pour contacter le client."),
+              backgroundColor: Colors.orange.shade900,
+              action: SnackBarAction(
+                label: "RECHARGER",
+                textColor: Colors.white,
+                onPressed: () {
+                  if (context.mounted) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                  }
+                },
+              ),
+            ),
+          );
+        }
+        return false;
+      }
+      return true;
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -92,7 +126,11 @@ class TripDetailScreen extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: () => DeviceUtils.launchPhoneCall(phoneToCall),
+                              onPressed: () async {
+                                if (await hasAccess()) {
+                                  DeviceUtils.launchPhoneCall(phoneToCall);
+                                }
+                              },
                               icon: const Icon(Icons.phone),
                               label: const Text("APPELER"),
                               style: ElevatedButton.styleFrom(
@@ -113,16 +151,19 @@ class TripDetailScreen extends ConsumerWidget {
                               border: Border.all(color: TranSenColors.primaryGreen),
                             ),
                             child: IconButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ChatScreen(
-                                      tripId: trip.id,
-                                      otherPartyName: trip.clientName ?? 'Client',
+                              onPressed: () async {
+                                if (await hasAccess()) {
+                                  if (!context.mounted) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ChatScreen(
+                                        tripId: trip.id,
+                                        otherPartyName: trip.clientName ?? 'Client',
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                }
                               },
                               icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen),
                             ),

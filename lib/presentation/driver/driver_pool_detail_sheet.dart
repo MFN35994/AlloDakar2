@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_payment/transen_payment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'pool_detail_screen.dart';
@@ -76,6 +77,42 @@ class _DriverPoolDetailSheetState
   }
 
   void _declinePool() => Navigator.of(context).pop(false);
+
+  Future<bool> _hasAccess() async {
+    final auth = ref.read(authProvider);
+    if (auth == null) return false;
+    
+    // 1. Vérifier l'abonnement
+    final subInfo = await SubscriptionService().checkSubscription(auth.userId);
+    if (subInfo.isActive) return true;
+    
+    // 2. Vérifier le solde (Pool prix fixe 10000F, donc 1% = 100F)
+    final wallet = ref.read(walletProvider);
+    const commission = 100.0; 
+    
+    if (wallet.balance < commission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("⚠️ Rechargez votre portefeuille TransPay (${commission.toInt()}F requis) pour contacter les passagers."),
+            backgroundColor: Colors.orange.shade900,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: "RECHARGER",
+              textColor: Colors.white,
+              onPressed: () {
+                if (mounted) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                }
+              },
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +294,7 @@ class _DriverPoolDetailSheetState
                             if (phone.isNotEmpty)
                               StreamBuilder<DocumentSnapshot>(
                                 stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(entry.key).snapshots(),
-                                builder: (context, snapshot) {
+                                builder: (_, snapshot) {
                                   String phoneToCall = phone;
                                   if (snapshot.hasData && snapshot.data!.exists) {
                                     final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -269,28 +306,42 @@ class _DriverPoolDetailSheetState
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.message_outlined, color: Colors.green, size: 20),
-                                        onPressed: () => DeviceUtils.launchWhatsApp(phoneToCall),
+                                        onPressed: () async {
+                                          if (await _hasAccess()) {
+                                            DeviceUtils.launchWhatsApp(phoneToCall);
+                                          }
+                                        },
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
                                       ),
                                       const SizedBox(width: 12),
                                       IconButton(
                                         icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen, size: 20),
-                                        onPressed: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (_) => ChatScreen(
-                                            tripId: pool.id, 
-                                            otherPartyName: name,
-                                            passengerId: entry.key,
-                                          )),
-                                        ),
+                                        onPressed: () async {
+                                          final localContext = context;
+                                          if (await _hasAccess()) {
+                                            if (!localContext.mounted) return;
+                                            Navigator.push(
+                                              localContext,
+                                              MaterialPageRoute(builder: (_) => ChatScreen(
+                                                tripId: pool.id, 
+                                                otherPartyName: name,
+                                                passengerId: entry.key,
+                                              )),
+                                            );
+                                          }
+                                        },
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
                                       ),
                                       const SizedBox(width: 12),
                                       IconButton(
                                         icon: const Icon(Icons.phone, color: Colors.blue, size: 20),
-                                        onPressed: () => DeviceUtils.launchPhoneCall(phoneToCall),
+                                        onPressed: () async {
+                                          if (await _hasAccess()) {
+                                            DeviceUtils.launchPhoneCall(phoneToCall);
+                                          }
+                                        },
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
                                       ),

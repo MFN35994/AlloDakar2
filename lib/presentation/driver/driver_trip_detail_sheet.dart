@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_payment/transen_payment.dart';
 import 'trip_detail_screen.dart';
 
 class DriverTripDetailSheet extends ConsumerStatefulWidget {
@@ -96,8 +97,46 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
     }
   }
 
-  void _callClient() {
-    DeviceUtils.launchPhoneCall(_clientPhone ?? widget.trip.clientPhone);
+  Future<void> _callClient() async {
+    if (await _hasAccess()) {
+      DeviceUtils.launchPhoneCall(_clientPhone ?? widget.trip.clientPhone);
+    }
+  }
+
+  Future<bool> _hasAccess() async {
+    final auth = ref.read(authProvider);
+    if (auth == null) return false;
+    
+    // 1. Vérifier l'abonnement
+    final subInfo = await SubscriptionService().checkSubscription(auth.userId);
+    if (subInfo.isActive) return true;
+    
+    // 2. Vérifier le solde (doit être >= 1% du prix)
+    final wallet = ref.read(walletProvider);
+    final commission = widget.trip.price * 0.01;
+    
+    if (wallet.balance < commission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("⚠️ Rechargez votre portefeuille TransPay (${commission.toInt()}F requis) pour contacter le client."),
+            backgroundColor: Colors.orange.shade900,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: "RECHARGER",
+              textColor: Colors.white,
+              onPressed: () {
+                if (mounted) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                }
+              },
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
   }
 
   bool get _isYobante {
@@ -424,12 +463,20 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
         Row(
           children: [
             IconButton(
-              onPressed: () => DeviceUtils.launchPhoneCall(phone),
+              onPressed: () async {
+                if (await _hasAccess()) {
+                  DeviceUtils.launchPhoneCall(phone);
+                }
+              },
               icon: const Icon(Icons.phone, color: Colors.green),
               tooltip: 'Appeler',
             ),
             IconButton(
-              onPressed: () => DeviceUtils.launchWhatsApp(phone),
+              onPressed: () async {
+                if (await _hasAccess()) {
+                  DeviceUtils.launchWhatsApp(phone);
+                }
+              },
               icon: const Icon(Icons.chat, color: Colors.green),
               tooltip: 'WhatsApp',
             ),

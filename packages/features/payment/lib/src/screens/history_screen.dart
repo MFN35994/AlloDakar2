@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_core/transen_core.dart';
@@ -19,96 +18,21 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final walletState = ref.watch(walletProvider);
     final tripRepo = ref.watch(tripRepositoryProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey[50],
-        appBar: AppBar(
-          title: const Text('Mon Historique'),
-          backgroundColor: isDark ? const Color(0xFF1A1A1A) : TranSenColors.primaryGreen,
-          foregroundColor: Colors.white,
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.payments), text: "Transactions"),
-              Tab(icon: Icon(Icons.directions_car), text: "Trajets"),
-            ],
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildTransactionsList(context, walletState),
-            _buildTripsTab(context, tripRepo, auth?.userId ?? ''),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey[50],
+      appBar: AppBar(
+        title: const Text('Historique des Trajets'),
+        backgroundColor: isDark ? const Color(0xFF1A1A1A) : TranSenColors.primaryGreen,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
+      body: _buildTripsTab(context, tripRepo, auth?.userId ?? ''),
     );
   }
 
-  Widget _buildTransactionsList(BuildContext context, dynamic walletState) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (walletState.transactions.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            const Text('Aucune transaction pour le moment.', style: TextStyle(color: Colors.grey)),
-          ],
-        ),
-      );
-    }
-    
-    return ListView.builder(
-      padding: const EdgeInsets.all(15),
-      itemCount: walletState.transactions.length,
-      itemBuilder: (context, index) {
-        final txn = walletState.transactions[index];
-        final isDebit = txn.amount < 0;
-        final isPoints = txn.points > 0;
-        
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          elevation: 0,
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isPoints 
-                  ? Colors.amber.withValues(alpha: 0.1)
-                  : (isDebit ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1)),
-              child: Icon(
-                isPoints ? Icons.stars : (isDebit ? Icons.arrow_outward : Icons.arrow_downward),
-                color: isPoints ? Colors.amber : (isDebit ? Colors.red : Colors.green),
-              ),
-            ),
-            title: Text(txn.description, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
-            subtitle: Text(
-              '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            trailing: Text(
-              isPoints 
-                  ? '+${txn.points} pts'
-                  : '${isDebit ? "" : "+"}${txn.amount.toInt()} FCFA',
-              style: TextStyle(
-                color: isPoints ? Colors.amber.shade700 : (isDebit ? Colors.red : Colors.green),
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildTripsTab(BuildContext context, TripRepository repo, String userId) {
     return Column(

@@ -92,7 +92,19 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   ],
                 ),
               ),
-              const Expanded(child: SizedBox()),
+              const SizedBox(height: 20),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Row(
+                  children: [
+                    Text('HISTORIQUE TRANSACTIONS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.2, color: Colors.grey)),
+                    Spacer(),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _buildTransactionsList(context, walletState),
+              ),
             ],
           ),
           if (_isLoading)
@@ -312,6 +324,65 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       icon: Icon(icon, color: color, size: 20),
       label: Text(name, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+    );
+  }
+
+  Widget _buildTransactionsList(BuildContext context, dynamic walletState) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (walletState.transactions.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text('Aucune transaction pour le moment.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      itemCount: walletState.transactions.length,
+      itemBuilder: (context, index) {
+        final txn = walletState.transactions[index];
+        final isDebit = txn.amount < 0;
+        final isPoints = txn.points > 0;
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          elevation: 0,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white.withValues(alpha: 0.5),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: isPoints 
+                  ? Colors.amber.withValues(alpha: 0.1)
+                  : (isDebit ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1)),
+              child: Icon(
+                isPoints ? Icons.stars : (isDebit ? Icons.arrow_outward : Icons.arrow_downward),
+                color: isPoints ? Colors.amber : (isDebit ? Colors.red : Colors.green),
+              ),
+            ),
+            title: Text(txn.description, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black)),
+            subtitle: Text(
+              '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+            trailing: Text(
+              isPoints 
+                  ? '+${txn.points} pts'
+                  : '${isDebit ? "" : "+"}${txn.amount.toInt()} F',
+              style: TextStyle(
+                color: isPoints ? Colors.amber.shade700 : (isDebit ? Colors.red : Colors.green),
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

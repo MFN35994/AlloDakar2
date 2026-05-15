@@ -19,7 +19,6 @@ class ProfileDrawer extends ConsumerWidget {
     final userId = auth?.userId ?? '';
     // Sécurité : on s'assure que le rôle est bien détecté, sinon défaut à 'client'
     final role = auth?.role ?? 'client';
-    final isDriver = role == 'driver';
     
     return Drawer(
       backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : const Color(0xFF1A1A1A),
@@ -45,35 +44,6 @@ class ProfileDrawer extends ConsumerWidget {
                   },
                 ),
 
-                if (isDriver) ...[
-                  _buildMenuItem(
-                    context: context,
-                    icon: Icons.history,
-                    title: 'Mon Historique',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
-                    },
-                  ),
-                  _buildMenuItem(
-                    context: context,
-                    icon: Icons.card_giftcard,
-                    title: 'Parrainage & Gains',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
-                    },
-                  ),
-                  _buildMenuItem(
-                    context: context,
-                    icon: Icons.account_balance_wallet_outlined,
-                    title: 'Portefeuille TransPay',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
-                    },
-                  ),
-                ],
 
                 _buildMenuItem(
                   context: context,
