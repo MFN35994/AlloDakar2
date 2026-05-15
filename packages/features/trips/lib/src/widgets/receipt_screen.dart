@@ -118,12 +118,19 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                         StreamBuilder<DocumentSnapshot>(
                           stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips').doc(widget.tripId).snapshots(),
                           builder: (context, snapshot) {
-                            String statusText = "En attente";
-                            Color statusColor = Colors.grey;
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const CircularProgressIndicator(strokeWidth: 2);
+                            }
+
+                            String statusText = "Demande annulée";
+                            Color statusColor = Colors.red;
                             
                             if (snapshot.hasData && snapshot.data!.exists) {
                               final status = snapshot.data!.get('status');
-                              if (status == 'accepted' || status == 'departed') {
+                              if (status == 'pending') {
+                                statusText = "En attente";
+                                statusColor = Colors.grey;
+                              } else if (status == 'accepted' || status == 'departed') {
                                 statusText = "En cours";
                                 statusColor = Colors.orange;
                               } else if (status == 'completed') {
@@ -134,27 +141,49 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                                 statusColor = Colors.red;
                               }
                             } else {
-                              // Try checking pools if trip not found
+                              // Si pas dans trips, on regarde dans pools
                               return StreamBuilder<DocumentSnapshot>(
                                 stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('pools').doc(widget.tripId).snapshots(),
                                 builder: (context, poolSnapshot) {
-                                   String pText = "En attente";
+                                   if (poolSnapshot.connectionState == ConnectionState.waiting) {
+                                     return const CircularProgressIndicator(strokeWidth: 2);
+                                   }
+
+                                   String pText = "Demande annulée";
+                                   Color pColor = Colors.red;
+
                                    if (poolSnapshot.hasData && poolSnapshot.data!.exists) {
                                      final pStatus = poolSnapshot.data!.get('status');
-                                     if (pStatus == 'accepted' || pStatus == 'departed') {
+                                     if (pStatus == 'open' || pStatus == 'full') {
+                                       pText = "En attente";
+                                       pColor = Colors.grey;
+                                     } else if (pStatus == 'accepted' || pStatus == 'departed') {
                                        pText = "En cours";
+                                       pColor = Colors.orange;
                                      } else if (pStatus == 'completed') {
                                        pText = "Effectué";
+                                       pColor = Colors.green;
                                      } else if (pStatus == 'cancelled') {
                                        pText = "Annulé";
+                                       pColor = Colors.red;
                                      }
                                    }
-                                   return Text(
-                                      pText,
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white70 : Colors.grey.shade600,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+
+                                   return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: pColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: pColor.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Text(
+                                        pText,
+                                        style: TextStyle(
+                                          color: pColor,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1,
+                                        ),
                                       ),
                                    );
                                 }

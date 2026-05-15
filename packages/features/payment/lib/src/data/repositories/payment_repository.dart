@@ -23,6 +23,8 @@ class PaymentRepository {
           'amount': 0.0,
           'points': pointsDelta,
           'date': FieldValue.serverTimestamp(),
+          'type': 'points',
+          'status': 'completed',
         });
       });
     } catch (e) {
@@ -38,7 +40,7 @@ class PaymentRepository {
     });
   }
 
-  Future<void> updateWalletBalance(String userId, double amountDelta, String description) async {
+  Future<void> updateWalletBalance(String userId, double amountDelta, String description, {String type = 'transaction', String status = 'completed'}) async {
     try {
       final userRef = _firestore.collection('users').doc(userId);
       final batch = _firestore.batch();
@@ -52,6 +54,8 @@ class PaymentRepository {
         'description': description,
         'amount': amountDelta,
         'date': FieldValue.serverTimestamp(),
+        'type': type,
+        'status': status,
       });
 
       await batch.commit();
@@ -67,7 +71,11 @@ class PaymentRepository {
         .collection('transactions')
         .orderBy('date', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
   }
 
   Stream<double> watchWalletBalance(String userId) {
@@ -139,7 +147,7 @@ class PaymentRepository {
       // Si le payout a échoué, on recrédite le wallet
       if (status['status'] == 'Failed' || status['status'] == 'Cancelled') {
          final amount = (status['amount'] as num).toDouble();
-         await updateWalletBalance(userId, amount, "Remboursement retrait échoué : $internalId");
+         await updateWalletBalance(userId, amount, "Remboursement retrait échoué : $internalId", type: 'withdrawal');
       }
     }
     return status;
@@ -161,7 +169,7 @@ class PaymentRepository {
       final session = await SenePayService().checkCheckoutStatus(orderReference);
       if (session != null && (session['status'] == 'Completed' || session['status'] == 'PAID')) {
         final amount = (session['amount'] as num).toDouble();
-        await updateWalletBalance(userId, amount, "Dépôt SenePay réussi : $orderReference");
+        await updateWalletBalance(userId, amount, "Dépôt SenePay réussi : $orderReference", type: 'deposit');
         return true;
       }
       return false;

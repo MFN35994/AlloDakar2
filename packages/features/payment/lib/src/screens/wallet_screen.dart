@@ -52,11 +52,15 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     final walletState = ref.watch(walletProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F0F0F) : Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Mon Portefeuille'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: const Text('TransPay Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: isDark ? const Color(0xFF1A1A1A) : TranSenColors.primaryGreen,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(icon: const Icon(Icons.sync), onPressed: () => _handleSync()),
         ],
@@ -65,63 +69,88 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
         children: [
           Column(
             children: [
+              // Balance Card
               Container(
                 margin: const EdgeInsets.all(20),
-                padding: const EdgeInsets.all(30),
+                padding: const EdgeInsets.all(25),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF000000)]),
-                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: isDark 
+                        ? [const Color(0xFF1E1E1E), const Color(0xFF121212)] 
+                        : [TranSenColors.primaryGreen, TranSenColors.darkGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    )
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('SOLDE TOTAL', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    const SizedBox(height: 10),
-                    Text('${walletState.balance.toInt()} FCFA', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('SOLDE DISPONIBLE', 
+                          style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                        Icon(Icons.account_balance_wallet, color: Colors.white.withValues(alpha: 0.3), size: 24),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text('${walletState.balance.toInt()} FCFA', 
+                      style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        _buildQuickAction(Icons.add, "Déposer", () => _showRechargeDialog(context)),
+                        const SizedBox(width: 12),
+                        _buildQuickAction(Icons.arrow_upward, "Retirer", () => _showWithdrawDialog(context, walletState.balance)),
+                      ],
+                    )
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Wrap(
-                  spacing: 15,
-                  children: [
-                    _buildActionButton(context, 'Déposer', TranSenColors.primaryGreen, Icons.add_circle_outline, () => _showRechargeDialog(context)),
-                    _buildActionButton(context, 'Retirer', Colors.redAccent, Icons.outbox, () => _showWithdrawDialog(context, walletState.balance)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: EdgeInsets.symmetric(horizontal: 25, vertical: 10),
                 child: Row(
                   children: [
-                    Text('HISTORIQUE TRANSACTIONS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.2, color: Colors.grey)),
+                    Text('HISTORIQUE', 
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5, color: Colors.grey)),
                     Spacer(),
                   ],
                 ),
               ),
+              
               Expanded(
                 child: _buildTransactionsList(context, walletState),
               ),
             ],
           ),
           if (_isLoading)
-            Container(
-              color: Colors.black45,
-              child: const Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Column(
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.6),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(30),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircularProgressIndicator(color: TranSenColors.primaryGreen),
-                        SizedBox(height: 15),
-                        Text("Connexion SenePay...", style: TextStyle(fontWeight: FontWeight.bold)),
-                        SizedBox(height: 5),
-                        Text("Veuillez patienter (max 1 min)", style: TextStyle(fontSize: 12)),
+                        SizedBox(height: 20),
+                        Text("Traitement SenePay...", style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text("Veuillez patienter", style: TextStyle(fontSize: 12, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -129,6 +158,26 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 16),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }
@@ -318,14 +367,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
   }
 
-  Widget _buildActionButton(BuildContext context, String name, Color color, IconData icon, VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, color: color, size: 20),
-      label: Text(name, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-      style: ElevatedButton.styleFrom(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
-    );
-  }
 
   Widget _buildTransactionsList(BuildContext context, dynamic walletState) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -355,34 +396,188 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           elevation: 0,
           color: isDark ? const Color(0xFF1E1E1E) : Colors.white.withValues(alpha: 0.5),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isPoints 
-                  ? Colors.amber.withValues(alpha: 0.1)
-                  : (isDebit ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1)),
-              child: Icon(
-                isPoints ? Icons.stars : (isDebit ? Icons.arrow_outward : Icons.arrow_downward),
-                color: isPoints ? Colors.amber : (isDebit ? Colors.red : Colors.green),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(15),
+            onTap: () => _showTransactionDetails(context, txn),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: isPoints 
+                    ? Colors.amber.withValues(alpha: 0.1)
+                    : (isDebit ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1)),
+                child: Icon(
+                  isPoints ? Icons.stars : (isDebit ? Icons.arrow_outward : Icons.arrow_downward),
+                  color: isPoints ? Colors.amber : (isDebit ? Colors.red : Colors.green),
+                ),
               ),
-            ),
-            title: Text(txn.description, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black)),
-            subtitle: Text(
-              '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}',
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            trailing: Text(
-              isPoints 
-                  ? '+${txn.points} pts'
-                  : '${isDebit ? "" : "+"}${txn.amount.toInt()} F',
-              style: TextStyle(
-                color: isPoints ? Colors.amber.shade700 : (isDebit ? Colors.red : Colors.green),
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+              title: Text(txn.description, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black)),
+              subtitle: Text(
+                '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              trailing: Text(
+                isPoints 
+                    ? '+${txn.points} pts'
+                    : '${isDebit ? "" : "+"}${txn.amount.toInt()} F',
+                style: TextStyle(
+                  color: isPoints ? Colors.amber.shade700 : (isDebit ? Colors.red : Colors.green),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
         );
       },
     );
+  }
+
+  void _showTransactionDetails(BuildContext context, WalletTransaction txn) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(25),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 25),
+            const Text('REÇU DE TRANSACTION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5, color: Colors.grey)),
+            const SizedBox(height: 20),
+            
+            // Amount and Icon
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  txn.amount < 0 ? Icons.arrow_outward : Icons.arrow_downward,
+                  color: txn.amount < 0 ? Colors.red : Colors.green,
+                  size: 28,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '${txn.amount < 0 ? "" : "+"}${txn.amount.toInt()} FCFA',
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            
+            // Status Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _getStatusColor(txn.status).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _getStatusColor(txn.status).withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                _getStatusLabel(txn.status).toUpperCase(),
+                style: TextStyle(color: _getStatusColor(txn.status), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+              ),
+            ),
+            
+            const SizedBox(height: 30),
+            
+            // Dotted Separator
+            Row(
+              children: List.generate(
+                30,
+                (index) => Expanded(
+                  child: Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    color: index % 2 == 0 ? Colors.grey[300] : Colors.transparent,
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 30),
+            
+            // Details
+            _buildDetailRow("Type de transaction", _getTypeLabel(txn.type)),
+            _buildDetailRow("ID Transaction", txn.id.substring(0, 8).toUpperCase()),
+            _buildDetailRow("Date", '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}'),
+            _buildDetailRow("Description", txn.description),
+            if (txn.reference != null)
+              _buildDetailRow("Référence", txn.reference!),
+            
+            const SizedBox(height: 40),
+            
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: TranSenColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+                child: const Text('FERMER', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          const SizedBox(width: 20),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed': return Colors.green;
+      case 'pending': return Colors.orange;
+      case 'failed': return Colors.red;
+      default: return Colors.grey;
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed': return "Terminé";
+      case 'pending': return "En attente";
+      case 'failed': return "Échoué";
+      default: return status;
+    }
+  }
+
+  String _getTypeLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'deposit': return "Dépôt SenePay";
+      case 'withdrawal': return "Retrait Mobile Money";
+      case 'commission': return "Commission Plateforme";
+      case 'subscription': return "Abonnement Premium";
+      case 'points': return "Bonus Fidélité";
+      default: return "Transaction";
+    }
   }
 }

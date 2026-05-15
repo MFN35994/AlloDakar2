@@ -287,9 +287,12 @@ class _DriverPoolDetailSheetState
                                 color: TranSenColors.primaryGreen, size: 20),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(name,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
+                              child: Text(
+                                name,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             if (phone.isNotEmpty)
                               StreamBuilder<DocumentSnapshot>(

@@ -240,22 +240,34 @@ class ProfileDrawer extends ConsumerWidget {
         width: double.infinity,
         height: 250,
         decoration: BoxDecoration(
-          color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
+          gradient: LinearGradient(
+            colors: [
+              role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
+              role == 'driver' ? TranSenColors.primaryGreen : Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40)),
         ),
-        child: Center(
-          child: Image.asset('assets/images/logo_menu.png', height: 100),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white70),
         ),
       ),
       error: (_, __) => Container(
         width: double.infinity,
         height: 250,
         decoration: BoxDecoration(
-          color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
+          color: Colors.grey[800],
           borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40)),
         ),
-        child: const Center(
-          child: Text("Erreur de chargement", style: TextStyle(color: Colors.white70, fontSize: 12)),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: Colors.white54, size: 40),
+            SizedBox(height: 10),
+            Text("Profil indisponible", style: TextStyle(color: Colors.white70, fontSize: 14)),
+          ],
         ),
       ),
     );

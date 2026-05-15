@@ -18,9 +18,7 @@ import 'package:transen/presentation/widgets/profile_drawer.dart';
 import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
-import 'driver_trip_detail_sheet.dart';
 import 'active_deliveries_sheet.dart';
-import 'driver_pool_detail_sheet.dart';
 
 final pendingTripsProvider =
     StreamProvider.family<List<TripModel>, String>((ref, filterStr) {
@@ -219,6 +217,133 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     });
   }
 
+  Future<void> _acceptTripDirectly(TripModel trip) async {
+    final auth = ref.read(authProvider);
+    if (auth == null) return;
+    
+    try {
+      // Pré-validation financière
+      final subInfo = await SubscriptionService().checkSubscription(auth.userId);
+      final wallet = ref.read(walletProvider);
+      final commission = trip.price * 0.01;
+
+      if (!subInfo.isActive && wallet.balance < commission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Solde insuffisant pour la commission (${commission.toInt()} F). Rechargez votre portefeuille."),
+              backgroundColor: Colors.red,
+              action: SnackBarAction(
+                label: "RECHARGER",
+                textColor: Colors.white,
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Acceptation en cours..."), duration: Duration(milliseconds: 500)),
+        );
+      }
+
+      await ref.read(tripRepositoryProvider).acceptTrip(trip.id, auth.userId);
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TripDetailScreen(trip: trip),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll("Exception: ", "")),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _acceptPoolDirectly(PoolModel pool) async {
+    final auth = ref.read(authProvider);
+    if (auth == null) return;
+    
+    try {
+      // Pré-validation financière
+      final subInfo = await SubscriptionService().checkSubscription(auth.userId);
+      final wallet = ref.read(walletProvider);
+      final commission = (pool.currentFilling * 10000) * 0.01;
+
+      if (!subInfo.isActive && wallet.balance < commission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Solde insuffisant pour la commission (${commission.toInt()} F). Rechargez votre portefeuille."),
+              backgroundColor: Colors.red,
+              action: SnackBarAction(
+                label: "RECHARGER",
+                textColor: Colors.white,
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Confirmation si peu de passagers
+      if (pool.currentFilling < 3) {
+        if (!mounted) return;
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Départ anticipé ?"),
+            content: Text("Il n'y a que ${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ANNULER")),
+              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("OUI, ACCEPTER")),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Acceptation en cours..."), duration: Duration(milliseconds: 500)),
+        );
+      }
+
+      await ref.read(tripRepositoryProvider).acceptPool(pool.id, auth.userId);
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PoolDetailScreen(pool: pool),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll("Exception: ", "")),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
@@ -356,16 +481,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                 children: [
                   GoogleMap(
                     initialCameraPosition: _initialPosition,
-                    onMapCreated: (GoogleMapController controller) async {
+                    onMapCreated: (GoogleMapController controller) {
                       _mapController = controller;
-                      try {
-                        Position position =
-                            await Geolocator.getCurrentPosition();
-                        _mapController?.animateCamera(
-                          CameraUpdate.newLatLng(
-                              LatLng(position.latitude, position.longitude)),
-                        );
-                      } catch (_) {}
+                      _initInitialPosition();
                     },
                     myLocationEnabled: true,
                     myLocationButtonEnabled: false,
@@ -469,34 +587,37 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                             );
                           }),
                           // ── CARTE TRAJET COMPACTE ────────────────────────────
-                          GestureDetector(
-                            onTap: () => _showRouteBottomSheet(context, ref, currentUserId),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    TranSenColors.darkGreen,
-                                    TranSenColors.primaryGreen.withValues(alpha: 0.85),
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: TranSenColors.primaryGreen.withValues(alpha: 0.25),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  TranSenColors.darkGreen,
+                                  TranSenColors.primaryGreen.withValues(alpha: 0.85),
                                 ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
                               ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.route, color: Colors.white, size: 18),
-                                  const SizedBox(width: 10),
-                                  Expanded(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: TranSenColors.primaryGreen.withValues(alpha: 0.25),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _showRouteBottomSheet(context, ref, currentUserId),
+                                  child: const Icon(Icons.route, color: Colors.white, size: 18),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _showRouteBottomSheet(context, ref, currentUserId),
                                     child: Text(
                                       _pubDeparture == null && _pubDestination == null
                                           ? 'Définir mon trajet du jour...'
@@ -511,7 +632,26 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  Container(
+                                ),
+                                if (_pubDeparture != null || _pubDestination != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () {
+                                      setState(() {
+                                        _pubDeparture = null;
+                                        _pubDestination = null;
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("Trajet annulé.")),
+                                      );
+                                    },
+                                  ),
+                                const SizedBox(width: 10),
+                                GestureDetector(
+                                  onTap: () => _showRouteBottomSheet(context, ref, currentUserId),
+                                  child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withValues(alpha: 0.2),
@@ -526,8 +666,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
 
@@ -975,11 +1115,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: InkWell(
-          onTap: () async {
-            await HapticFeedback.selectionClick();
-            if (!mounted) return;
-            DriverPoolDetailSheet.show(context, pool);
-          },
+          onTap: null, // Désactivé selon demande utilisateur
           borderRadius: BorderRadius.circular(24),
           child: Container(
             decoration: BoxDecoration(
@@ -1094,63 +1230,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    await HapticFeedback.mediumImpact();
-                    try {
-                      // 0. Confirmation si peu de passagers
-                      if (pool.currentFilling < 3) {
-                        if (!mounted) return;
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text("Départ anticipé ?"),
-                            content: Text(
-                                "Il n'y a que ${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
-                            actions: [
-                              TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text("ANNULER")),
-                              TextButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text("OUI, ACCEPTER")),
-                            ],
-                          ),
-                        );
-                        if (confirm != true) return;
-                      }
-
-                      // 1. Commission 5% (COMMENTÉ POUR LE LANCEMENT GRATUIT)
-                      // final totalCommission = pool.currentFilling * 500;
-                      // final wallet = ref.read(walletProvider);
-                      // if (wallet.balance < totalCommission) {
-                      //   throw Exception("Solde insuffisant pour la commission ($totalCommission FCFA)");
-                      // }
-
-                      if (mounted) {
-                        await ref
-                            .read(tripRepositoryProvider)
-                            .acceptPool(pool.id, driverId);
-                      }
-                      // ref.read(walletProvider.notifier).credit((pool.currentFilling * 10000).toDouble(), 'Gains Covoiturage ${pool.destination}');
-                      // ref.read(walletProvider.notifier).debit(totalCommission.toDouble(), 'Commission Plateforme (5%)');
-
-                      if (mounted) {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => PoolDetailScreen(pool: pool)));
-                      } // This branch is kept for backward compatibility, primary flow now goes through DriverPoolDetailSheet
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  e.toString().replaceAll("Exception: ", "")),
-                              backgroundColor: Colors.red),
-                        );
-                      }
-                    }
-                  },
+                  onPressed: () => _acceptPoolDirectly(pool),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isFull
                         ? Colors.green
@@ -1438,9 +1518,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
         ],
       ),
       child: InkWell(
-        onTap: () async {
-          await DriverTripDetailSheet.show(context, delivery);
-        },
+        onTap: null, // Désactivé selon demande utilisateur
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1481,9 +1559,20 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  delivery.type.split('(').last.replaceAll(')', ''),
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                GestureDetector(
+                  onTap: () => _acceptTripDirectly(delivery),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: TranSenColors.primaryGreen,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text('ACCEPTER',
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
+                  ),
                 ),
                 Text(
                   "${delivery.price.toInt()} F",
@@ -1519,9 +1608,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () async {
-          await DriverTripDetailSheet.show(context, trip);
-        },
+        onTap: null, // Désactivé selon demande utilisateur
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -1584,18 +1671,21 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                         color: Colors.green,
                         fontSize: 13),
                   ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                  GestureDetector(
+                    onTap: () => _acceptTripDirectly(trip),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: TranSenColors.primaryGreen,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text('ACCEPTER',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                     ),
-                    child: const Text('VOIR',
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: TranSenColors.primaryGreen)),
                   ),
                 ],
               ),

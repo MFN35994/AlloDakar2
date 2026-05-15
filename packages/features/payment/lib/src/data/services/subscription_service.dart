@@ -299,6 +299,7 @@ class SubscriptionService {
         'description': 'Abonnement TranSen ${plan.label} (${days}j)',
         'date': FieldValue.serverTimestamp(),
         'type': 'subscription',
+        'status': 'completed',
       });
 
       // Stats plateforme

@@ -110,26 +110,31 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
       }
 
       if (_myPosition != null) {
+        // Calcul des bornes incluant TOUS les points (chauffeur, passagers, destination)
+        double minLat = driverPos.latitude;
+        double maxLat = driverPos.latitude;
+        double minLng = driverPos.longitude;
+        double maxLng = driverPos.longitude;
+
+        final allPoints = [
+          driverPos,
+          LatLng(dest.latitude, dest.longitude),
+          ..._optimizedPickups.map((e) => LatLng(e.value['lat'], e.value['lng']))
+        ];
+
+        for (var point in allPoints) {
+          if (point.latitude < minLat) minLat = point.latitude;
+          if (point.latitude > maxLat) maxLat = point.latitude;
+          if (point.longitude < minLng) minLng = point.longitude;
+          if (point.longitude > maxLng) maxLng = point.longitude;
+        }
+
         _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
           LatLngBounds(
-            southwest: LatLng(
-              driverPos.latitude < dest.latitude
-                  ? driverPos.latitude
-                  : dest.latitude,
-              driverPos.longitude < dest.longitude
-                  ? driverPos.longitude
-                  : dest.longitude,
-            ),
-            northeast: LatLng(
-              driverPos.latitude > dest.latitude
-                  ? driverPos.latitude
-                  : dest.latitude,
-              driverPos.longitude > dest.longitude
-                  ? driverPos.longitude
-                  : dest.longitude,
-            ),
+            southwest: LatLng(minLat, minLng),
+            northeast: LatLng(maxLat, maxLng),
           ),
-          50.0,
+          70.0, // Padding généreux
         ));
       }
     }
@@ -171,30 +176,71 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             body: Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20),
-                  color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
-
-                  child: Row(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: Theme.of(context).brightness == Brightness.dark 
+                        ? [const Color(0xFF1A1A1A), const Color(0xFF0A0A0A)]
+                        : [Colors.black87, Colors.black],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: TranSenColors.primaryGreen.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      )
+                    ],
+                  ),
+                  child: Column(
                     children: [
-                      const Icon(Icons.route, color: TranSenColors.primaryGreen),
-
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "${pool.departure} ➔ ${pool.destination}",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: TranSenColors.primaryGreen.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3), width: 1.5),
                             ),
-                            Text(
-                              "Status: ${pool.status.toUpperCase()} (${pool.currentFilling}/4 passagers)",
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade600),
+                            child: const Icon(Icons.route_rounded, color: TranSenColors.primaryGreen, size: 28),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("ITINÉRAIRE EN COURS", 
+                                  style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${pool.departure} ➔ ${pool.destination}",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                    letterSpacing: -0.5
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildHeaderStat("PASSAGERS", "${pool.currentFilling}/4", Icons.people_outline),
+                          _buildHeaderStat("STATUT", pool.status.toUpperCase(), Icons.info_outline),
+                          _buildHeaderStat("PRIX FIXE", "10.000 F", Icons.payments_outlined),
+                        ],
                       ),
                     ],
                   ),
@@ -220,9 +266,18 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-                  child: SizedBox(
-                    width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withValues(alpha: 0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        )
+                      ],
+                    ),
                     child: ElevatedButton.icon(
                       onPressed: () {
                         final origin = "${_myPosition?.latitude},${_myPosition?.longitude}";
@@ -233,13 +288,14 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                         final url = "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$waypoints&travelmode=driving";
                         launchUrl(Uri.parse(url));
                       },
-                      icon: const Icon(Icons.navigation),
-                      label: const Text("LANCER LA NAVIGATION GOOGLE MAPS", style: TextStyle(fontWeight: FontWeight.bold)),
+                      icon: const Icon(Icons.navigation_rounded),
+                      label: const Text("LANCER LA NAVIGATION GOOGLE MAPS", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
+                        backgroundColor: Colors.blue.shade800,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        elevation: 0,
                       ),
                     ),
                   ),
@@ -291,43 +347,75 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final repo = ref.read(tripRepositoryProvider);
-                      if (pool.status == 'accepted') {
-                        await repo.departPool(pool.id);
-                        if (mounted) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("Trajet démarré !"),
-                                backgroundColor: Colors.green),
-                          );
-                        }
-                      } else {
-                        await repo.completeTrip(pool.id);
-                        if (mounted) {
-                          if (!context.mounted) return;
-                          Navigator.pop(context);
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: pool.status == 'accepted'
-                          ? TranSenColors.accentGold
-                          : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.black87),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 25),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (pool.status == 'accepted' ? TranSenColors.accentGold : Colors.black).withValues(alpha: 0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        )
+                      ],
                     ),
-                    child: Center(
-                      child: Text(
-                        pool.status == 'accepted'
-                            ? "DÉMARRER LE TRAJET"
-                            : "TERMINER LE TRAJET",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(context);
+                        try {
+                          final repo = ref.read(tripRepositoryProvider);
+                          if (pool.status == 'accepted') {
+                            await repo.departPool(pool.id);
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text("🚀 Trajet démarré !"),
+                                    backgroundColor: Colors.green),
+                              );
+                            }
+                          } else {
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text("Finalisation du trajet..."), duration: Duration(seconds: 1)),
+                              );
+                            }
+                            await repo.completeTrip(pool.id);
+                            if (mounted) {
+                              navigator.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text("✅ Trajet terminé avec succès !"),
+                                    backgroundColor: Colors.green),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                  content: Text("❌ Erreur: ${e.toString().replaceAll("Exception: ", "")}"),
+                                  backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: pool.status == 'accepted'
+                            ? TranSenColors.accentGold
+                            : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.black87),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 22),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                        elevation: 0,
+                      ),
+                      child: Center(
+                        child: Text(
+                          pool.status == 'accepted'
+                              ? "DÉMARRER LE TRAJET"
+                              : "TERMINER LE TRAJET",
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1),
+                        ),
                       ),
                     ),
                   ),
@@ -374,92 +462,125 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     return true;
   }
 
+  Widget _buildHeaderStat(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: TranSenColors.primaryGreen, size: 18),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
+
   Widget _buildStepCard(int step, String name, String passengerId, Map<String, dynamic> passenger, String info) {
     String initialPhone = passenger['phone'] ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4)),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 6)),
         ],
       ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.black87,
-          child: Text("$step",
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(info, style: const TextStyle(fontSize: 12)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            IconButton(
-              icon: const Icon(Icons.navigation, color: Colors.blue),
-              onPressed: () => launchUrl(Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${passenger['lat']},${passenger['lng']}&travelmode=driving")),
+            Row(
+              children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Text("$step", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: -0.5)),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Colors.grey, size: 12),
+                          const SizedBox(width: 4),
+                          Expanded(child: Text(info, style: const TextStyle(fontSize: 12, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.message_outlined, color: Colors.green, size: 20),
-              onPressed: () async {
-                if (await _hasAccess()) {
-                  DeviceUtils.launchWhatsApp(initialPhone);
-                }
-              },
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, thickness: 0.5),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen, size: 20),
-              onPressed: () async {
-                if (await _hasAccess()) {
-                  if (!mounted) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ChatScreen(
-                      tripId: widget.pool.id, 
-                      otherPartyName: name,
-                      passengerId: passengerId,
-                    )),
-                  );
-                }
-              },
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-            const SizedBox(width: 8),
-            StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(passengerId).snapshots(),
-              builder: (_, snapshot) {
-                String phoneToCall = initialPhone;
-                if (snapshot.hasData && snapshot.data!.exists) {
-                  final data = snapshot.data!.data() as Map<String, dynamic>;
-                  if (data['phone'] != null && (data['phone'] as String).isNotEmpty) {
-                    phoneToCall = data['phone'];
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildActionCircle(
+                  icon: Icons.navigation_outlined, 
+                  color: Colors.blue, 
+                  onTap: () => launchUrl(Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${passenger['lat']},${passenger['lng']}&travelmode=driving"))
+                ),
+                _buildActionCircle(
+                  icon: Icons.message_outlined, 
+                  color: Colors.green, 
+                  onTap: () async {
+                    if (await _hasAccess()) DeviceUtils.launchWhatsApp(initialPhone);
                   }
-                }
-                return IconButton(
-                  icon: const Icon(Icons.phone, color: Colors.blue, size: 20),
-                  onPressed: () async {
+                ),
+                _buildActionCircle(
+                  icon: Icons.chat_bubble_outline_rounded, 
+                  color: TranSenColors.primaryGreen, 
+                  onTap: () async {
                     if (await _hasAccess()) {
-                      DeviceUtils.launchPhoneCall(phoneToCall);
+                      if (!mounted) return;
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(tripId: widget.pool.id, otherPartyName: name, passengerId: passengerId)));
                     }
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                );
-              }
+                  }
+                ),
+                _buildActionCircle(
+                  icon: Icons.phone_enabled_outlined, 
+                  color: Colors.blueAccent, 
+                  onTap: () async {
+                    if (await _hasAccess()) {
+                      // Fetch fresh phone
+                      final userDoc = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(passengerId).get();
+                      String phone = initialPhone;
+                      if (userDoc.exists && userDoc.data()?['phone'] != null) phone = userDoc.data()!['phone'];
+                      DeviceUtils.launchPhoneCall(phone);
+                    }
+                  }
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionCircle({required IconData icon, required Color color, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20),
       ),
     );
   }

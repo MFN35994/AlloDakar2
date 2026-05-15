@@ -104,14 +104,13 @@ class TripRepository {
   }
 
   Stream<List<PoolModel>> watchActivePools() {
+    final yesterday = DateTime.now().subtract(const Duration(hours: 24));
     return _firestore.collection('pools')
         .where('status', whereIn: ['open', 'full'])
+        .where('createdAt', isGreaterThan: yesterday)
+        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) {
-          final pools = snapshot.docs.map((doc) => PoolModel.fromFirestore(doc)).toList();
-          pools.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return pools;
-        });
+        .map((snapshot) => snapshot.docs.map((doc) => PoolModel.fromFirestore(doc)).toList());
   }
 
   Stream<PoolModel?> watchPool(String poolId) {
@@ -161,12 +160,36 @@ class TripRepository {
 
       // La validation du solde a déjà été faite au-dessus avant la transaction
 
+      // DÉDUCTION COMMISSION 1% (Uniquement si pas d'abonnement actif)
+      if (!subInfo.isActive) {
+        transaction.update(_firestore.collection('users').doc(driverId), {
+          'walletBalance': FieldValue.increment(-commission),
+        });
+        
+        // Historique de transaction
+        final transRef = _firestore.collection('users').doc(driverId).collection('transactions').doc();
+        transaction.set(transRef, {
+          'amount': -commission,
+          'description': 'Commission 1% Covoiturage ($poolId)',
+          'date': FieldValue.serverTimestamp(),
+          'type': 'commission',
+          'status': 'completed',
+        });
+
+        // VERSER DANS LE COMPTE PLATEFORME
+        transaction.set(_firestore.collection('system_stats').doc('earnings'), {
+          'totalCommissions': FieldValue.increment(commission),
+          'lastUpdate': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
       transaction.update(poolRef, {
         'status': 'accepted',
         'driverId': driverId,
         'driverName': driverName,
         'driverPhone': driverPhone,
         'acceptedAt': FieldValue.serverTimestamp(),
+        'commissionDeducted': !subInfo.isActive,
       });
     });
 
@@ -187,8 +210,10 @@ class TripRepository {
   }
 
   Stream<Map<String, int>> watchDemandHeatmap() {
+    final yesterday = DateTime.now().subtract(const Duration(hours: 24));
     return _firestore.collection('pools')
         .where('status', isEqualTo: 'open')
+        .where('createdAt', isGreaterThan: yesterday)
         .snapshots()
         .map((snapshot) {
           final heatmap = <String, int>{};
@@ -242,8 +267,10 @@ class TripRepository {
   }
 
   Stream<List<TripModel>> getPendingTrips({String? departure, String? destination}) {
+    final yesterday = DateTime.now().subtract(const Duration(hours: 24));
     return _firestore.collection('trips')
         .where('status', isEqualTo: 'pending')
+        .where('createdAt', isGreaterThan: yesterday)
         .snapshots()
         .map((snapshot) {
           final trips = <TripModel>[];
@@ -317,11 +344,42 @@ class TripRepository {
 
       // Validation faite au dessus
 
-      // Update direct
-      await tripRef.update({
-        'status': 'accepted',
-        'driverId': driverId,
-        'acceptedAt': FieldValue.serverTimestamp(),
+      // Update direct dans une transaction pour l'atomicité du solde
+      await _firestore.runTransaction((transaction) async {
+        final currentSnap = await transaction.get(tripRef);
+        if (!currentSnap.exists || currentSnap.data()?['status'] != 'pending') {
+          throw Exception("Cette course n'est plus disponible.");
+        }
+
+        // DÉDUCTION COMMISSION 1% (Uniquement si pas d'abonnement actif)
+        if (!subInfo.isActive) {
+          transaction.update(_firestore.collection('users').doc(driverId), {
+            'walletBalance': FieldValue.increment(-commission),
+          });
+          
+          // Historique de transaction
+          final transRef = _firestore.collection('users').doc(driverId).collection('transactions').doc();
+          transaction.set(transRef, {
+            'amount': -commission,
+            'description': 'Commission 1% Course/Yobanté ($tripId)',
+            'date': FieldValue.serverTimestamp(),
+            'type': 'commission',
+            'status': 'completed',
+          });
+
+          // VERSER DANS LE COMPTE PLATEFORME
+          transaction.set(_firestore.collection('system_stats').doc('earnings'), {
+            'totalCommissions': FieldValue.increment(commission),
+            'lastUpdate': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+
+        transaction.update(tripRef, {
+          'status': 'accepted',
+          'driverId': driverId,
+          'acceptedAt': FieldValue.serverTimestamp(),
+          'commissionDeducted': !subInfo.isActive,
+        });
       });
       
       debugPrint("AcceptTrip: Update réussi");
@@ -358,62 +416,44 @@ class TripRepository {
     if (poolDoc.exists) {
       final data = poolDoc.data()!;
       final passengerIds = List<String>.from(data['passengerIds'] ?? []);
+      final driverId = data['driverId'] as String?;
+      
       for (var uid in passengerIds) {
         await _checkAndAwardReferralPoints(uid, "Covoiturage");
       }
       
-      // DÉDUCTION COMMISSION 1% (Uniquement si pas d'abonnement actif)
-      final driverId = data['driverId'];
-      if (driverId != null) {
-        final subInfo = await SubscriptionService().checkSubscription(driverId);
-        if (!subInfo.isActive) {
-          final price = 10000.0;
-          final commission = price * 0.01;
-          await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (1%) - Covoiturage $tripId");
-          
-          // VERSER DANS LE COMPTE PLATEFORME
-          await _firestore.collection('system_stats').doc('earnings').set({
-            'totalCommissions': FieldValue.increment(commission),
-            'lastUpdate': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-        }
-      }
-
       await _firestore.collection('pools').doc(tripId).update({
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
       });
+      
+      // Nettoyer l'état du chauffeur
+      if (driverId != null) {
+        await _firestore.collection('active_drivers').doc(driverId).update({
+          'activePoolId': FieldValue.delete(),
+        }).catchError((_) {});
+      }
     } else {
       final tripDoc = await _firestore.collection('trips').doc(tripId).get();
       if (tripDoc.exists) {
         final data = tripDoc.data()!;
         final clientId = data['clientId'];
+        final driverId = data['driverId'] as String?;
         final type = data['type'] ?? 'Course';
+        
         await _checkAndAwardReferralPoints(clientId, type);
         
-        // DÉDUCTION COMMISSION 1% (Uniquement si pas d'abonnement actif)
-        final driverId = data['driverId'];
-        if (driverId != null) {
-          final subInfo = await SubscriptionService().checkSubscription(driverId);
-          if (!subInfo.isActive) {
-            final price = (data['price'] as num?)?.toDouble() ?? 0.0;
-            final commission = price * 0.01;
-            if (commission > 0) {
-               await _paymentRepo.updateWalletBalance(driverId, -commission, "Commission TranSen (1%) - $type $tripId");
-               
-               // VERSER DANS LE COMPTE PLATEFORME
-               await _firestore.collection('system_stats').doc('earnings').set({
-                 'totalCommissions': FieldValue.increment(commission),
-                 'lastUpdate': FieldValue.serverTimestamp(),
-               }, SetOptions(merge: true));
-            }
-          }
-        }
-
         await _firestore.collection('trips').doc(tripId).update({
           'status': 'completed',
           'completedAt': FieldValue.serverTimestamp(),
         });
+        
+        // Nettoyer l'état du chauffeur
+        if (driverId != null) {
+          await _firestore.collection('active_drivers').doc(driverId).update({
+            'activeTripId': FieldValue.delete(),
+          }).catchError((_) {});
+        }
       }
     }
   }

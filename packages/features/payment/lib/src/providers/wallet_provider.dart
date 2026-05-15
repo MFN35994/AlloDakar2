@@ -4,11 +4,25 @@ import 'package:transen_auth/transen_auth.dart';
 import '../data/repositories/payment_repository.dart';
 
 class WalletTransaction {
+  final String id;
   final String description;
   final double amount;
   final DateTime date;
+  final int points;
+  final String type; // 'deposit', 'withdrawal', 'commission', 'subscription', 'points'
+  final String status; // 'completed', 'pending', 'failed'
+  final String? reference;
 
-  WalletTransaction(this.description, this.amount, this.date);
+  WalletTransaction({
+    required this.id,
+    required this.description,
+    required this.amount,
+    required this.date,
+    this.points = 0,
+    this.type = '',
+    this.status = 'completed',
+    this.reference,
+  });
 }
 
 class WalletState {
@@ -49,9 +63,14 @@ class WalletNotifier extends Notifier<WalletState> {
     _paymentRepo.watchTransactions(userId).listen((transData) {
       final transactions = transData.map((data) {
         return WalletTransaction(
-          data['description'] ?? '',
-          (data['amount'] ?? 0).toDouble(),
-          (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          id: data['id'] ?? '',
+          description: data['description'] ?? '',
+          amount: (data['amount'] ?? 0).toDouble(),
+          date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          points: data['points'] ?? 0,
+          type: data['type'] ?? '',
+          status: data['status'] ?? 'completed',
+          reference: data['reference'],
         );
       }).toList();
       state = WalletState(state.balance, state.points, transactions);

@@ -13,6 +13,7 @@ import 'package:transen_maps/transen_maps.dart';
 import 'package:transen_trips/transen_trips.dart';
 
 import 'package:transen_rating/transen_rating.dart';
+import 'dart:ui' show ImageFilter;
 
 
 class TripTrackingScreen extends ConsumerStatefulWidget {
@@ -131,15 +132,31 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             return const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen));
           }
           final trip = snapshot.data;
-          if (trip == null) {
+          final currentUserId = ref.watch(authProvider)?.userId;
+
+          // Si le trajet n'existe plus ou si l'utilisateur n'est plus dedans (cas annulation pool)
+          bool isParticipant = true;
+          if (trip != null && trip.type.contains('Covoiturage')) {
+            final pIds = (trip.passengerDetails as Map?)?.keys.toList() ?? [];
+            if (currentUserId != null && !pIds.contains(currentUserId)) {
+              isParticipant = false;
+            }
+          }
+
+          if (trip == null || !isParticipant) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                    const Icon(Icons.search_off, size: 60, color: Colors.grey),
                    const SizedBox(height: 10),
-                   const Text("Demande introuvable.", style: TextStyle(fontWeight: FontWeight.bold)),
-                   TextButton(onPressed: () => Navigator.pop(context), child: const Text("RETOUR")),
+                   const Text("Demande introuvable ou annulée.", style: TextStyle(fontWeight: FontWeight.bold)),
+                   const SizedBox(height: 20),
+                   ElevatedButton(
+                     onPressed: () => Navigator.pop(context), 
+                     style: ElevatedButton.styleFrom(backgroundColor: TranSenColors.primaryGreen, foregroundColor: Colors.white),
+                     child: const Text("RETOUR À L'ACCUEIL")
+                   ),
                 ],
               ),
             );
@@ -360,17 +377,42 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
   }
 
   Widget _buildStatusBanner(String message, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.24), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.info_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -411,12 +453,23 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             }
 
             final isDark = Theme.of(context).brightness == Brightness.dark;
-            return Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                boxShadow: [BoxShadow(color: isDark ? Colors.black54 : Colors.black12, blurRadius: 15, spreadRadius: 5)],
-              ),
+            return ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.9),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      )
+                    ],
+                  ),
               child: ListView(
                 controller: scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -548,9 +601,15 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                     ),
                   ],
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                    child: Divider(height: 1),
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Divider(height: 1, thickness: 0.5),
                   ),
+
+                  // --- SECTION PROGRESSION ---
+                  if (trip.status == 'accepted' || trip.status == 'departed') ...[
+                    _buildTripProgress(trip),
+                    const SizedBox(height: 25),
+                  ],
 
                   // --- SECTION CHAUFFEUR ---
                   Column(
@@ -567,22 +626,47 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text("VOTRE CHAUFFEUR", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
                                 Row(
                                   children: [
-                                    Flexible(child: Text(driverName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis)),
+                                    const Text("VOTRE CHAUFFEUR", 
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)
+                                    ),
+                                    const Spacer(),
+                                    if (trip.status == 'departed')
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: TranSenColors.primaryGreen.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: const Text("EN COURSE", style: TextStyle(color: TranSenColors.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Flexible(child: Text(driverName, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.5), overflow: TextOverflow.ellipsis)),
                                     const SizedBox(width: 5),
                                     if (userSnapshot.hasData && (userSnapshot.data!.data() as Map<String, dynamic>?)?['isVerified'] == true)
-                                      const Icon(Icons.verified, color: Colors.blue, size: 16),
+                                      const Icon(Icons.verified, color: Colors.blue, size: 18),
                                   ],
                                 ),
                                 Row(
                                   children: [
-                                    Text(
-                                      trip.status == 'departed' ? "Trajet en cours" : "En route vers vous", 
-                                      style: TextStyle(color: trip.status == 'departed' ? TranSenColors.primaryGreen : Colors.green, fontSize: 12, fontWeight: FontWeight.bold)
+                                    Container(
+                                      width: 8, height: 8,
+                                      decoration: BoxDecoration(
+                                        color: trip.status == 'departed' ? TranSenColors.primaryGreen : Colors.amber,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      trip.status == 'departed' ? "En déplacement" : "Arrive vers vous", 
+                                      style: TextStyle(color: trip.status == 'departed' ? TranSenColors.primaryGreen : Colors.amber.shade700, fontSize: 12, fontWeight: FontWeight.w600)
+                                    ),
+                                    const SizedBox(width: 12),
                                     Consumer(builder: (context, ref, child) {
                                       final ratingAsync = ref.watch(driverRatingProvider(trip.driverId ?? ''));
                                       return ratingAsync.when(
@@ -590,11 +674,9 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                                           onTap: () => DriverReviewsSheet.show(context, trip.driverId!, driverName),
                                           child: Row(
                                             children: [
-                                              const Icon(Icons.star, color: Colors.amber, size: 14),
+                                              const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
                                               const SizedBox(width: 2),
-                                              Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                              const SizedBox(width: 6),
-                                              const Text("Voir avis", style: TextStyle(fontSize: 10, color: Colors.amber, decoration: TextDecoration.underline)),
+                                              Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                                             ],
                                           ),
                                         ),
@@ -730,7 +812,9 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                   ),
                 ],
               ),
-            );
+            ),
+          ),
+        );
           },
         );
       },
@@ -814,6 +898,55 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTripProgress(TripModel trip) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("DÉPART", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text(trip.departure.split(',').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text("DESTINATION", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text(trip.destination.split(',').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Stack(
+          children: [
+            Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(seconds: 1),
+              height: 4,
+              width: MediaQuery.of(context).size.width * (trip.status == 'departed' ? 0.6 : 0.2),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [TranSenColors.primaryGreen, Colors.blueAccent],
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
