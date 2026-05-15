@@ -9,7 +9,6 @@ class TripModel {
   final String status; // 'pending', 'accepted', 'completed'
   final DateTime createdAt;
   
-  // Nouveaux champs Phase 11
   final int? seats;
   final String? scheduledDate;
   final String? baggageDescription;
@@ -24,7 +23,10 @@ class TripModel {
   final int? rating;
   final String? comment;
   final String? paymentMethod;
-  final Map<String, dynamic>? passengerDetails; // New for Phase 11 pools
+  final Map<String, dynamic>? passengerDetails;
+  final double? destinationLat;
+  final double? destinationLng;
+  final double? pointsDiscount;
 
   TripModel({
     required this.id,
@@ -49,6 +51,9 @@ class TripModel {
     this.comment,
     this.paymentMethod,
     this.passengerDetails,
+    this.destinationLat,
+    this.destinationLng,
+    this.pointsDiscount,
   });
 
   factory TripModel.fromFirestore(DocumentSnapshot doc) {
@@ -76,6 +81,9 @@ class TripModel {
       comment: data['comment'],
       paymentMethod: data['paymentMethod'],
       passengerDetails: data['passengerDetails'],
+      destinationLat: data['destinationLat']?.toDouble(),
+      destinationLng: data['destinationLng']?.toDouble(),
+      pointsDiscount: data['pointsDiscount']?.toDouble(),
     );
   }
 
@@ -102,7 +110,9 @@ class TripModel {
       'comment': comment,
       'paymentMethod': paymentMethod,
       'passengerDetails': passengerDetails,
+      'destinationLat': destinationLat,
+      'destinationLng': destinationLng,
+      'pointsDiscount': pointsDiscount,
     };
   }
 }
-

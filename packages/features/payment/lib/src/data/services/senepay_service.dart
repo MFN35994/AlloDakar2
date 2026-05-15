@@ -132,4 +132,66 @@ class SenePayService {
 
   Future<Map<String, dynamic>?> getPayoutStatus(String internalId) async { return null; }
   Future<Map<String, dynamic>?> checkCheckoutStatus(String orderReference) async { return null; }
+
+  Future<void> recordCommission({
+    required double amount,
+    required String tripId,
+    required String type,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      final idToken = await user.getIdToken();
+      if (idToken == null) return;
+
+      final url = Uri.parse("$backendUrl/api/stats/record-commission");
+      
+      await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $idToken",
+        },
+        body: jsonEncode({
+          "commission": amount,
+          "tripId": tripId,
+          "type": type,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      debugPrint(">>> Stats: Commission de $amount enregistrée via Backend");
+    } catch (e) {
+      debugPrint(">>> Stats Error: Impossible d'enregistrer la commission ($e)");
+      // On ne bloque pas l'utilisateur si les stats échouent
+    }
+  }
+
+  Future<void> processReferralReward(String referredUserId, String tripId) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      final idToken = await user.getIdToken();
+      if (idToken == null) return;
+
+      final url = Uri.parse("$backendUrl/api/admin/award-referral-reward");
+      
+      await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $idToken",
+        },
+        body: jsonEncode({
+          "referredUserId": referredUserId,
+          "tripId": tripId,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      debugPrint(">>> Parrainage: Demande de récompense envoyée au Backend");
+    } catch (e) {
+      debugPrint(">>> Parrainage Error: $e");
+    }
+  }
 }

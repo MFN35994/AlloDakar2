@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:transen_auth/transen_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class ReferralScreen extends ConsumerWidget {
   const ReferralScreen({super.key});
@@ -33,7 +32,7 @@ class ReferralScreen extends ConsumerWidget {
           final data = snapshot.data!.data() as Map<String, dynamic>;
           String referralCode = data['referralCode'] ?? "TS${auth.userId.substring(0, 4).toUpperCase()}";
           int points = (data['bonusPoints'] ?? 0).toInt();
-          int fcfaValue = points * 100;
+          int fcfaValue = points * 25;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(25),
@@ -70,33 +69,21 @@ class ReferralScreen extends ConsumerWidget {
                         style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w900),
                       ),
                       Text(
-                        "≈ $fcfaValue FCFA",
+                        "≈ $fcfaValue FCFA de crédit",
                         style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 20),
-                      if (fcfaValue >= 5000)
-                        ElevatedButton(
-                          onPressed: () => _showRedeemDialog(context, points),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: TranSenColors.accentGold,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          ),
-                          child: const Text("RÉCLAMER MES GAINS", style: TextStyle(fontWeight: FontWeight.bold)),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Text(
-                            "Seuil de réclamation : 5000 FCFA",
-                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        child: const Text(
+                          "Utilisable pour vos trajets & abonnements",
+                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -200,35 +187,6 @@ class ReferralScreen extends ConsumerWidget {
             ),
           );
         },
-      ),
-    );
-  }
-
-  void _showRedeemDialog(BuildContext context, int points) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Réclamer mes points'),
-        content: Text('Vous avez $points points (Valeur: ${points * 100} FCFA).\n\nSouhaitez-vous contacter le support pour échanger vos points contre de l\'espèce ou une course gratuite ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('ANNULER'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final message = "Bonjour TranSen, je souhaite réclamer mes gains de parrainage ($points points, soit ${points * 100} FCFA).";
-              final url = "https://wa.me/221774213939?text=${Uri.encodeComponent(message)}";
-              if (await canLaunchUrl(Uri.parse(url))) {
-                await launchUrl(Uri.parse(url));
-              }
-              if (context.mounted) Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: TranSenColors.primaryGreen, foregroundColor: Colors.white),
-            child: const Text('CONTACTER LE SUPPORT'),
-          ),
-        ],
       ),
     );
   }

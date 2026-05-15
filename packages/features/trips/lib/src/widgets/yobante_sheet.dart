@@ -367,13 +367,14 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                         
                         navigator.pop();
 
-                        if (!context.mounted) return;
+                        if (!mounted) return;
                         SuccessDialog.show(
                           context,
                           title: 'Livraison programmée !',
                           message: 'Votre colis a été enregistré. Un chauffeur vous contactera bientôt.',
                           onDismiss: () {
-                              navigator.push(MaterialPageRoute(
+                            if (!mounted) return;
+                            Navigator.of(context).push(MaterialPageRoute(
                                 builder: (_) => ReceiptScreen(
                                   orderId: 'YOB-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                                   departure: _selectedDeparture!,

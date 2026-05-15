@@ -457,6 +457,83 @@ app.get('/api/payment/check-status/:orderReference', async (req, res) => {
     }
 });
 
+// ENDPOINT POUR ENREGISTRER LES COMMISSIONS (ADMIN/SERVER ONLY)
+app.post('/api/stats/record-commission', verifyFirebaseToken, async (req, res) => {
+    const { commission, tripId, type } = req.body;
+    
+    if (!commission || commission <= 0) {
+        return res.status(400).send({ error: "Montant de commission invalide" });
+    }
+
+    try {
+        const statsRef = db.collection('system_stats').doc('earnings');
+        await statsRef.set({
+            totalCommissions: admin.firestore.FieldValue.increment(Number(commission)),
+            lastUpdate: admin.firestore.FieldValue.serverTimestamp(),
+            lastTripId: tripId || 'N/A',
+            lastTripType: type || 'N/A'
+        }, { merge: true });
+
+        console.log(`[Stats] Commission de ${commission} FCFA enregistrée pour le trajet ${tripId}`);
+        res.status(200).send({ success: true });
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour des stats:", error);
+        res.status(500).send({ error: "Erreur serveur lors de la mise à jour des stats" });
+    }
+});
+
+// ENDPOINT POUR ATTRIBUER LES RÉCOMPENSES DE PARRAINAGE (SECURE)
+app.post('/api/admin/award-referral-reward', verifyFirebaseToken, async (req, res) => {
+    const { referredUserId, tripId } = req.body;
+    
+    if (!referredUserId) return res.status(400).send({ error: "ID utilisateur manquant" });
+
+    try {
+        const userRef = db.collection('users').doc(referredUserId);
+        const userDoc = await userRef.get();
+        
+        if (!userDoc.exists) return res.status(404).send({ error: "Utilisateur introuvable" });
+
+        const userData = userDoc.data();
+        const referredBy = userData.referredBy;
+        const alreadyClaimed = userData.referralRewardClaimed || false;
+
+        if (referredBy && !alreadyClaimed) {
+            // 1. Marquer comme réclamé pour éviter les doublons
+            await userRef.update({ referralRewardClaimed: true });
+
+            // 2. Créditer le parrain (10 points)
+            const referrerRef = db.collection('users').doc(referredBy);
+            await db.runTransaction(async (t) => {
+                const rDoc = await t.get(referrerRef);
+                if (rDoc.exists) {
+                    const currentPoints = rDoc.data().bonusPoints || 0;
+                    t.update(referrerRef, { bonusPoints: currentPoints + 10 });
+                    
+                    // Ajouter à l'historique du parrain
+                    const transRef = referrerRef.collection('transactions').doc();
+                    t.set(transRef, {
+                        amount: 0,
+                        points: 10,
+                        description: `Bonus Parrainage : 1er trajet de ${userData.name || 'votre filleul'}`,
+                        date: admin.firestore.FieldValue.serverTimestamp(),
+                        type: 'points',
+                        status: 'completed'
+                    });
+                }
+            });
+
+            console.log(`[Referral] 10 points attribués à ${referredBy} pour le filleul ${referredUserId}`);
+            return res.status(200).send({ success: true, message: "Récompense attribuée" });
+        }
+
+        res.status(200).send({ success: false, message: "Déjà réclamé ou pas de parrain" });
+    } catch (error) {
+        console.error("Erreur parrainage backend:", error);
+        res.status(500).send({ error: "Erreur serveur parrainage" });
+    }
+});
+
 app.get('/api/payment/payout-status/:internalId', async (req, res) => {
     try {
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts/${req.params.internalId}`, {

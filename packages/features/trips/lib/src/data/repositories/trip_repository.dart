@@ -1,11 +1,10 @@
+import 'dart:math' as math;
 import "package:flutter/foundation.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:transen_core/transen_core.dart';
-
 import 'package:transen_payment/transen_payment.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rxdart/rxdart.dart';
 
 class TripRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
@@ -13,185 +12,51 @@ class TripRepository {
 
   TripRepository(this._paymentRepo);
 
-  // --- LOGIQUE POOLING (COVOITURAGE) ---
-  Future<String> joinOrCreatePool({
-    required String departure,
-    required String destination,
-    required String scheduledDate,
-    required String userId,
-    required Map<String, dynamic> userDetails,
-    required double lat,
-    required double lng,
-    int seats = 1,
-    String? preferredDriverId,
-  }) async {
-    try {
-      final query = await _firestore.collection('pools')
-          .where('departure', isEqualTo: departure)
-          .where('destination', isEqualTo: destination)
-          .where('status', isEqualTo: 'open')
-          .get();
-
-      DateTime parseDate(String d) {
-        try {
-          final parts = d.split(' ');
-          final dateParts = parts[0].split('/');
-          final timeParts = parts[1].split(':');
-          return DateTime(int.parse(dateParts[2]), int.parse(dateParts[1]), int.parse(dateParts[0]), int.parse(timeParts[0]), int.parse(timeParts[1]));
-        } catch (_) {
-          return DateTime.now();
-        }
-      }
-
-      final reqDate = parseDate(scheduledDate);
-      final fullUserDetails = {...userDetails, 'lat': lat, 'lng': lng, 'seats': seats};
-      
-      DocumentSnapshot? poolToJoin;
-      for (var doc in query.docs) {
-        final data = doc.data();
-        final poolScheduledStr = data['scheduledDate'] as String?;
-        if (poolScheduledStr == null) continue;
-        
-        final poolDate = parseDate(poolScheduledStr);
-        if (poolDate.difference(reqDate).inMinutes.abs() <= 15) {
-          final currentFilling = data['currentFilling'] as int? ?? 0;
-          if (currentFilling + seats <= 4) {
-            poolToJoin = doc;
-            break;
-          }
-        }
-      }
-
-      if (poolToJoin != null) {
-        final poolId = poolToJoin.id;
-        final data = poolToJoin.data() as Map<String, dynamic>;
-        final currentFilling = data['currentFilling'] as int;
-        final passengerIds = List<String>.from(data['passengerIds'] ?? []);
-        final passengerDetails = Map<String, dynamic>.from(data['passengerDetails'] ?? {});
-        
-        if (!passengerIds.contains(userId)) {
-          passengerIds.add(userId);
-          passengerDetails[userId] = fullUserDetails;
-          
-          final newFilling = currentFilling + seats;
-          await _firestore.collection('pools').doc(poolId).update({
-            'passengerIds': passengerIds,
-            'passengerDetails': passengerDetails,
-            'currentFilling': newFilling,
-            'status': newFilling >= 4 ? 'full' : 'open',
-          });
-        }
-        return poolId;
-      } else {
-        final doc = await _firestore.collection('pools').add({
-          'departure': departure,
-          'destination': destination,
-          'scheduledDate': scheduledDate,
-          'status': seats >= 4 ? 'full' : 'open',
-          'passengerIds': [userId],
-          'passengerDetails': {userId: fullUserDetails},
-          'currentFilling': seats,
-          'maxCapacity': 4,
-          'preferredDriverId': preferredDriverId,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        return doc.id;
-      }
-    } catch (e) {
-      debugPrint("Erreur joinOrCreatePool: $e");
-      rethrow;
-    }
-  }
-
-  Stream<List<PoolModel>> watchActivePools() {
-    final yesterday = DateTime.now().subtract(const Duration(hours: 24));
-    return _firestore.collection('pools')
-        .where('status', whereIn: ['open', 'full'])
-        .where('createdAt', isGreaterThan: yesterday)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => PoolModel.fromFirestore(doc)).toList());
-  }
-
-  Stream<PoolModel?> watchPool(String poolId) {
-    return _firestore.collection('pools').doc(poolId).snapshots().map((doc) {
-      if (!doc.exists) return null;
-      return PoolModel.fromFirestore(doc);
-    });
-  }
-
-  Future<void> acceptPool(String poolId, String driverId) async {
-    // ── VÉRIFICATION ACCÈS (Abonnement OU Solde) ──
-    final subInfo = await SubscriptionService().checkSubscription(driverId);
-    final userDoc = await _firestore.collection('users').doc(driverId).get();
-    final userData = userDoc.data() ?? {};
-    final driverBalance = (userData['walletBalance'] ?? 0).toDouble();
-
-    // Prix fixe pour covoiturage par défaut (10000 FCFA)
-    const price = 10000.0;
-    const commission = price * 0.01; // 100 FCFA
-
-    if (!subInfo.isActive) {
-      if (driverBalance < commission) {
-        final msg = subInfo.isExpired
-            ? 'Abonnement expiré et solde insuffisant. Rechargez 6000F pour 1 semaine ou ayez au moins ${commission.toInt()}F pour accepter ce trajet.'
-            : 'Solde insuffisant (${driverBalance.toInt()} FCFA). La commission de 1% (${commission.toInt()} FCFA) est requise sans abonnement actif.';
-        throw Exception(msg);
-      }
-    }
-
-    String driverName = userData['name'] ?? 'Chauffeur TranSen';
-    if (driverName == 'Chauffeur TranSen' && userData['firstName'] != null) {
-      driverName = "${userData['firstName']} ${userData['lastName'] ?? ''}";
-    }
-    final driverPhone = (userData['phone'] as String? ?? '').replaceAll(' ', '');
-
+  // 1. ACTIONS COVOITURAGE (POOL)
+  Future<void> acceptPool(String poolId, String driverId, [double commission = 0]) async {
     final poolRef = _firestore.collection('pools').doc(poolId);
+    final driverDoc = await _firestore.collection('users').doc(driverId).get();
+    
+    if (!driverDoc.exists) throw Exception("Chauffeur introuvable");
+    final subService = SubscriptionService();
+    final subInfo = await subService.checkSubscription(driverId);
+    
+    final driverData = driverDoc.data()!;
+    final balance = (driverData['walletBalance'] ?? 0).toDouble();
+
+    if (!subInfo.isActive && balance < commission && commission > 0) {
+      throw Exception("Solde insuffisant pour la commission ($commission F)");
+    }
+
     await _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(poolRef);
-      if (!snapshot.exists) {
-        throw Exception("Ce trajet est introuvable.");
-      }
-      final data = snapshot.data()!;
-      final currentStatus = data['status'] as String?;
-      if (currentStatus != 'open' && currentStatus != 'full') {
-        throw Exception("Ce trajet n'est plus disponible ou a déjà été accepté.");
-      }
-
-      // La validation du solde a déjà été faite au-dessus avant la transaction
-
-      // DÉDUCTION COMMISSION 1% (Uniquement si pas d'abonnement actif)
-      if (!subInfo.isActive) {
+      if (!subInfo.isActive && commission > 0) {
         transaction.update(_firestore.collection('users').doc(driverId), {
           'walletBalance': FieldValue.increment(-commission),
         });
-        
-        // Historique de transaction
+
         final transRef = _firestore.collection('users').doc(driverId).collection('transactions').doc();
         transaction.set(transRef, {
+          'description': 'Commission Covoiturage : $poolId',
           'amount': -commission,
-          'description': 'Commission 1% Covoiturage ($poolId)',
           'date': FieldValue.serverTimestamp(),
           'type': 'commission',
           'status': 'completed',
         });
-
-        // VERSER DANS LE COMPTE PLATEFORME
-        transaction.set(_firestore.collection('system_stats').doc('earnings'), {
-          'totalCommissions': FieldValue.increment(commission),
-          'lastUpdate': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
       }
 
       transaction.update(poolRef, {
         'status': 'accepted',
         'driverId': driverId,
-        'driverName': driverName,
-        'driverPhone': driverPhone,
+        'driverName': driverData['name'],
+        'driverPhone': driverData['phone'],
         'acceptedAt': FieldValue.serverTimestamp(),
-        'commissionDeducted': !subInfo.isActive,
+        'commissionDeducted': !subInfo.isActive && commission > 0,
       });
     });
+
+    if (!subInfo.isActive && commission > 0) {
+      _paymentRepo.recordCommission(commission, poolId, "Covoiturage");
+    }
 
     try {
       await _firestore.collection('active_drivers').doc(driverId).set({
@@ -209,23 +74,81 @@ class TripRepository {
     });
   }
 
-  Stream<Map<String, int>> watchDemandHeatmap() {
-    final yesterday = DateTime.now().subtract(const Duration(hours: 24));
-    return _firestore.collection('pools')
+  Future<String> joinOrCreatePool({
+    required String userId,
+    required String departure,
+    required String destination,
+    required String scheduledDate,
+    required double lat,
+    required double lng,
+    required int seats,
+    String? preferredDriverId,
+    required Map<String, dynamic> userDetails,
+  }) async {
+    final query = await _firestore.collection('pools')
+        .where('departure', isEqualTo: departure)
+        .where('destination', isEqualTo: destination)
+        .where('scheduledDate', isEqualTo: scheduledDate)
         .where('status', isEqualTo: 'open')
-        .where('createdAt', isGreaterThan: yesterday)
-        .snapshots()
-        .map((snapshot) {
-          final heatmap = <String, int>{};
-          for (var doc in snapshot.docs) {
-            final dest = doc.data()['destination'] as String;
-            final filling = doc.data()['currentFilling'] as int;
-            heatmap[dest] = (heatmap[dest] ?? 0) + filling;
-          }
-          return heatmap;
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      final poolDoc = query.docs.first;
+      final data = poolDoc.data();
+      final passengerIds = List<String>.from(data['passengerIds'] ?? []);
+      final currentFilling = data['currentFilling'] ?? 0;
+      final maxCapacity = data['maxCapacity'] ?? 4;
+
+      if (currentFilling + seats <= maxCapacity) {
+        passengerIds.add(userId);
+        final passengerDetails = Map<String, dynamic>.from(data['passengerDetails'] ?? {});
+        passengerDetails[userId] = {
+          ...userDetails,
+          'seats': seats,
+          'lat': lat,
+          'lng': lng,
+        };
+
+        await poolDoc.reference.update({
+          'passengerIds': passengerIds,
+          'passengerDetails': passengerDetails,
+          'currentFilling': currentFilling + seats,
+          'status': (currentFilling + seats >= maxCapacity) ? 'full' : 'open',
         });
+        return poolDoc.id;
+      }
+    }
+
+    // Création d'un nouveau pool
+    final ref = _firestore.collection('pools').doc();
+    final pool = PoolModel(
+      id: ref.id,
+      departure: departure,
+      destination: destination,
+      status: 'open',
+      passengerIds: [userId],
+      passengerDetails: {
+        userId: {
+          ...userDetails,
+          'seats': seats,
+          'lat': lat,
+          'lng': lng,
+        }
+      },
+      createdAt: DateTime.now(),
+      scheduledDate: scheduledDate,
+      currentFilling: seats,
+      driverId: preferredDriverId,
+    );
+
+    await ref.set({
+      ...pool.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return ref.id;
   }
 
+  // 2. PARRAINAGE
   Future<void> _checkAndAwardReferralPoints(String? userId, String tripType) async {
     if (userId == null) return;
     try {
@@ -235,199 +158,96 @@ class TripRepository {
       final userData = userDoc.data()!;
       final referredBy = userData['referredBy'] as String?;
       final alreadyClaimed = userData['referralRewardClaimed'] ?? false;
-      final filleulDeviceId = userData['deviceId'] as String?;
 
       if (referredBy != null && !alreadyClaimed) {
-        final referrerDoc = await _firestore.collection('users').doc(referredBy).get();
-        if (referrerDoc.exists) {
-          final referrerDeviceId = referrerDoc.data()?['deviceId'];
-          if (filleulDeviceId != null && referrerDeviceId != null && filleulDeviceId == referrerDeviceId) {
-            await _firestore.collection('users').doc(userId).update({'referralRewardClaimed': true});
-            return;
-          }
-        }
-        
-        final userName = userData['name'] ?? 'Un client';
-        await _firestore.collection('users').doc(userId).update({'referralRewardClaimed': true});
-        await _paymentRepo.updatePoints(referredBy, 10, "Gains Parrainage: $tripType (Client: $userName)");
+        debugPrint(">>> PARRAINAGE: Demande de 10 points au backend pour $referredBy");
+        await _paymentRepo.processReferralReward(userId, tripType);
       }
     } catch (e) {
       debugPrint("Erreur parrainage: $e");
     }
   }
 
+  // 3. ACTIONS COURSES (VTC)
   Future<String> createTrip(TripModel trip) async {
-    try {
-      final doc = await _firestore.collection('trips').add(trip.toMap());
-      return doc.id;
-    } catch (e) {
-      debugPrint("Erreur création trip: $e");
-      return '';
-    }
-  }
-
-  Stream<List<TripModel>> getPendingTrips({String? departure, String? destination}) {
-    final yesterday = DateTime.now().subtract(const Duration(hours: 24));
-    return _firestore.collection('trips')
-        .where('status', isEqualTo: 'pending')
-        .where('createdAt', isGreaterThan: yesterday)
-        .snapshots()
-        .map((snapshot) {
-          final trips = <TripModel>[];
-          for (var doc in snapshot.docs) {
-            try {
-              trips.add(TripModel.fromFirestore(doc));
-            } catch (_) {}
-          }
-          return trips.where((t) {
-            bool matchesDep = (departure == null || departure == 'TOUTES LES RÉGIONS' || departure.isEmpty) || t.departure == departure;
-            bool matchesDest = (destination == null || destination == 'TOUTES LES RÉGIONS' || destination.isEmpty) || t.destination == destination;
-            return matchesDep && matchesDest;
-          }).toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        });
-  }
-
-  Future<void> deleteTrip(String tripId) async {
-    await _firestore.collection('trips').doc(tripId).delete();
-  }
-
-  Future<void> publishDriverRoute(String driverId, String dep, [String? dest, String? note]) async {
-    await _firestore.collection('driver_routes').doc(driverId).set({
-      'departure': dep,
-      'destination': dest,
-      'note': note,
-      'updatedAt': FieldValue.serverTimestamp(),
+    final ref = _firestore.collection('trips').doc();
+    await ref.set({
+      ...trip.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
-    
-    final activeDoc = _firestore.collection('active_drivers').doc(driverId);
-    final docSnapshot = await activeDoc.get();
-    if (docSnapshot.exists) {
-      await activeDoc.update({'departure': dep, 'destination': dest, 'note': note});
-    }
-  }
-
-  Stream<DocumentSnapshot> getDriverRoute(String driverId) {
-    return _firestore.collection('driver_routes').doc(driverId).snapshots();
+    return ref.id;
   }
 
   Future<void> acceptTrip(String tripId, String driverId) async {
-    try {
-      debugPrint("AcceptTrip: Début pour $tripId");
+    final tripRef = _firestore.collection('trips').doc(tripId);
+    final driverDoc = await _firestore.collection('users').doc(driverId).get();
+    
+    if (!driverDoc.exists) throw Exception("Chauffeur introuvable");
+    
+    final subService = SubscriptionService();
+    final subInfo = await subService.checkSubscription(driverId);
+    
+    final tripSnap = await tripRef.get();
+    final tripPrice = (tripSnap.data()?['price'] ?? 0).toDouble();
+    final commission = (tripPrice * 0.01);
 
-      // ── VÉRIFICATION ACCÈS (Abonnement OU Solde) ──
-      final subInfo = await SubscriptionService().checkSubscription(driverId);
-      
-      final tripRef = _firestore.collection('trips').doc(tripId);
-      final snap = await tripRef.get();
-      if (!snap.exists) throw Exception("Course introuvable.");
+    final driverData = driverDoc.data()!;
+    final balance = (driverData['walletBalance'] ?? 0).toDouble();
 
-      final price = (snap.data()?['price'] as num?)?.toDouble() ?? 0.0;
-      final commission = price * 0.01;
+    if (!subInfo.isActive && balance < commission) {
+      throw Exception("Solde insuffisant pour la commission ($commission F)");
+    }
 
-      final driverDoc = await _firestore.collection('users').doc(driverId).get();
-      final balance = (driverDoc.data()?['walletBalance'] ?? 0).toDouble();
-
-      if (!subInfo.isActive) {
-        if (balance < commission) {
-          final msg = subInfo.isExpired
-              ? 'Abonnement expiré. Rechargez votre compte pour payer la commission de 1% (${commission.toInt()}F) ou reprenez un abonnement.'
-              : 'Solde insuffisant (${balance.toInt()} FCFA). La commission de 1% (${commission.toInt()} FCFA) est requise sans abonnement.';
-          throw Exception(msg);
-        }
-      }
-      
-      final currentStatus = snap.data()?['status'];
-      if (currentStatus != 'pending') {
-        throw Exception("Cette course n'est plus disponible (Statut: $currentStatus).");
-      }
-
-      // Validation faite au dessus
-
-      // Update direct dans une transaction pour l'atomicité du solde
-      await _firestore.runTransaction((transaction) async {
-        final currentSnap = await transaction.get(tripRef);
-        if (!currentSnap.exists || currentSnap.data()?['status'] != 'pending') {
-          throw Exception("Cette course n'est plus disponible.");
-        }
-
-        // DÉDUCTION COMMISSION 1% (Uniquement si pas d'abonnement actif)
+    await _firestore.runTransaction((transaction) async {
         if (!subInfo.isActive) {
           transaction.update(_firestore.collection('users').doc(driverId), {
             'walletBalance': FieldValue.increment(-commission),
           });
           
-          // Historique de transaction
           final transRef = _firestore.collection('users').doc(driverId).collection('transactions').doc();
           transaction.set(transRef, {
+            'description': 'Commission Course : $tripId',
             'amount': -commission,
-            'description': 'Commission 1% Course/Yobanté ($tripId)',
             'date': FieldValue.serverTimestamp(),
             'type': 'commission',
             'status': 'completed',
           });
-
-          // VERSER DANS LE COMPTE PLATEFORME
-          transaction.set(_firestore.collection('system_stats').doc('earnings'), {
-            'totalCommissions': FieldValue.increment(commission),
-            'lastUpdate': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
         }
 
         transaction.update(tripRef, {
           'status': 'accepted',
           'driverId': driverId,
+          'driverName': driverData['name'],
+          'driverPhone': driverData['phone'],
           'acceptedAt': FieldValue.serverTimestamp(),
           'commissionDeducted': !subInfo.isActive,
         });
       });
-      
-      debugPrint("AcceptTrip: Update réussi");
 
-      // Mise à jour du chauffeur actif
-      await _firestore.collection('active_drivers').doc(driverId).set({
-        'activeTripId': tripId,
-      }, SetOptions(merge: true));
+      if (!subInfo.isActive) {
+        _paymentRepo.recordCommission(commission, tripId, "Course/Yobanté");
+      }
       
-      debugPrint("AcceptTrip: Terminé avec succès");
-    } catch (e, stack) {
-      debugPrint("ERREUR acceptTrip: $e");
-      debugPrint("STACK: $stack");
-      rethrow;
-    }
+      try {
+        await _firestore.collection('active_drivers').doc(driverId).set({
+          'activeTripId': tripId,
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint("Erreur active_drivers: $e");
+      }
   }
 
-  Stream<int> watchDriverOccupancy(String driverId) {
-    return _firestore.collection('trips')
-        .where('driverId', isEqualTo: driverId)
-        .where('status', isEqualTo: 'accepted')
-        .snapshots()
-        .map((snapshot) {
-          int count = 0;
-          for (var doc in snapshot.docs) {
-            count += (doc.data()['seats'] as int? ?? 1);
-          }
-          return count;
-        });
-  }
-
-  Future<void> completeTrip(String tripId) async {
+  Future<void> completeTrip(String tripId, {double? currentLat, double? currentLng}) async {
     final poolDoc = await _firestore.collection('pools').doc(tripId).get();
     if (poolDoc.exists) {
       final data = poolDoc.data()!;
-      final passengerIds = List<String>.from(data['passengerIds'] ?? []);
       final driverId = data['driverId'] as String?;
-      
-      for (var uid in passengerIds) {
-        await _checkAndAwardReferralPoints(uid, "Covoiturage");
-      }
       
       await _firestore.collection('pools').doc(tripId).update({
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
       });
       
-      // Nettoyer l'état du chauffeur
       if (driverId != null) {
         await _firestore.collection('active_drivers').doc(driverId).update({
           'activePoolId': FieldValue.delete(),
@@ -443,12 +263,33 @@ class TripRepository {
         
         await _checkAndAwardReferralPoints(clientId, type);
         
+        final pointsDiscount = (data['pointsDiscount'] ?? 0).toDouble();
+        final destLat = data['destinationLat'] as double?;
+        final destLng = data['destinationLng'] as double?;
+        
+        bool locationVerified = false;
+        if (currentLat != null && currentLng != null && destLat != null && destLng != null) {
+          double distance = _calculateDistance(currentLat, currentLng, destLat, destLng);
+          if (distance <= 0.5) { 
+            locationVerified = true;
+          }
+        }
+
         await _firestore.collection('trips').doc(tripId).update({
           'status': 'completed',
           'completedAt': FieldValue.serverTimestamp(),
+          'locationVerified': locationVerified,
         });
+
+        if (pointsDiscount > 0 && locationVerified && driverId != null) {
+          await _paymentRepo.updateWalletBalance(
+            driverId, 
+            pointsDiscount, 
+            "Remboursement points client (Course : $tripId)",
+            type: 'points_payout'
+          );
+        }
         
-        // Nettoyer l'état du chauffeur
         if (driverId != null) {
           await _firestore.collection('active_drivers').doc(driverId).update({
             'activeTripId': FieldValue.delete(),
@@ -456,32 +297,6 @@ class TripRepository {
         }
       }
     }
-  }
-
-  Stream<TripModel?> watchTrip(String tripId) {
-    final tripStream = _firestore.collection('trips').doc(tripId).snapshots();
-    final poolStream = _firestore.collection('pools').doc(tripId).snapshots();
-    return Rx.combineLatest2(tripStream, poolStream, (tripSnap, poolSnap) {
-      if (tripSnap.exists) return TripModel.fromFirestore(tripSnap);
-      if (poolSnap.exists) {
-        final data = poolSnap.data()!;
-        return TripModel(
-          id: poolSnap.id,
-          departure: data['departure'] ?? '',
-          destination: data['destination'] ?? '',
-          price: 10000,
-          status: data['status'] ?? 'open',
-          type: 'Covoiturage Intelligent',
-          driverId: data['driverId'],
-          driverName: data['driverName'],
-          driverPhone: data['driverPhone'],
-          scheduledDate: data['scheduledDate'],
-          passengerDetails: data['passengerDetails'],
-          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        );
-      }
-      return null;
-    });
   }
 
   Future<void> cancelTrip(String tripId, String userId) async {
@@ -507,36 +322,94 @@ class TripRepository {
     }
   }
 
-  Stream<List<TripModel>> watchUserTrips(String userId) {
-    final tripsStream = _firestore.collection('trips')
-        .where('clientId', isEqualTo: userId)
-        .where('status', isEqualTo: 'completed')
-        .snapshots();
-    final poolsStream = _firestore.collection('pools')
-        .where('passengerIds', arrayContains: userId)
-        .snapshots();
+  // 4. WATCHERS (COVOITURAGE)
+  Stream<List<PoolModel>> watchActivePools() {
+    return _firestore.collection('pools')
+        .where('status', isEqualTo: 'open')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => PoolModel.fromFirestore(doc)).toList());
+  }
 
-    return Rx.combineLatest2(tripsStream, poolsStream, (tripsSnap, poolsSnap) {
-      final List<TripModel> all = [];
-      for (var doc in tripsSnap.docs) {
-        all.add(TripModel.fromFirestore(doc));
-      }
-      for (var doc in poolsSnap.docs) {
-        final data = doc.data();
-        all.add(TripModel(
-          id: doc.id,
-          departure: data['departure'] ?? '',
-          destination: data['destination'] ?? '',
-          price: 10000,
-          status: data['status'] ?? 'open',
-          type: 'Covoiturage',
-          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        ));
-      }
-      all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return all;
+  Stream<PoolModel?> watchPool(String poolId) {
+    return _firestore.collection('pools').doc(poolId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return PoolModel.fromFirestore(doc);
     });
   }
+
+  // 5. WATCHERS (COURSES & STATS)
+  Stream<TripModel?> watchTrip(String tripId) {
+    return _firestore.collection('trips').doc(tripId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return TripModel.fromFirestore(doc);
+    });
+  }
+
+  Stream<List<TripModel>> getPendingTrips({String? departure, String? destination}) {
+    Query query = _firestore.collection('trips').where('status', isEqualTo: 'pending');
+    if (departure != null) query = query.where('departure', isEqualTo: departure);
+    if (destination != null) query = query.where('destination', isEqualTo: destination);
+    
+    return query.snapshots().map((snap) => snap.docs.map((doc) => TripModel.fromFirestore(doc)).toList());
+  }
+
+  Stream<List<TripModel>> watchUserTrips(String userId) {
+    return _firestore.collection('trips')
+        .where('clientId', isEqualTo: userId)
+        .where('status', isEqualTo: 'completed')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => TripModel.fromFirestore(doc)).toList());
+  }
+
+  Stream<int> watchDriverOccupancy(String driverId) {
+    return _firestore.collection('trips')
+        .where('driverId', isEqualTo: driverId)
+        .where('status', isEqualTo: 'accepted')
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
+  Stream<Map<String, int>> watchDemandHeatmap() {
+    return _firestore.collection('trips')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snapshot) {
+          final Map<String, int> heatmap = {};
+          for (var doc in snapshot.docs) {
+            final departure = doc.data()['departure'] as String? ?? 'Inconnu';
+            heatmap[departure] = (heatmap[departure] ?? 0) + 1;
+          }
+          return heatmap;
+        });
+  }
+
+  // 6. ROUTES CHAUFFEUR
+  Stream<DocumentSnapshot> getDriverRoute(String driverId) {
+    return _firestore.collection('driver_routes').doc(driverId).snapshots();
+  }
+
+  Future<void> publishDriverRoute(String driverId, String departure, String? destination, String? note) async {
+    await _firestore.collection('driver_routes').doc(driverId).set({
+      'departure': departure,
+      'destination': destination,
+      'note': note,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // 7. UTILS
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371.0; 
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
+        math.sin(dLon / 2) * math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return R * c;
+  }
+
+  double _toRadians(double degree) => degree * (math.pi / 180.0);
 }
 
 final tripRepositoryProvider = Provider<TripRepository>((ref) {

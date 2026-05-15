@@ -374,8 +374,26 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                   }
                                 } else {
                                   try {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Finalisation..."), duration: Duration(seconds: 1)));
-                                    await ref.read(tripRepositoryProvider).completeTrip(widget.trip.id);
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vérification GPS..."), duration: Duration(seconds: 1)));
+                                    
+                                    Position? position;
+                                    try {
+                                      position = await Geolocator.getCurrentPosition(
+                                        locationSettings: const LocationSettings(
+                                          accuracy: LocationAccuracy.high,
+                                          timeLimit: Duration(seconds: 5),
+                                        ),
+                                      );
+                                    } catch (geoErr) {
+                                      debugPrint("GPS Error: $geoErr");
+                                    }
+
+                                    await ref.read(tripRepositoryProvider).completeTrip(
+                                      widget.trip.id,
+                                      currentLat: position?.latitude,
+                                      currentLng: position?.longitude,
+                                    );
+                                    
                                     if (context.mounted) {
                                       Navigator.pop(context);
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Course terminée !"), backgroundColor: Colors.green));

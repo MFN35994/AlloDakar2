@@ -178,6 +178,14 @@ class PaymentRepository {
       return false;
     }
   }
+
+  Future<void> recordCommission(double amount, String tripId, String type) async {
+    await SenePayService().recordCommission(amount: amount, tripId: tripId, type: type);
+  }
+
+  Future<void> processReferralReward(String referredUserId, String tripId) async {
+    await SenePayService().processReferralReward(referredUserId, tripId);
+  }
 }
 
 final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
