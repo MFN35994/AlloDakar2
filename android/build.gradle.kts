@@ -40,7 +40,7 @@ subprojects {
 }
 
 subprojects {
-    val configureNamespace = {
+    val configureSubproject = {
         val isAndroid = plugins.hasPlugin("com.android.application") || 
                         plugins.hasPlugin("com.android.library")
         
@@ -50,14 +50,18 @@ subprojects {
             if (android != null && android.namespace.isNullOrEmpty()) {
                 android.namespace = project.group.toString()
             }
+            
+            // Fix for missing Theme_AppCompat_NoActionBar in older plugins
+            dependencies.add("implementation", "androidx.appcompat:appcompat:1.6.1")
+            dependencies.add("implementation", "com.google.android.material:material:1.9.0")
         }
     }
     
     if (state.executed) {
-        configureNamespace()
+        configureSubproject()
     } else {
         afterEvaluate {
-            configureNamespace()
+            configureSubproject()
         }
     }
 }
