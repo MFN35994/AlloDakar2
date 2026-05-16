@@ -10,6 +10,7 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_payment/transen_payment.dart';
+import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final PoolModel pool;
@@ -265,41 +266,6 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     trafficEnabled: true,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withValues(alpha: 0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        )
-                      ],
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final origin = "${_myPosition?.latitude},${_myPosition?.longitude}";
-                        final destination = pool.destination;
-                        final waypoints = _optimizedPickups
-                            .map((e) => "${e.value['lat']},${e.value['lng']}")
-                            .join('|');
-                        final url = "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$waypoints&travelmode=driving";
-                        launchUrl(Uri.parse(url));
-                      },
-                      icon: const Icon(Icons.navigation_rounded),
-                      label: const Text("LANCER LA NAVIGATION GOOGLE MAPS", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade800,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-                ),
                 Expanded(
                   flex: 6,
                   child: Container(
@@ -367,6 +333,42 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                           final repo = ref.read(tripRepositoryProvider);
                           if (pool.status == 'accepted') {
                             await repo.departPool(pool.id);
+                            
+                            // Lancer la navigation Mapbox
+                            try {
+                              final destCoords = ItineraryOptimizer.getRegionCoordinates(pool.destination);
+                              final destPoint = destCoords != null 
+                                ? LatLng(destCoords.latitude, destCoords.longitude) 
+                                : const LatLng(14.7167, -17.4677);
+
+                              var wayPoints = <WayPoint>[];
+                              wayPoints.add(WayPoint(name: "Ma Position", latitude: _myPosition?.latitude, longitude: _myPosition?.longitude));
+
+                              for (var entry in _optimizedPickups) {
+                                wayPoints.add(WayPoint(
+                                  name: entry.value['name'] ?? "Passager",
+                                  latitude: entry.value['lat'],
+                                  longitude: entry.value['lng'],
+                                ));
+                              }
+
+                              wayPoints.add(WayPoint(name: "Destination", latitude: destPoint.latitude, longitude: destPoint.longitude));
+
+                              final directions = MapBoxNavigation.instance;
+                              await directions.startNavigation(
+                                wayPoints: wayPoints,
+                                options: MapBoxOptions(
+                                  initialLatitude: _myPosition?.latitude,
+                                  initialLongitude: _myPosition?.longitude,
+                                  zoom: 15.0,
+                                  voiceInstructionsEnabled: true,
+                                  mode: MapBoxNavigationMode.drivingWithTraffic,
+                                ),
+                              );
+                            } catch (navErr) {
+                              debugPrint("Erreur Navigation Mapbox: $navErr");
+                            }
+
                             if (mounted) {
                               messenger.showSnackBar(
                                 const SnackBar(

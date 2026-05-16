@@ -10,6 +10,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final TripModel trip;
@@ -224,7 +225,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         children: [
           // Carte Interactive
           Expanded(
-            flex: 4,
+            flex: 6,
             child: Container(
               margin: const EdgeInsets.all(15),
               decoration: BoxDecoration(
@@ -253,7 +254,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           
           // Détails Panel
           Expanded(
-            flex: 6,
+            flex: 4,
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               child: Column(
@@ -366,13 +367,56 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                             ),
                             child: ElevatedButton(
                               onPressed: () async {
-                                if (widget.trip.status == 'pending') {
-                                  final auth = ref.read(authProvider);
-                                  if (auth != null) {
-                                    await ref.read(tripRepositoryProvider).acceptTrip(widget.trip.id, auth.userId);
-                                    if (context.mounted) Navigator.pop(context);
-                                  }
-                                } else {
+                                 if (widget.trip.status == 'pending') {
+                                   final auth = ref.read(authProvider);
+                                   if (auth != null) {
+                                     await ref.read(tripRepositoryProvider).acceptTrip(widget.trip.id, auth.userId);
+                                     if (context.mounted) Navigator.pop(context);
+                                   }
+                                 } else if (widget.trip.status == 'accepted') {
+                                   // Démarrer la course
+                                   try {
+                                     await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                                         .collection('trips')
+                                         .doc(widget.trip.id)
+                                         .update({'status': 'ongoing'});
+
+                                     // Lancer la navigation Mapbox
+                                     Position? position;
+                                     try {
+                                       position = await Geolocator.getCurrentPosition(
+                                         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 5)),
+                                       );
+                                     } catch (e) {
+                                       debugPrint("GPS Error: $e");
+                                     }
+
+                                     var wayPoints = <WayPoint>[];
+                                     if (position != null) {
+                                       wayPoints.add(WayPoint(name: "Ma Position", latitude: position.latitude, longitude: position.longitude));
+                                     }
+                                     
+                                     final depPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677);
+                                     final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination) ?? const LatLng(14.7167, -17.4677);
+
+                                     wayPoints.add(WayPoint(name: "Point de départ", latitude: depPos.latitude, longitude: depPos.longitude));
+                                     wayPoints.add(WayPoint(name: "Destination", latitude: destPos.latitude, longitude: destPos.longitude));
+
+                                     final directions = MapBoxNavigation.instance;
+                                     await directions.startNavigation(
+                                       wayPoints: wayPoints,
+                                       options: MapBoxOptions(
+                                         initialLatitude: position?.latitude ?? depPos.latitude,
+                                         initialLongitude: position?.longitude ?? depPos.longitude,
+                                         zoom: 15.0,
+                                         voiceInstructionsEnabled: true,
+                                         mode: MapBoxNavigationMode.drivingWithTraffic,
+                                       ),
+                                     );
+                                   } catch (navErr) {
+                                     debugPrint("Erreur Navigation Mapbox: $navErr");
+                                   }
+                                 } else {
                                   try {
                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vérification GPS..."), duration: Duration(seconds: 1)));
                                     
@@ -404,14 +448,22 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: widget.trip.status == 'pending' ? TranSenColors.primaryGreen : Colors.black,
+                                backgroundColor: widget.trip.status == 'pending'
+                                    ? TranSenColors.primaryGreen
+                                    : widget.trip.status == 'accepted'
+                                        ? TranSenColors.accentGold
+                                        : Colors.black,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 18),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 elevation: 0,
                               ),
                               child: Text(
-                                widget.trip.status == 'pending' ? "ACCEPTER LA COURSE" : "TERMINER LA COURSE",
+                                widget.trip.status == 'pending'
+                                    ? "ACCEPTER LA COURSE"
+                                    : widget.trip.status == 'accepted'
+                                        ? "DÉMARRER LA COURSE"
+                                        : "TERMINER LA COURSE",
                                 style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1),
                               ),
                             ),
