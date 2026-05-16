@@ -411,14 +411,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_mapbox_navigation:
+  flutter_mapbox_navigation_plus:
     dependency: "direct main"
     description:
-      name: flutter_mapbox_navigation
-      sha256: "623c0331d4b29ec884044baaf23735cc2ef777acc8292abfa11d5e0c7d8491ba"
+      name: flutter_mapbox_navigation_plus
+      sha256: "3ef58fb98da559b35a8b33738054498e38159c8f9c1d5269a33a549ea970c33b"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.2"
+    version: "1.0.0"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
