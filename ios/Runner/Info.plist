@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>MBXAccessToken</key>
-	<string>VOTRE_CLE_PUBLIQUE_ICI</string>
+	<string>pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
