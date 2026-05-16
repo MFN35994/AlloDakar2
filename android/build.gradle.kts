@@ -9,7 +9,7 @@ allprojects {
             }
             credentials {
                 username = "mapbox"
-                password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as String? ?: ""
+                password = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: (project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as String? ?: "")
             }
         }
     }
