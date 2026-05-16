@@ -63,6 +63,31 @@ class ProfileDrawer extends ConsumerWidget {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
                   },
                 ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final isDarkMode = ref.watch(themeProvider) == ThemeMode.dark;
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    return ListTile(
+                      leading: Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode, color: isDark ? Colors.white70 : Colors.black87),
+                      title: Text(
+                        'Mode Sombre',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      trailing: Switch(
+                        value: isDarkMode,
+                        onChanged: (val) {
+                          ref.read(themeProvider.notifier).setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                        },
+                        activeThumbColor: TranSenColors.primaryGreen,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 0),
+                    );
+                  },
+                ),
 
                 const Divider(indent: 20, endIndent: 20),
 

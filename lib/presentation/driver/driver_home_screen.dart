@@ -349,6 +349,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     final auth = ref.watch(authProvider);
     final wallet = ref.watch(walletProvider);
     final currentUserId = auth?.userId ?? 'unknown_driver';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -476,7 +477,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           Expanded(
             flex: 4,
             child: Container(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF121212) : Colors.white,
               child: Stack(
                 children: [
                   GoogleMap(
@@ -1109,6 +1110,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   Widget _buildPoolCard({required PoolModel pool, required String driverId}) {
     final canAcceptAt3 = pool.currentFilling >= 3;
     final isFull = pool.currentFilling >= 4;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -1119,9 +1121,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           borderRadius: BorderRadius.circular(24),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: isDark ? const Color(0xFF1A1A1A).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+              border: Border.all(color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.3)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -1503,12 +1505,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   }
 
   Widget _buildDeliverySmallCard(BuildContext context, TripModel delivery) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 200,
       margin: const EdgeInsets.only(right: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -1590,11 +1593,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   }
 
   Widget _buildVtcSmallCard(BuildContext context, TripModel trip) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 195,
       margin: const EdgeInsets.only(right: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+        color: isDark ? const Color(0xFF1A1A1A).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
             color: TranSenColors.primaryGreen.withValues(alpha: 0.4),

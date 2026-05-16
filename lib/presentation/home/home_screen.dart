@@ -1,3 +1,6 @@
+// ignore_for_file: deprecated_member_use
+
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -180,17 +183,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        child: GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 4,
-                          mainAxisSpacing: 15,
-                          crossAxisSpacing: 12,
+                        child: Column(
                           children: [
-                            _buildCompactAction(context, 'Course', Icons.directions_car, TranSenColors.primaryGreen, () => OrderSheet.show(context)),
-                            _buildCompactAction(context, 'Yobanté', Icons.inventory_2, Colors.blue, () => YobanteSheet.show(context)),
-                            _buildCompactAction(context, 'Favoris', Icons.favorite, Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()))),
-                            _buildCompactAction(context, 'Parrainage', Icons.card_giftcard, Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()))),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: PremiumPulseCard(
+                                    label: 'Course',
+                                    sublabel: 'Commander un trajet',
+                                    icon: Icons.directions_car,
+                                    gradientColors: const [Color(0xFF1A3A2A), Color(0xFF2E7D32)],
+                                    iconColor: const Color(0xFF81C784),
+                                    onTap: () => OrderSheet.show(context),
+                                    animated: true,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: PremiumPulseCard(
+                                    label: 'Yobanté',
+                                    sublabel: 'Envoyer un colis',
+                                    icon: Icons.inventory_2,
+                                    gradientColors: const [Color(0xFF1A3A5C), Color(0xFF0D6EFD)],
+                                    iconColor: const Color(0xFF5BB8FF),
+                                    onTap: () => YobanteSheet.show(context),
+                                    animated: true,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: PremiumPulseCard(
+                                    label: 'Favoris',
+                                    sublabel: 'Lieux enregistrés',
+                                    icon: Icons.favorite,
+                                    gradientColors: const [Color(0xFF1A1A3A), Color(0xFF4527A0)],
+                                    iconColor: const Color(0xFFB39DDB),
+                                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+                                    animated: false,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: PremiumPulseCard(
+                                    label: 'Parrainage',
+                                    sublabel: 'Gagner des points',
+                                    icon: Icons.card_giftcard,
+                                    gradientColors: const [Color(0xFF3A2A00), Color(0xFFF9A825)],
+                                    iconColor: const Color(0xFFFFD54F),
+                                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen())),
+                                    animated: false,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -261,15 +310,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         foregroundColor: TranSenColors.primaryGreen,
         child: const Icon(Icons.my_location),
       ),
-    );
-  }
-
-  Widget _buildCompactAction(BuildContext context, String label, IconData icon, Color color, VoidCallback onTap) {
-    return PremiumActionCard(
-      label: label,
-      icon: icon,
-      color: color,
-      onTap: onTap,
     );
   }
 
@@ -707,5 +747,164 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
   String _getMonth(int month) {
     const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
     return months[month - 1];
+  }
+}
+
+class PremiumPulseCard extends StatefulWidget {
+  final String label;
+  final String sublabel;
+  final IconData icon;
+  final List<Color> gradientColors;
+  final Color iconColor;
+  final VoidCallback onTap;
+  final bool animated;
+
+  const PremiumPulseCard({
+    super.key,
+    required this.label,
+    required this.sublabel,
+    required this.icon,
+    required this.gradientColors,
+    required this.iconColor,
+    required this.onTap,
+    this.animated = false,
+  });
+
+  @override
+  State<PremiumPulseCard> createState() => _PremiumPulseCardState();
+}
+
+class _PremiumPulseCardState extends State<PremiumPulseCard> with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _rotateController;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
+    if (widget.animated) {
+      Timer.periodic(const Duration(seconds: 5), (timer) {
+        if (mounted) {
+          _pulseController.forward().then((value) => _pulseController.reverse());
+        } else {
+          timer.cancel();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _rotateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return ScaleTransition(
+      scale: widget.animated ? _pulseAnimation : const AlwaysStoppedAnimation(1.0),
+      child: AnimatedBuilder(
+        animation: _rotateController,
+        builder: (context, child) {
+          return Container(
+            padding: EdgeInsets.all(widget.animated ? 2 : 0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: widget.animated ? SweepGradient(
+                center: Alignment.center,
+                colors: [
+                  Colors.white.withValues(alpha: 0.0),
+                  Colors.white,
+                  Colors.white.withValues(alpha: 0.0),
+                ],
+                stops: const [0.0, 0.5, 1.0],
+                transform: GradientRotation(_rotateController.value * 3.14 * 2),
+              ) : null,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: widget.onTap,
+                  borderRadius: BorderRadius.circular(16),
+                  splashColor: Colors.white.withValues(alpha: 0.1),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: widget.gradientColors,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.gradientColors.last.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(widget.icon, color: widget.iconColor, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(widget.label,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                    overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 2),
+                                Text(widget.sublabel,
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 11),
+                                    overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.white.withValues(alpha: 0.4), size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      ),
+    );
   }
 }

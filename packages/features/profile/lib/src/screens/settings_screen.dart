@@ -24,7 +24,6 @@ class SettingsScreen extends ConsumerWidget {
             'Préférences de l\'App',
             [
               _buildSettingsTile(context, ref, Icons.notifications_outlined, 'Notifications', true),
-              _buildSettingsTile(context, ref, Icons.dark_mode_outlined, 'Mode Sombre', false),
             ],
           ),
           const SizedBox(height: 20),
@@ -32,7 +31,6 @@ class SettingsScreen extends ConsumerWidget {
             context,
             'Compte & Sécurité',
             [
-              _buildSettingsTile(context, ref, Icons.lock_outline, 'Changer le mot de passe', null),
               _buildSettingsTile(context, ref, Icons.security_outlined, 'Vérification en 2 étapes', false),
               _buildSettingsTile(context, ref, Icons.delete_outline, 'Supprimer mon compte', null, color: Colors.red),
             ],

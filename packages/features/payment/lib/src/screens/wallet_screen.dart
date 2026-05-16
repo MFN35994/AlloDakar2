@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
@@ -18,6 +22,7 @@ class WalletScreen extends ConsumerStatefulWidget {
 
 class _WalletScreenState extends ConsumerState<WalletScreen> {
   bool _isLoading = false;
+  final GlobalKey _receiptBoundaryKey = GlobalKey();
 
   @override
   void initState() {
@@ -431,6 +436,40 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
   }
 
+  Future<void> _captureAndShare(String orderId) async {
+    try {
+      RenderRepaintBoundary? boundary = _receiptBoundaryKey.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+
+      final buffer = byteData.buffer.asUint8List();
+      
+      final xFile = XFile.fromData(
+        buffer,
+        name: 'recu_$orderId.png',
+        mimeType: 'image/png',
+      );
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [xFile],
+          text: 'Mon reçu TranSen 🚕',
+        ),
+      );
+    } catch (e) {
+      debugPrint("Erreur capture: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur lors du partage : $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   void _showTransactionDetails(BuildContext context, WalletTransaction txn) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -449,81 +488,107 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 25),
-            const Text('REÇU DE TRANSACTION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5, color: Colors.grey)),
-            const SizedBox(height: 20),
-            
-            // Amount and Icon
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  txn.amount < 0 ? Icons.arrow_outward : Icons.arrow_downward,
-                  color: txn.amount < 0 ? Colors.red : Colors.green,
-                  size: 28,
+            RepaintBoundary(
+              key: _receiptBoundaryKey,
+              child: Container(
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                child: Column(
+                  children: [
+                    const Text('REÇU DE TRANSACTION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5, color: Colors.grey)),
+                    const SizedBox(height: 20),
+                    
+                    // Amount and Icon
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          txn.amount < 0 ? Icons.arrow_outward : Icons.arrow_downward,
+                          color: txn.amount < 0 ? Colors.red : Colors.green,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${txn.amount < 0 ? "" : "+"}${txn.amount.toInt()} FCFA',
+                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    
+                    // Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(txn.status).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _getStatusColor(txn.status).withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        _getStatusLabel(txn.status).toUpperCase(),
+                        style: TextStyle(color: _getStatusColor(txn.status), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 30),
+                    
+                    // Dotted Separator
+                    Row(
+                      children: List.generate(
+                        30,
+                        (index) => Expanded(
+                          child: Container(
+                            height: 1,
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            color: index % 2 == 0 ? Colors.grey[300] : Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 30),
+                    
+                    // Details
+                    _buildDetailRow("Type de transaction", _getTypeLabel(txn.type)),
+                    _buildDetailRow("ID Transaction", txn.id.substring(0, 8).toUpperCase()),
+                    _buildDetailRow("Date", '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}'),
+                    _buildDetailRow("Description", txn.description),
+                    if (txn.reference != null)
+                      _buildDetailRow("Référence", txn.reference!),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Text(
-                  '${txn.amount < 0 ? "" : "+"}${txn.amount.toInt()} FCFA',
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            
-            // Status Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getStatusColor(txn.status).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _getStatusColor(txn.status).withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                _getStatusLabel(txn.status).toUpperCase(),
-                style: TextStyle(color: _getStatusColor(txn.status), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
               ),
             ),
-            
-            const SizedBox(height: 30),
-            
-            // Dotted Separator
-            Row(
-              children: List.generate(
-                30,
-                (index) => Expanded(
-                  child: Container(
-                    height: 1,
-                    margin: const EdgeInsets.symmetric(horizontal: 1),
-                    color: index % 2 == 0 ? Colors.grey[300] : Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 30),
-            
-            // Details
-            _buildDetailRow("Type de transaction", _getTypeLabel(txn.type)),
-            _buildDetailRow("ID Transaction", txn.id.substring(0, 8).toUpperCase()),
-            _buildDetailRow("Date", '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}'),
-            _buildDetailRow("Description", txn.description),
-            if (txn.reference != null)
-              _buildDetailRow("Référence", txn.reference!),
             
             const SizedBox(height: 40),
             
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: TranSenColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _captureAndShare(txn.id),
+                    icon: const Icon(Icons.share, color: TranSenColors.primaryGreen),
+                    label: const Text('PARTAGER', style: TextStyle(color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: TranSenColors.primaryGreen),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                  ),
                 ),
-                child: const Text('FERMER', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: TranSenColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text('FERMER', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
           ],

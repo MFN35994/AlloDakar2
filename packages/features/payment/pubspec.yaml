@@ -22,6 +22,7 @@ dependencies:
   url_launcher: ^6.1.11
   http: ^1.2.1
   dio: ^5.4.1
+  share_plus: ^13.1.0
 
 dev_dependencies:
   flutter_test:

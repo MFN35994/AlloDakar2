@@ -5,6 +5,7 @@ import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 
 class TripRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
@@ -21,23 +22,28 @@ class TripRepository {
     final subService = SubscriptionService();
     final subInfo = await subService.checkSubscription(driverId);
     
+    final poolSnap = await poolRef.get();
+    final poolData = poolSnap.data() ?? {};
+    final poolPrice = (poolData['price'] ?? 10000).toDouble();
+    final calculatedCommission = commission > 0 ? commission : (poolPrice * 0.01);
+
     final driverData = driverDoc.data()!;
     final balance = (driverData['walletBalance'] ?? 0).toDouble();
 
-    if (!subInfo.isActive && balance < commission && commission > 0) {
-      throw Exception("Solde insuffisant pour la commission ($commission F)");
+    if (!subInfo.isActive && balance < calculatedCommission && calculatedCommission > 0) {
+      throw Exception("Solde insuffisant pour la commission ($calculatedCommission F)");
     }
 
     await _firestore.runTransaction((transaction) async {
-      if (!subInfo.isActive && commission > 0) {
+      if (!subInfo.isActive && calculatedCommission > 0) {
         transaction.update(_firestore.collection('users').doc(driverId), {
-          'walletBalance': FieldValue.increment(-commission),
+          'walletBalance': FieldValue.increment(-calculatedCommission),
         });
 
         final transRef = _firestore.collection('users').doc(driverId).collection('transactions').doc();
         transaction.set(transRef, {
           'description': 'Commission Covoiturage : $poolId',
-          'amount': -commission,
+          'amount': -calculatedCommission,
           'date': FieldValue.serverTimestamp(),
           'type': 'commission',
           'status': 'completed',
@@ -50,12 +56,12 @@ class TripRepository {
         'driverName': driverData['name'],
         'driverPhone': driverData['phone'],
         'acceptedAt': FieldValue.serverTimestamp(),
-        'commissionDeducted': !subInfo.isActive && commission > 0,
+        'commissionDeducted': !subInfo.isActive && calculatedCommission > 0,
       });
     });
 
-    if (!subInfo.isActive && commission > 0) {
-      _paymentRepo.recordCommission(commission, poolId, "Covoiturage");
+    if (!subInfo.isActive && calculatedCommission > 0) {
+      _paymentRepo.recordCommission(calculatedCommission, poolId, "Covoiturage");
     }
 
     try {
@@ -339,9 +345,28 @@ class TripRepository {
 
   // 5. WATCHERS (COURSES & STATS)
   Stream<TripModel?> watchTrip(String tripId) {
-    return _firestore.collection('trips').doc(tripId).snapshots().map((doc) {
-      if (!doc.exists) return null;
-      return TripModel.fromFirestore(doc);
+    final tripStream = _firestore.collection('trips').doc(tripId).snapshots();
+    final poolStream = _firestore.collection('pools').doc(tripId).snapshots();
+    return Rx.combineLatest2(tripStream, poolStream, (tripSnap, poolSnap) {
+      if (tripSnap.exists) return TripModel.fromFirestore(tripSnap);
+      if (poolSnap.exists) {
+        final data = poolSnap.data()!;
+        return TripModel(
+          id: poolSnap.id,
+          departure: data['departure'] ?? '',
+          destination: data['destination'] ?? '',
+          price: (data['price'] ?? 10000).toDouble(),
+          status: data['status'] ?? 'open',
+          type: 'Covoiturage Intelligent',
+          driverId: data['driverId'],
+          driverName: data['driverName'],
+          driverPhone: data['driverPhone'],
+          scheduledDate: data['scheduledDate'],
+          passengerDetails: data['passengerDetails'],
+          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        );
+      }
+      return null;
     });
   }
 
