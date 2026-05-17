@@ -9,7 +9,8 @@ allprojects {
             }
             credentials {
                 username = "mapbox"
-                password = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: (project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as String? ?: "")
+                val envToken = System.getenv("MAPBOX_DOWNLOADS_TOKEN")
+                password = if (!envToken.isNullOrEmpty()) envToken else (project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as String? ?: "")
             }
         }
     }
