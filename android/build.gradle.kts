@@ -9,8 +9,7 @@ allprojects {
             }
             credentials {
                 username = "mapbox"
-                val envToken = System.getenv("MAPBOX_DOWNLOADS_TOKEN")
-                password = if (!envToken.isNullOrEmpty()) envToken else (project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as String? ?: "")
+                password = "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4NzRldHMwM2xxMnJzNm9rZ3hwM20zIn0.ERjxkzGx2kCovFidv3GRGg"
             }
         }
     }
