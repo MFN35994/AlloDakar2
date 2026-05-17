@@ -38,9 +38,12 @@ jobs:
           sed -i 's/VOTRE_CLE_PUBLIQUE_ICI/${{ secrets.MAPBOX_PUBLIC_TOKEN }}/g' android/app/src/main/res/values/strings.xml
           sed -i 's/VOTRE_CLE_PUBLIQUE_ICI/${{ secrets.MAPBOX_PUBLIC_TOKEN }}/g' ios/Runner/Info.plist
 
+      - name: Setup Mapbox Downloads Token
+        run: |
+          mkdir -p ~/.gradle
+          echo "MAPBOX_DOWNLOADS_TOKEN=${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}" >> ~/.gradle/gradle.properties
+
       - name: Build APK
-        env:
-          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
         run: flutter build apk --release --split-per-abi
 
       - name: List Generated APKs
