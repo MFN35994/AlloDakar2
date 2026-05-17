@@ -1,0 +1,361 @@
+Resolving dependencies...
+Downloading packages...
+  characters 1.4.0 (1.4.1 available)
+  flutter_lints 2.0.3 (6.0.0 available)
+  lints 2.1.1 (6.0.0 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  test_api 0.7.7 (0.7.8 available)
+  very_good_analysis 5.1.0 (10.0.0 available)
+Got dependencies!
+7 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Publishing flutter_mapbox_navigation_plus 1.0.0 to https://pub.dev:
+├── CHANGELOG.md (4 KB)
+├── LICENSE (10 KB)
+├── README.md (10 KB)
+├── analysis_options.yaml (<1 KB)
+├── android
+│   ├── build.gradle (3 KB)
+│   ├── settings.gradle (<1 KB)
+│   └── src
+│       └── main
+│           ├── AndroidManifest.xml (<1 KB)
+│           ├── kotlin
+│           │   └── com
+│           │       └── eopeter
+│           │           └── fluttermapboxnavigation
+│           │               ├── FlutterMapboxNavigationPlugin.kt (11 KB)
+│           │               ├── TurnByTurn.kt (18 KB)
+│           │               ├── activity
+│           │               │   ├── NavigationActivity.kt (18 KB)
+│           │               │   └── NavigationLauncher.java (1 KB)
+│           │               ├── factory
+│           │               │   └── EmbeddedNavigationViewFactory.kt (1 KB)
+│           │               ├── models
+│           │               │   ├── MapBoxEvents.kt (<1 KB)
+│           │               │   ├── MapBoxLocation.kt (<1 KB)
+│           │               │   ├── MapBoxMileStone.kt (<1 KB)
+│           │               │   ├── MapBoxRouteLeg.kt (1 KB)
+│           │               │   ├── MapBoxRouteProgressEvent.kt (2 KB)
+│           │               │   ├── MapBoxRouteStep.kt (<1 KB)
+│           │               │   ├── Waypoint.kt (<1 KB)
+│           │               │   ├── WaypointSet.kt (1 KB)
+│           │               │   └── views
+│           │               │       └── EmbeddedNavigationMapView.kt (3 KB)
+│           │               └── utilities
+│           │                   ├── CustomInfoPanelEndNavButtonBinder.kt (2 KB)
+│           │                   └── PluginUtilities.kt (5 KB)
+│           └── res
+│               ├── layout
+│               │   ├── components_navigation_activity.xml (3 KB)
+│               │   └── navigation_activity.xml (<1 KB)
+│               └── values
+│                   ├── colors.xml (<1 KB)
+│                   ├── dimens.xml (<1 KB)
+│                   ├── strings.xml (<1 KB)
+│                   └── styles.xml (1 KB)
+├── dry_run.txt (17 KB)
+├── dry_run_2.txt (<1 KB)
+├── example
+│   ├── README.md (<1 KB)
+│   ├── analysis_options.yaml (1 KB)
+│   ├── android
+│   │   ├── app
+│   │   │   ├── build.gradle (2 KB)
+│   │   │   └── src
+│   │   │       ├── debug
+│   │   │       │   └── AndroidManifest.xml (<1 KB)
+│   │   │       ├── main
+│   │   │       │   ├── AndroidManifest.xml (1 KB)
+│   │   │       │   ├── kotlin
+│   │   │       │   │   └── com
+│   │   │       │   │       └── eopeter
+│   │   │       │   │           └── fluttermapboxnavigationexample
+│   │   │       │   │               └── MainActivity.kt (<1 KB)
+│   │   │       │   └── res
+│   │   │       │       ├── drawable
+│   │   │       │       │   └── launch_background.xml (<1 KB)
+│   │   │       │       ├── drawable-v21
+│   │   │       │       │   └── launch_background.xml (<1 KB)
+│   │   │       │       ├── mipmap-hdpi
+│   │   │       │       │   └── ic_launcher.png (<1 KB)
+│   │   │       │       ├── mipmap-mdpi
+│   │   │       │       │   └── ic_launcher.png (<1 KB)
+│   │   │       │       ├── mipmap-xhdpi
+│   │   │       │       │   └── ic_launcher.png (<1 KB)
+│   │   │       │       ├── mipmap-xxhdpi
+│   │   │       │       │   └── ic_launcher.png (1 KB)
+│   │   │       │       ├── mipmap-xxxhdpi
+│   │   │       │       │   └── ic_launcher.png (1 KB)
+│   │   │       │       ├── values
+│   │   │       │       │   └── styles.xml (<1 KB)
+│   │   │       │       └── values-night
+│   │   │       │           └── styles.xml (<1 KB)
+│   │   │       └── profile
+│   │   │           └── AndroidManifest.xml (<1 KB)
+│   │   ├── build.gradle (<1 KB)
+│   │   ├── gradle
+│   │   │   └── wrapper
+│   │   │       └── gradle-wrapper.properties (<1 KB)
+│   │   ├── gradle.properties (<1 KB)
+│   │   └── settings.gradle (<1 KB)
+│   ├── ios
+│   │   ├── Flutter
+│   │   │   ├── AppFrameworkInfo.plist (<1 KB)
+│   │   │   ├── Debug.xcconfig (<1 KB)
+│   │   │   └── Release.xcconfig (<1 KB)
+│   │   ├── Podfile (1 KB)
+│   │   ├── Podfile.lock (2 KB)
+│   │   ├── Runner
+│   │   │   ├── AppDelegate.swift (<1 KB)
+│   │   │   ├── Assets.xcassets
+│   │   │   │   ├── AppIcon.appiconset
+│   │   │   │   │   ├── Contents.json (2 KB)
+│   │   │   │   │   ├── Icon-App-1024x1024@1x.png (10 KB)
+│   │   │   │   │   ├── Icon-App-20x20@1x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-20x20@2x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-20x20@3x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-29x29@1x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-29x29@2x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-29x29@3x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-40x40@1x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-40x40@2x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-40x40@3x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-60x60@2x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-60x60@3x.png (1 KB)
+│   │   │   │   │   ├── Icon-App-76x76@1x.png (<1 KB)
+│   │   │   │   │   ├── Icon-App-76x76@2x.png (1 KB)
+│   │   │   │   │   └── Icon-App-83.5x83.5@2x.png (1 KB)
+│   │   │   │   └── LaunchImage.imageset
+│   │   │   │       ├── Contents.json (<1 KB)
+│   │   │   │       ├── LaunchImage.png (<1 KB)
+│   │   │   │       ├── LaunchImage@2x.png (<1 KB)
+│   │   │   │       ├── LaunchImage@3x.png (<1 KB)
+│   │   │   │       └── README.md (<1 KB)
+│   │   │   ├── Base.lproj
+│   │   │   │   ├── LaunchScreen.storyboard (2 KB)
+│   │   │   │   └── Main.storyboard (1 KB)
+│   │   │   ├── Info.plist (2 KB)
+│   │   │   └── Runner-Bridging-Header.h (<1 KB)
+│   │   ├── Runner.xcodeproj
+│   │   │   ├── project.pbxproj (21 KB)
+│   │   │   ├── project.xcworkspace
+│   │   │   │   ├── contents.xcworkspacedata (<1 KB)
+│   │   │   │   └── xcshareddata
+│   │   │   │       ├── IDEWorkspaceChecks.plist (<1 KB)
+│   │   │   │       └── WorkspaceSettings.xcsettings (<1 KB)
+│   │   │   └── xcshareddata
+│   │   │       └── xcschemes
+│   │   │           └── Runner.xcscheme (3 KB)
+│   │   └── Runner.xcworkspace
+│   │       ├── contents.xcworkspacedata (<1 KB)
+│   │       └── xcshareddata
+│   │           ├── IDEWorkspaceChecks.plist (<1 KB)
+│   │           └── WorkspaceSettings.xcsettings (<1 KB)
+│   ├── lib
+│   │   ├── app.dart (14 KB)
+│   │   └── main.dart (<1 KB)
+│   ├── linux
+│   │   ├── CMakeLists.txt (5 KB)
+│   │   ├── flutter
+│   │   │   ├── CMakeLists.txt (2 KB)
+│   │   │   ├── generated_plugin_registrant.cc (<1 KB)
+│   │   │   ├── generated_plugin_registrant.h (<1 KB)
+│   │   │   └── generated_plugins.cmake (<1 KB)
+│   │   ├── main.cc (<1 KB)
+│   │   ├── my_application.cc (3 KB)
+│   │   └── my_application.h (<1 KB)
+│   ├── macos
+│   │   ├── Flutter
+│   │   │   ├── Flutter-Debug.xcconfig (<1 KB)
+│   │   │   ├── Flutter-Release.xcconfig (<1 KB)
+│   │   │   └── GeneratedPluginRegistrant.swift (<1 KB)
+│   │   ├── Podfile (1 KB)
+│   │   ├── Runner
+│   │   │   ├── AppDelegate.swift (<1 KB)
+│   │   │   ├── Assets.xcassets
+│   │   │   │   └── AppIcon.appiconset
+│   │   │   │       ├── Contents.json (1 KB)
+│   │   │   │       ├── app_icon_1024.png (100 KB)
+│   │   │   │       ├── app_icon_128.png (5 KB)
+│   │   │   │       ├── app_icon_16.png (<1 KB)
+│   │   │   │       ├── app_icon_256.png (13 KB)
+│   │   │   │       ├── app_icon_32.png (1 KB)
+│   │   │   │       ├── app_icon_512.png (35 KB)
+│   │   │   │       └── app_icon_64.png (2 KB)
+│   │   │   ├── Base.lproj
+│   │   │   │   └── MainMenu.xib (23 KB)
+│   │   │   ├── Configs
+│   │   │   │   ├── AppInfo.xcconfig (<1 KB)
+│   │   │   │   ├── Debug.xcconfig (<1 KB)
+│   │   │   │   ├── Release.xcconfig (<1 KB)
+│   │   │   │   └── Warnings.xcconfig (<1 KB)
+│   │   │   ├── DebugProfile.entitlements (<1 KB)
+│   │   │   ├── Info.plist (1 KB)
+│   │   │   ├── MainFlutterWindow.swift (<1 KB)
+│   │   │   └── Release.entitlements (<1 KB)
+│   │   ├── Runner.xcodeproj
+│   │   │   ├── project.pbxproj (20 KB)
+│   │   │   ├── project.xcworkspace
+│   │   │   │   └── xcshareddata
+│   │   │   │       └── IDEWorkspaceChecks.plist (<1 KB)
+│   │   │   └── xcshareddata
+│   │   │       └── xcschemes
+│   │   │           └── Runner.xcscheme (3 KB)
+│   │   └── Runner.xcworkspace
+│   │       ├── contents.xcworkspacedata (<1 KB)
+│   │       └── xcshareddata
+│   │           └── IDEWorkspaceChecks.plist (<1 KB)
+│   ├── pubspec.yaml (2 KB)
+│   ├── test
+│   │   └── widget_test.dart (<1 KB)
+│   ├── web
+│   │   ├── favicon.png (<1 KB)
+│   │   ├── icons
+│   │   │   ├── Icon-192.png (5 KB)
+│   │   │   ├── Icon-512.png (8 KB)
+│   │   │   ├── Icon-maskable-192.png (5 KB)
+│   │   │   └── Icon-maskable-512.png (20 KB)
+│   │   ├── index.html (1 KB)
+│   │   └── manifest.json (<1 KB)
+│   └── windows
+│       ├── CMakeLists.txt (3 KB)
+│       ├── flutter
+│       │   ├── CMakeLists.txt (3 KB)
+│       │   ├── generated_plugin_registrant.cc (<1 KB)
+│       │   ├── generated_plugin_registrant.h (<1 KB)
+│       │   └── generated_plugins.cmake (<1 KB)
+│       └── runner
+│           ├── CMakeLists.txt (1 KB)
+│           ├── Runner.rc (3 KB)
+│           ├── flutter_window.cpp (1 KB)
+│           ├── flutter_window.h (<1 KB)
+│           ├── main.cpp (1 KB)
+│           ├── resource.h (<1 KB)
+│           ├── resources
+│           │   └── app_icon.ico (32 KB)
+│           ├── runner.exe.manifest (<1 KB)
+│           ├── utils.cpp (1 KB)
+│           ├── utils.h (<1 KB)
+│           ├── win32_window.cpp (8 KB)
+│           └── win32_window.h (3 KB)
+├── ios
+│   ├── Assets
+│   ├── Classes
+│   │   ├── EmbeddedNavigationView.swift (20 KB)
+│   │   ├── FlutterMapboxNavigationPlugin.swift (2 KB)
+│   │   ├── FreeDriveViewController.swift (1 KB)
+│   │   ├── NavigationFactory.swift (19 KB)
+│   │   ├── NavigationViewFactory.swift (<1 KB)
+│   │   ├── RouteOptionsViewController.swift (5 KB)
+│   │   ├── models
+│   │   │   ├── EventType.swift (<1 KB)
+│   │   │   ├── Feedback.swift (<1 KB)
+│   │   │   ├── Location.swift (<1 KB)
+│   │   │   ├── RouteEvent.swift (<1 KB)
+│   │   │   ├── RouteLeg.swift (<1 KB)
+│   │   │   ├── RouteProgressEvent.swift (1 KB)
+│   │   │   └── RouteStep.swift (<1 KB)
+│   │   └── styles
+│   │       ├── Day.swift (<1 KB)
+│   │       └── Night.swift (<1 KB)
+│   └── flutter_mapbox_navigation_plus.podspec (1 KB)
+├── lib
+│   ├── flutter_mapbox_navigation_plus.dart (<1 KB)
+│   └── src
+│       ├── embedded
+│       │   ├── controller.dart (5 KB)
+│       │   └── view.dart (2 KB)
+│       ├── flutter_mapbox_navigation_method_channel.dart (5 KB)
+│       ├── flutter_mapbox_navigation_platform_interface.dart (3 KB)
+│       ├── flutter_mapbox_navigation_plus.dart (3 KB)
+│       ├── flutter_mapbox_navigation_web.dart (1 KB)
+│       ├── helpers.dart (<1 KB)
+│       └── models
+│           ├── event_data.dart (<1 KB)
+│           ├── events.dart (<1 KB)
+│           ├── feedback.dart (<1 KB)
+│           ├── models.dart (<1 KB)
+│           ├── navmode.dart (<1 KB)
+│           ├── options.dart (8 KB)
+│           ├── route_event.dart (1 KB)
+│           ├── route_leg.dart (1 KB)
+│           ├── route_progress_event.dart (2 KB)
+│           ├── route_step.dart (1 KB)
+│           ├── voice_units.dart (<1 KB)
+│           └── way_point.dart (1 KB)
+├── linux
+│   ├── CMakeLists.txt (1 KB)
+│   ├── flutter_mapbox_navigation_plugin.cc (2 KB)
+│   └── include
+│       └── flutter_mapbox_navigation
+│           └── flutter_mapbox_navigation_plugin.h (<1 KB)
+├── macos
+│   ├── Classes
+│   │   └── FlutterMapboxNavigationPlugin.swift (<1 KB)
+│   └── flutter_mapbox_navigation_plus.podspec (<1 KB)
+├── pubspec.yaml (1 KB)
+├── screenshots
+│   ├── screenshot1.png (801 KB)
+│   ├── screenshot2.png (779 KB)
+│   ├── screenshot3.png (407 KB)
+│   └── screenshot4.png (1016 KB)
+├── test
+│   ├── flutter_mapbox_navigation_method_channel_test.dart (<1 KB)
+│   └── flutter_mapbox_navigation_test.dart (1 KB)
+└── windows
+    ├── CMakeLists.txt (2 KB)
+    ├── flutter_mapbox_navigation_plugin.cpp (1 KB)
+    ├── flutter_mapbox_navigation_plugin.h (1 KB)
+    ├── flutter_mapbox_navigation_plugin_c_api.cpp (<1 KB)
+    └── include
+        └── flutter_mapbox_navigation
+            └── flutter_mapbox_navigation_plugin_c_api.h (<1 KB)
+
+Total compressed archive size: 3 MB.
+Validating package...
+Package validation found the following 2 potential issues:
+* 6 checked-in files are ignored by a `.gitignore`.
+  Previous versions of Pub would include those in the published package.
+  
+  Consider adjusting your `.gitignore` files to not ignore those files, and if you do not wish to
+  publish these files use `.pubignore`. See also dart.dev/go/pubignore
+  
+  Files that are checked in while gitignored:
+  
+  example/pubspec.lock
+  flutter_mapbox_navigation.iml
+  ios/flutter_mapbox_navigation.podspec
+  lib/flutter_mapbox_navigation.dart
+  lib/src/flutter_mapbox_navigation.dart
+  macos/flutter_mapbox_navigation.podspec
+  
+  
+
+* 20 checked-in files are modified in git.
+  
+  Usually you want to publish from a clean git state.
+  
+  Consider committing these files or reverting the changes.
+  
+  Modified files:
+  
+  CHANGELOG.md
+  README.md
+  android/settings.gradle
+  example/lib/app.dart
+  example/pubspec.yaml
+  lib/src/embedded/controller.dart
+  lib/src/embedded/view.dart
+  lib/src/flutter_mapbox_navigation_method_channel.dart
+  lib/src/flutter_mapbox_navigation_platform_interface.dart
+  lib/src/flutter_mapbox_navigation_web.dart
+  ...
+  
+  Run `git status` for more information.
+  
+The server may enforce additional checks.
+
+Package has 2 warnings.
+Failed to update packages.

@@ -1,0 +1,41 @@
+name: flutter_mapbox_navigation_plus
+description: >
+  An updated fork of flutter_mapbox_navigation with support for the latest Flutter and Gradle versions.
+  Add Turn By Turn Navigation to Your Flutter Application Using MapBox.
+version: 1.0.0
+repository: https://github.com/talharehmandev/flutter_mapbox_navigation_plus
+
+environment:
+  sdk: '>=2.19.4 <4.0.0'
+  flutter: ">=2.5.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  plugin_platform_interface: ^2.0.2
+  very_good_analysis: ^5.0.0+1
+
+dev_dependencies:
+  flutter_lints: ^2.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.eopeter.fluttermapboxnavigation
+        pluginClass: FlutterMapboxNavigationPlugin
+      ios:
+        pluginClass: FlutterMapboxNavigationPlugin
+ #      linux:
+ #        pluginClass: FlutterMapboxNavigationPlugin
+ #      macos:
+ #        pluginClass: FlutterMapboxNavigationPlugin
+ #      windows:
+ #        pluginClass: FlutterMapboxNavigationPluginCApi
+ #      web:
+ #        pluginClass: FlutterMapboxNavigationWeb
+ #        fileName: flutter_mapbox_navigation_web.dart
