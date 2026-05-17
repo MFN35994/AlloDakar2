@@ -7,10 +7,12 @@ import 'package:transen_payment/transen_payment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart' as geo;
 import 'dart:async';
 import 'package:flutter_mapbox_navigation_plus/flutter_mapbox_navigation_plus.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:dio/dio.dart';
+import 'dart:convert';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final TripModel trip;
@@ -21,11 +23,10 @@ class TripDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
-  GoogleMapController? _mapController;
-  final Set<Marker> _markers = {};
-  final Set<Polyline> _polylines = {};
+  MapboxMap? _mapController;
+  PointAnnotationManager? _annotationManager;
   LatLng? _myPosition;
-  StreamSubscription<Position>? _positionStream;
+  StreamSubscription<geo.Position>? _positionStream;
   bool _isRoutePlotted = false;
 
   @override
@@ -41,16 +42,16 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 
   Future<void> _checkPermissionAndGetLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+    geo.LocationPermission permission = await geo.Geolocator.checkPermission();
+    if (permission == geo.LocationPermission.denied) {
+      permission = await geo.Geolocator.requestPermission();
+      if (permission == geo.LocationPermission.denied) return;
     }
 
-    final pos = await Geolocator.getCurrentPosition();
+    final pos = await geo.Geolocator.getCurrentPosition();
     if (mounted) {
       setState(() {
         _myPosition = LatLng(pos.latitude, pos.longitude);
@@ -59,7 +60,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       _getPolyline(LatLng(pos.latitude, pos.longitude));
     }
 
-    _positionStream = Geolocator.getPositionStream().listen((pos) {
+    _positionStream = geo.Geolocator.getPositionStream().listen((pos) {
       if (mounted) {
         setState(() {
           _myPosition = LatLng(pos.latitude, pos.longitude);
@@ -72,56 +73,71 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   void _getPolyline(LatLng driverPos) async {
     if (_isRoutePlotted) return;
     
-    LatLng? clientPos;
-    // Tenter de récupérer la position du client depuis passengerDetails (si VTC moderne)
+    final List<String> clientCoords = [];
+    LatLng? firstClientPos;
+    
     if (widget.trip.passengerDetails != null && widget.trip.passengerDetails!.isNotEmpty) {
-      final first = widget.trip.passengerDetails!.values.first;
-      if (first['lat'] != null && first['lng'] != null) {
-        clientPos = LatLng(first['lat'], first['lng']);
+      for (var passenger in widget.trip.passengerDetails!.values) {
+        if (passenger['lat'] != null && passenger['lng'] != null) {
+          clientCoords.add("${passenger['lng']},${passenger['lat']}");
+          firstClientPos ??= LatLng(passenger['lat'], passenger['lng']);
+        }
       }
     }
     
-    // Fallback sur les coordonnées de la région de départ
-    clientPos ??= ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677);
+    if (clientCoords.isEmpty) {
+      final fallbackPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677);
+      clientCoords.add("${fallbackPos.longitude},${fallbackPos.latitude}");
+      firstClientPos = fallbackPos;
+    }
     
-    // Destination
     final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination) ?? const LatLng(14.7167, -17.4677);
 
-    PolylinePoints polylinePoints = PolylinePoints(apiKey: "AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE");
-    
-    // ignore: deprecated_member_use
-    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-      // ignore: deprecated_member_use
-      request: PolylineRequest(
-        origin: PointLatLng(driverPos.latitude, driverPos.longitude),
-        destination: PointLatLng(destPos.latitude, destPos.longitude),
-        mode: TravelMode.driving,
-        wayPoints: [
-          PolylineWayPoint(location: "${clientPos.latitude},${clientPos.longitude}", stopOver: true)
-        ],
-      ),
-    );
-
-    if (result.points.isNotEmpty) {
-      List<LatLng> polylineCoordinates = [];
-      for (var point in result.points) {
-        polylineCoordinates.add(LatLng(point.latitude, point.longitude));
+    try {
+      final dio = Dio();
+      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      
+      final List<String> allCoords = [];
+      allCoords.add("${driverPos.longitude},${driverPos.latitude}");
+      allCoords.addAll(clientCoords);
+      allCoords.add("${destPos.longitude},${destPos.latitude}");
+      
+      final url = "https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${allCoords.join(';')}?source=first&destination=last&overview=full&geometries=geojson&access_token=$mapboxToken";
+      
+      final response = await dio.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final trips = data['trips'] as List;
+        if (trips.isNotEmpty) {
+          final trip = trips[0];
+          final geometry = trip['geometry'];
+          
+          if (_mapController != null) {
+            final source = GeoJsonSource(id: "route-source", data: jsonEncode(geometry));
+            await _mapController!.style.addSource(source);
+            
+            final layer = LineLayer(
+              id: "route-layer",
+              sourceId: "route-source",
+              lineColor: TranSenColors.primaryGreen.toARGB32(),
+              lineWidth: 6.0,
+            );
+            await _mapController!.style.addLayer(layer);
+            
+            if (mounted) {
+              setState(() {
+                _isRoutePlotted = true;
+              });
+            }
+            _fitMap(driverPos, firstClientPos!, destPos);
+          }
+        }
       }
-
-      if (mounted) {
-        setState(() {
-          _polylines.add(Polyline(
-            polylineId: const PolylineId("route"),
-            color: TranSenColors.primaryGreen,
-            width: 6,
-            points: polylineCoordinates,
-          ));
-          _isRoutePlotted = true;
-        });
-        
-        _fitMap(driverPos, clientPos, destPos);
-      }
+    } catch (e) {
+      debugPrint("Erreur Optimization API: $e");
     }
+
   }
 
   void _fitMap(LatLng p1, LatLng p2, LatLng p3) {
@@ -130,51 +146,50 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     double minLng = [p1.longitude, p2.longitude, p3.longitude].reduce((a, b) => a < b ? a : b);
     double maxLng = [p1.longitude, p2.longitude, p3.longitude].reduce((a, b) => a > b ? a : b);
 
-    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)),
-      70,
-    ));
+    double centerLat = (minLat + maxLat) / 2;
+    double centerLng = (minLng + maxLng) / 2;
+
+    _mapController?.setCamera(
+      CameraOptions(
+        center: Point(coordinates: Position(centerLng, centerLat)),
+        zoom: 12.0,
+      ),
+    );
   }
 
-  void _buildMarkers() {
-    _markers.clear();
-    if (_myPosition != null) {
-      _markers.add(Marker(
-        markerId: const MarkerId("driver"),
-        position: _myPosition!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        infoWindow: const InfoWindow(title: "Ma Position"),
-      ));
-    }
-
-    // Client Marker
-    LatLng? clientPos;
-    if (widget.trip.passengerDetails != null && widget.trip.passengerDetails!.isNotEmpty) {
-      final first = widget.trip.passengerDetails!.values.first;
-      if (first['lat'] != null && first['lng'] != null) {
-        clientPos = LatLng(first['lat'], first['lng']);
+  void _buildMarkers() async {
+    if (_annotationManager != null) {
+      _annotationManager!.deleteAll();
+      
+      if (_myPosition != null) {
+        _annotationManager!.create(PointAnnotationOptions(
+          geometry: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+        ));
       }
-    }
-    clientPos ??= ItineraryOptimizer.getRegionCoordinates(widget.trip.departure);
-    
-    if (clientPos != null) {
-      _markers.add(Marker(
-        markerId: const MarkerId("client"),
-        position: clientPos,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        infoWindow: InfoWindow(title: "Client: ${widget.trip.clientName ?? 'Ramassage'}"),
-      ));
-    }
+      
+      // Client Marker
+      LatLng? clientPos;
+      if (widget.trip.passengerDetails != null && widget.trip.passengerDetails!.isNotEmpty) {
+        final first = widget.trip.passengerDetails!.values.first;
+        if (first['lat'] != null && first['lng'] != null) {
+          clientPos = LatLng(first['lat'], first['lng']);
+        }
+      }
+      clientPos ??= ItineraryOptimizer.getRegionCoordinates(widget.trip.departure);
+      
+      if (clientPos != null) {
+        _annotationManager!.create(PointAnnotationOptions(
+          geometry: Point(coordinates: Position(clientPos.longitude, clientPos.latitude)),
+        ));
+      }
 
-    // Destination Marker
-    final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination);
-    if (destPos != null) {
-      _markers.add(Marker(
-        markerId: const MarkerId("destination"),
-        position: destPos,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: const InfoWindow(title: "Destination Finale"),
-      ));
+      // Destination Marker
+      final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination);
+      if (destPos != null) {
+        _annotationManager!.create(PointAnnotationOptions(
+          geometry: Point(coordinates: Position(destPos.longitude, destPos.latitude)),
+        ));
+      }
     }
   }
 
@@ -234,23 +249,26 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                   BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _myPosition ?? const LatLng(14.7167, -17.4677),
-                    zoom: 13,
+                child: MapWidget(
+                  viewport: CameraViewportState(
+                    center: Point(coordinates: Position(-17.4677, 14.7167)),
+                    zoom: 13.0,
                   ),
-                  onMapCreated: (controller) => _mapController = controller,
-                  markers: _markers,
-                  polylines: _polylines,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
+                  onMapCreated: (MapboxMap mapboxMap) async {
+                    _mapController = mapboxMap;
+                    _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
+                    if (_myPosition != null) {
+                      _mapController?.setCamera(
+                        CameraOptions(
+                          center: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+                          zoom: 13.0,
+                        ),
+                      );
+                    }
+                  },
                 ),
               ),
             ),
-          ),
           
           // Détails Panel
           Expanded(
@@ -382,10 +400,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                          .update({'status': 'ongoing'});
 
                                      // Lancer la navigation Mapbox
-                                     Position? position;
+                                     geo.Position? position;
                                      try {
-                                       position = await Geolocator.getCurrentPosition(
-                                         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 5)),
+                                       position = await geo.Geolocator.getCurrentPosition(
+                                         locationSettings: const geo.LocationSettings(accuracy: geo.LocationAccuracy.high, timeLimit: Duration(seconds: 5)),
                                        );
                                      } catch (e) {
                                        debugPrint("GPS Error: $e");
@@ -420,11 +438,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                   try {
                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vérification GPS..."), duration: Duration(seconds: 1)));
                                     
-                                    Position? position;
+                                    geo.Position? position;
                                     try {
-                                      position = await Geolocator.getCurrentPosition(
-                                        locationSettings: const LocationSettings(
-                                          accuracy: LocationAccuracy.high,
+                                      position = await geo.Geolocator.getCurrentPosition(
+                                        locationSettings: const geo.LocationSettings(
+                                          accuracy: geo.LocationAccuracy.high,
                                           timeLimit: Duration(seconds: 5),
                                         ),
                                       );

@@ -16,9 +16,15 @@ import 'presentation/home/home_screen.dart';
 import 'presentation/driver/driver_home_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'src/generated/l10n/app_localizations.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide Settings;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialisation de Mapbox
+  const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+  MapboxOptions.setAccessToken(mapboxToken);
+
   final prefs = await SharedPreferences.getInstance();
   try {
     await Firebase.initializeApp(

@@ -9,11 +9,13 @@ import 'package:flutter/services.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart' as geo;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:transen_maps/transen_maps.dart';
+import 'package:dio/dio.dart';
+import 'dart:convert';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_trips/transen_trips.dart' as providers;
 import 'package:transen_auth/transen_auth.dart';
@@ -23,17 +25,16 @@ import 'package:transen/presentation/widgets/profile_drawer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 
-final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
+final activeDriversStreamProvider = StreamProvider<List<PointAnnotationOptions>>((ref) {
   return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
       .collection('active_drivers')
       .snapshots()
       .asyncMap((snapshot) async {
-    final markers = <Marker>{};
-    final icon = await MapMarkerUtils.getCarIcon();
+    final annotations = <PointAnnotationOptions>[];
+    final iconBytes = await MapMarkerUtils.getCarIconBytes();
     
     for (var doc in snapshot.docs) {
       final data = doc.data();
-      final driverId = doc.id;
       if (data['status'] != 'online') continue;
       
       if (data['lastUpdated'] != null) {
@@ -41,28 +42,13 @@ final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
         if (DateTime.now().difference(lastUpdated).inMinutes > 10) continue;
       }
       
-      final dep = data['departure'];
-      final dest = data['destination'];
-      final note = data['note'];
-      String snippet = "Chauffeur actif";
-      if (dep != null || dest != null) {
-        snippet = "Trajet : ${dep ?? '?'} ➔ ${dest ?? '?'}";
-        if (note != null && note.toString().isNotEmpty) {
-          snippet += " | $note";
-        }
-      }
-      
-      markers.add(Marker(
-        markerId: MarkerId(driverId),
-        position: LatLng(data['lat'], data['lng']),
-        infoWindow: InfoWindow(
-          title: data['driverName'] ?? 'Chauffeur TranSen',
-          snippet: snippet,
-        ),
-        icon: icon,
+      annotations.add(PointAnnotationOptions(
+        geometry: Point(coordinates: Position(data['lng'], data['lat'])),
+        image: iconBytes,
+        iconSize: 1.0,
       ));
     }
-    return markers;
+    return annotations;
   });
 });
 
@@ -74,16 +60,109 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  static const CameraPosition _initialPosition = CameraPosition(
-    target: LatLng(14.7167, -17.4677),
+  final CameraOptions _initialPosition = CameraOptions(
+    center: Point(coordinates: Position(-17.4677, 14.7167)),
     zoom: 13.0,
   );
-  GoogleMapController? _mapController;
+  MapboxMap? _mapController;
+  PointAnnotationManager? _annotationManager;
+  double? _userLng;
+  double? _userLat;
+
+  void _loadIsochrones(double lng, double lat) async {
+    try {
+      final dio = Dio();
+      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final url = "https://api.mapbox.com/isochrone/v1/mapbox/driving/$lng,$lat?contours_minutes=5,10,15&polygons=true&access_token=$mapboxToken";
+      
+      final response = await dio.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        
+        if (_mapController != null) {
+          final source = GeoJsonSource(id: "isochrone-source", data: jsonEncode(data));
+          await _mapController!.style.addSource(source);
+          
+          final layer = FillLayer(
+            id: "isochrone-layer",
+            sourceId: "isochrone-source",
+            fillColor: Colors.blue.withOpacity(0.15).value,
+            fillOutlineColor: Colors.blue.value,
+          );
+          await _mapController!.style.addLayer(layer);
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur Isochrone API: $e");
+    }
+  }
+
+  void _loadMatrix(double userLng, double userLat, List<PointAnnotationOptions> drivers) async {
+    if (drivers.isEmpty) return;
+    try {
+      final dio = Dio();
+      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      
+      final List<String> coords = [];
+      for (var driver in drivers) {
+        final pos = driver.geometry.coordinates;
+        coords.add("${pos[0]},${pos[1]}");
+      }
+      coords.add("$userLng,$userLat");
+      
+      final url = "https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coords.join(';')}?destinations=${drivers.length}&annotations=duration&access_token=$mapboxToken";
+      
+      final response = await dio.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final durations = data['durations'] as List;
+        
+        if (_annotationManager != null) {
+          _annotationManager!.deleteAll();
+          
+          for (int i = 0; i < drivers.length; i++) {
+            final driver = drivers[i];
+            final durationInSeconds = durations[i][0] as double?;
+            String text = "Chauffeur";
+            if (durationInSeconds != null) {
+              final minutes = (durationInSeconds / 60).round();
+              text = "$minutes min";
+            }
+            
+            _annotationManager!.create(PointAnnotationOptions(
+              geometry: driver.geometry,
+              image: driver.image,
+              iconSize: driver.iconSize,
+              textField: text,
+              textOffset: [0.0, 1.5],
+            ));
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur Matrix API: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final driverMarkers = ref.watch(activeDriversStreamProvider).value ?? {};
+    final driverMarkers = ref.watch(activeDriversStreamProvider).value ?? [];
     final userId = ref.watch(authProvider)?.userId ?? '';
+    
+    ref.listen(activeDriversStreamProvider, (previous, next) {
+      final annotations = next.value ?? [];
+      if (_userLng != null && _userLat != null) {
+        _loadMatrix(_userLng!, _userLat!, annotations);
+      } else if (_annotationManager != null) {
+        _annotationManager!.deleteAll();
+        for (var annotation in annotations) {
+          _annotationManager!.create(annotation);
+        }
+      }
+    });
+    
     final historyAsync = ref.watch(providers.tripHistoryProvider(userId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -107,22 +186,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // MAP COMPACTE
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.40,
-            child: GoogleMap(
-              initialCameraPosition: _initialPosition,
-              onMapCreated: (GoogleMapController controller) async {
-                _mapController = controller;
+            child: MapWidget(
+              cameraOptions: _initialPosition,
+              onMapCreated: (MapboxMap mapboxMap) async {
+                _mapController = mapboxMap;
+                _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
+                
+                // Add initial annotations if available
+                if (driverMarkers.isNotEmpty) {
+                  for (var annotation in driverMarkers) {
+                    _annotationManager!.create(annotation);
+                  }
+                }
+
                 try {
-                  Position position = await Geolocator.getCurrentPosition();
-                  _mapController?.animateCamera(
-                    CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+                  geo.Position position = await geo.Geolocator.getCurrentPosition();
+                  _mapController?.setCamera(
+                    CameraOptions(
+                      center: Point(coordinates: Position(position.longitude, position.latitude)),
+                      zoom: 13.0,
+                    ),
                   );
+                  _userLng = position.longitude;
+                  _userLat = position.latitude;
+                  _loadIsochrones(position.longitude, position.latitude);
+                  _loadMatrix(position.longitude, position.latitude, driverMarkers);
                 } catch (_) {}
               },
-              markers: driverMarkers,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              mapToolbarEnabled: false,
             ),
           ),
           
@@ -302,8 +392,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         mini: true,
         onPressed: () async {
           try {
-            Position pos = await Geolocator.getCurrentPosition();
-            _mapController?.animateCamera(CameraUpdate.newLatLng(LatLng(pos.latitude, pos.longitude)));
+            geo.Position pos = await geo.Geolocator.getCurrentPosition();
+            _mapController?.setCamera(
+              CameraOptions(
+                center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                zoom: 15.0,
+              ),
+            );
           } catch (_) {}
         },
         backgroundColor: Colors.white,
@@ -687,7 +782,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: TranSenColors.primaryGreen,
                     side: const BorderSide(color: TranSenColors.primaryGreen),
-                    minimumSize: const Size(0, 50),
+                    minimumSize: const ui.Size(0, 50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
                 ),
@@ -699,7 +794,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: TranSenColors.primaryGreen,
                     foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 50),
+                    minimumSize: const ui.Size(0, 50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
                   child: const Text("FERMER"),

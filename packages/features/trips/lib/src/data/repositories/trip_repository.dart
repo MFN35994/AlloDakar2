@@ -239,7 +239,15 @@ class TripRepository {
   }
 
   Future<void> cancelTrip(String tripId, String userId) async {
-    await _firestore.collection('trips').doc(tripId).update({'status': 'cancelled'}).catchError((_) {});
+    final tripDoc = await _firestore.collection('trips').doc(tripId).get();
+    if (tripDoc.exists) {
+      if (tripDoc.data()?['status'] == 'pending') {
+        await _firestore.collection('trips').doc(tripId).delete().catchError((_) {});
+      } else {
+        await _firestore.collection('trips').doc(tripId).update({'status': 'cancelled'}).catchError((_) {});
+      }
+    }
+    
     final poolDoc = await _firestore.collection('pools').doc(tripId).get();
     if (poolDoc.exists) {
       final passengerIds = List<String>.from(poolDoc.data()?['passengerIds'] ?? []);

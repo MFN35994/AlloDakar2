@@ -1,19 +1,21 @@
 
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
-import 'package:geolocator/geolocator.dart';
-import 'package:lottie/lottie.dart' as lottie;
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:geolocator/geolocator.dart' as geo;
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_maps/transen_maps.dart';
 import 'package:transen_trips/transen_trips.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:dio/dio.dart';
+import 'dart:convert';
 
 import 'package:transen_rating/transen_rating.dart';
-import 'dart:ui' show ImageFilter;
+import 'dart:ui' as ui;
 
 
 class TripTrackingScreen extends ConsumerStatefulWidget {
@@ -25,10 +27,9 @@ class TripTrackingScreen extends ConsumerStatefulWidget {
 }
 
 class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
-  gmaps.GoogleMapController? _mapController;
-  final Set<gmaps.Marker> _markers = {};
-  final Set<gmaps.Polyline> _polylines = {};
-  gmaps.BitmapDescriptor? _carIcon;
+  MapboxMap? _mapController;
+  PointAnnotationManager? _annotationManager;
+  Uint8List? _carIconBytes;
   gmaps.LatLng? _myPosition;
   bool _isRoutePlotted = false;
 
@@ -42,7 +43,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
 
   void _fetchMyPosition() async {
     try {
-      Position pos = await Geolocator.getCurrentPosition();
+      geo.Position pos = await geo.Geolocator.getCurrentPosition();
       if (mounted) {
         setState(() {
           _myPosition = gmaps.LatLng(pos.latitude, pos.longitude);
@@ -56,62 +57,42 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     _isRoutePlotted = true;
 
     try {
-      PolylinePoints polylinePoints = PolylinePoints(apiKey: "AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE");
-      // ignore: deprecated_member_use
-      PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        // ignore: deprecated_member_use
-        request: PolylineRequest(
-          origin: PointLatLng(driverPos.latitude, driverPos.longitude),
-          destination: PointLatLng(clientPos.latitude, clientPos.longitude),
-          mode: TravelMode.driving,
-        ),
-      );
-
-      debugPrint("[Polyline] status=${result.status} points=${result.points.length} errorMsg=${result.errorMessage}");
-
-      if (result.points.isNotEmpty) {
-        List<gmaps.LatLng> polylineCoordinates = result.points
-            .map((p) => gmaps.LatLng(p.latitude, p.longitude))
-            .toList();
-        
-        if (mounted) {
-          setState(() {
-            _polylines.add(gmaps.Polyline(
-              polylineId: const gmaps.PolylineId("route"),
-              color: Colors.blue,
-              width: 6,
-              points: polylineCoordinates,
-              startCap: gmaps.Cap.roundCap,
-              endCap: gmaps.Cap.roundCap,
-            ));
-          });
+      final dio = Dio();
+      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final url = "https://api.mapbox.com/directions/v5/mapbox/driving/${driverPos.longitude},${driverPos.latitude};${clientPos.longitude},${clientPos.latitude}?overview=full&geometries=geojson&access_token=$mapboxToken";
+      
+      final response = await dio.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final routes = data['routes'] as List;
+        if (routes.isNotEmpty) {
+          final route = routes[0];
+          final geometry = route['geometry'];
+          
+          if (_mapController != null) {
+            final source = GeoJsonSource(id: "route-source", data: jsonEncode(geometry));
+            await _mapController!.style.addSource(source);
+            
+            final layer = LineLayer(
+              id: "route-layer",
+              sourceId: "route-source",
+              lineColor: Colors.blue.toARGB32(),
+              lineWidth: 6.0,
+            );
+            await _mapController!.style.addLayer(layer);
+          }
         }
-      } else {
-        // Fallback: ligne droite si l'API ne répond pas
-        _drawStraightLine(driverPos, clientPos);
       }
     } catch (e) {
-      debugPrint("[Polyline] Erreur: $e");
-      _drawStraightLine(driverPos, clientPos);
+      debugPrint("Erreur Directions API: $e");
+      _isRoutePlotted = false;
     }
   }
 
-  void _drawStraightLine(gmaps.LatLng from, gmaps.LatLng to) {
-    if (mounted) {
-      setState(() {
-        _polylines.add(gmaps.Polyline(
-          polylineId: const gmaps.PolylineId("route"),
-          color: Colors.blue.withValues(alpha: 0.7),
-          width: 4,
-          points: [from, to],
-          patterns: [gmaps.PatternItem.dash(20), gmaps.PatternItem.gap(10)],
-        ));
-      });
-    }
-  }
 
   void _loadMarkerIcon() async {
-    _carIcon = await MapMarkerUtils.getCarIcon();
+    _carIconBytes = await MapMarkerUtils.getCarIconBytes();
     if (mounted) setState(() {});
   }
 
@@ -143,7 +124,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             }
           }
 
-          if (trip == null || !isParticipant) {
+          if (trip == null || !isParticipant || trip.status == 'cancelled') {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -216,16 +197,9 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          lottie.Lottie.network(
-            'https://assets10.lottiefiles.com/packages/lf20_mbye9igt.json', // Radar / Searching animation
-            width: 200,
-            height: 200,
-            errorBuilder: (context, error, stackTrace) => const Center(
-              child: SizedBox(
-                width: 100, height: 100,
-                child: CircularProgressIndicator(color: TranSenColors.primaryGreen),
-              ),
-            ),
+          const SizedBox(
+            width: 100, height: 100,
+            child: CircularProgressIndicator(color: TranSenColors.primaryGreen),
           ),
           const SizedBox(height: 10),
           const Text(
@@ -323,54 +297,56 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           final data = driverSnapshot.data!.data() as Map<String, dynamic>;
           final pos = gmaps.LatLng(data['lat'], data['lng']);
           
-          _markers.clear();
-          _markers.add(gmaps.Marker(
-            markerId: const gmaps.MarkerId('driver'),
-            position: pos,
-            icon: _carIcon ?? gmaps.BitmapDescriptor.defaultMarkerWithHue(gmaps.BitmapDescriptor.hueOrange),
-            infoWindow: const gmaps.InfoWindow(title: 'Votre chauffeur'),
-          ));
+          if (_annotationManager != null) {
+            _annotationManager!.deleteAll();
+            if (_carIconBytes != null) {
+              _annotationManager!.create(PointAnnotationOptions(
+                geometry: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                image: _carIconBytes!,
+                iconSize: 1.0,
+              ));
+            }
+          }
 
           if (_myPosition != null && !_isRoutePlotted) {
             _getPolyline(pos, _myPosition!);
           }
 
           if (!_isRoutePlotted) {
-            _mapController?.animateCamera(gmaps.CameraUpdate.newLatLng(pos));
+            _mapController?.setCamera(
+              CameraOptions(
+                center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                zoom: 15.0,
+              ),
+            );
           } else {
-             // If route plotted, animate camera to fit both
-             if (_myPosition != null) {
-               _mapController?.animateCamera(gmaps.CameraUpdate.newLatLngBounds(
-                 gmaps.LatLngBounds(
-                   southwest: gmaps.LatLng(
-                     pos.latitude < _myPosition!.latitude ? pos.latitude : _myPosition!.latitude,
-                     pos.longitude < _myPosition!.longitude ? pos.longitude : _myPosition!.longitude,
-                   ),
-                   northeast: gmaps.LatLng(
-                     pos.latitude > _myPosition!.latitude ? pos.latitude : _myPosition!.latitude,
-                     pos.longitude > _myPosition!.longitude ? pos.longitude : _myPosition!.longitude,
-                   ),
-                 ),
-                 50.0,
-               ));
-             }
+             // For bounds, we just center on driver for simplicity in Mapbox
+             _mapController?.setCamera(
+               CameraOptions(
+                 center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                 zoom: 13.0,
+               ),
+             );
           }
         }
 
-        return gmaps.GoogleMap(
-          initialCameraPosition: const gmaps.CameraPosition(target: gmaps.LatLng(14.7167, -17.4677), zoom: 14),
-          onMapCreated: (controller) async {
-            _mapController = controller;
+        return MapWidget(
+          viewport: CameraViewportState(
+            center: Point(coordinates: Position(-17.4677, 14.7167)),
+            zoom: 14.0,
+          ),
+          onMapCreated: (MapboxMap mapboxMap) async {
+            _mapController = mapboxMap;
+            _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
             if (_myPosition != null) {
-              _mapController?.animateCamera(
-                gmaps.CameraUpdate.newLatLng(_myPosition!),
+              _mapController?.setCamera(
+                CameraOptions(
+                  center: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+                  zoom: 14.0,
+                ),
               );
             }
           },
-          markers: _markers,
-          polylines: _polylines,
-          myLocationEnabled: true,
-          trafficEnabled: true,
         );
       },
     );
@@ -380,7 +356,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           decoration: BoxDecoration(
@@ -456,7 +432,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             return ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
                   decoration: BoxDecoration(
                     color: isDark ? Colors.black.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.9),
@@ -486,214 +462,143 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                       ),
                     ),
                   ),
-                  // --- SECTION CLIENTS (PASSAGERS) ---
-                  if (trip.passengerDetails != null && trip.passengerDetails!.isNotEmpty) ...[
-                    ...trip.passengerDetails!.entries.map((entry) {
-                      final pId = entry.key;
-                      final pData = entry.value as Map<String, dynamic>;
-                      final pName = pData['name'] ?? "Passager";
-                      final pPhone = pData['phone'] as String?;
-                      final pMethod = pData['paymentMethod'] ?? "ESPECES";
-                      final isMe = pId == ref.watch(authProvider)?.userId;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: (isMe ? TranSenColors.primaryGreen : Colors.blue).withValues(alpha: 0.1), shape: BoxShape.circle),
-                              child: Icon(Icons.person, color: isMe ? TranSenColors.primaryGreen : Colors.blue, size: 20),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(isMe ? "VOTRE PROFIL" : "PASSAGER", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                                  Text(pName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                  Text("Paiement: ${pMethod.toUpperCase()}", style: const TextStyle(fontSize: 10, color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                            if (!isMe && pPhone != null)
-                              Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () => DeviceUtils.launchWhatsApp(pPhone),
-                                    icon: const Icon(Icons.message_outlined, color: Colors.green, size: 22),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const SizedBox(width: 12),
-                                  // Chat entre passagers désactivé pour la confidentialité
-                                  const SizedBox(width: 12),
-                                  IconButton(
-                                    onPressed: () => DeviceUtils.launchPhoneCall(pPhone),
-                                    icon: const Icon(Icons.phone, color: Colors.blue, size: 22),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ] else ...[
-                    // Trajet simple
-                    Row(
+                  // --- HEADER GRADIENT (CHAUFFEUR) ---
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [TranSenColors.primaryGreen.withValues(alpha: 0.9), TranSenColors.primaryGreen],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), shape: BoxShape.circle),
-                          child: const Icon(Icons.person, color: Colors.blue, size: 20),
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          child: const Icon(Icons.directions_car, color: Colors.white, size: 28),
                         ),
-                        const SizedBox(width: 15),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(trip.clientId == ref.watch(authProvider)?.userId ? "VOTRE PROFIL" : "VOTRE CLIENT", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                              Text(trip.clientName ?? "Client TranSen", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                              Text(
+                                driverName,
+                                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  trip.type.contains('Livraison') ? '📦 Livraison Yobanté' : '🚕 Course VTC',
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        if (trip.clientId != ref.watch(authProvider)?.userId && trip.clientPhone != null)
-                          Row(
-                            children: [
-                              IconButton(
-                                onPressed: () => DeviceUtils.launchWhatsApp(trip.clientPhone!),
-                                icon: const Icon(Icons.message_outlined, color: Colors.green, size: 22),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                              const SizedBox(width: 12),
-                              IconButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ChatScreen(
-                                        tripId: widget.tripId,
-                                        otherPartyName: trip.clientName ?? 'Client',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.chat_bubble_outline, color: TranSenColors.primaryGreen, size: 22),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                              const SizedBox(width: 12),
-                              IconButton(
-                                onPressed: () => DeviceUtils.launchPhoneCall(trip.clientPhone!),
-                                icon: const Icon(Icons.phone, color: Colors.blue, size: 22),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
-                          )
-                        else if (trip.clientPhone != null)
-                          Text(trip.clientPhone!, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        if (driverPhone.isNotEmpty)
+                          IconButton(
+                            onPressed: () => DeviceUtils.launchPhoneCall(driverPhone),
+                            style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.2)),
+                            icon: const Icon(Icons.phone, color: Colors.white),
+                          ),
                       ],
                     ),
-                  ],
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Divider(height: 1, thickness: 0.5),
                   ),
 
-                  // --- SECTION PROGRESSION ---
-                  if (trip.status == 'accepted' || trip.status == 'departed') ...[
-                    _buildTripProgress(trip),
-                    const SizedBox(height: 25),
-                  ],
+                  // --- SECTION TRAJET ---
+                  _SectionCard(
+                    children: [
+                      _InfoRow(
+                        icon: Icons.my_location,
+                        iconColor: Colors.blue,
+                        label: 'Départ',
+                        value: trip.departure,
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 11, top: 4, bottom: 4),
+                        child: Icon(Icons.more_vert, size: 16, color: Colors.grey),
+                      ),
+                      _InfoRow(
+                        icon: Icons.location_on,
+                        iconColor: Colors.red,
+                        label: 'Destination',
+                        value: trip.destination,
+                      ),
+                    ],
+                  ),
 
-                  // --- SECTION CHAUFFEUR ---
-                  Column(
+                  const SizedBox(height: 12),
+
+                  // --- SECTION INFOS COURSE ---
+                  _SectionCard(
+                    children: [
+                      _InfoRow(
+                        icon: Icons.category,
+                        iconColor: TranSenColors.primaryGreen,
+                        label: 'Type',
+                        value: trip.type,
+                      ),
+                      if (trip.scheduledDate != null) ...[
+                        const Divider(height: 20),
+                        _InfoRow(
+                          icon: Icons.calendar_today,
+                          iconColor: Colors.orange,
+                          label: 'Date prévue',
+                          value: trip.scheduledDate!,
+                        ),
+                      ],
+                      if (trip.seats != null) ...[
+                        const Divider(height: 20),
+                        _InfoRow(
+                          icon: Icons.groups,
+                          iconColor: TranSenColors.primaryGreen,
+                          label: 'Passagers',
+                          value: '${trip.seats} personne(s)',
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // --- SECTION PAIEMENT ---
+                  _SectionCard(
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          CircleAvatar(
-                            radius: 25, 
-                            backgroundColor: TranSenColors.primaryGreen.withValues(alpha: 0.1), 
-                            child: const Icon(Icons.directions_car, color: TranSenColors.primaryGreen)
+                          const Row(
+                            children: [
+                              Icon(Icons.payments, color: Colors.green, size: 20),
+                              SizedBox(width: 10),
+                              Text('Prix', style: TextStyle(color: Colors.grey)),
+                            ],
                           ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Text("VOTRE CHAUFFEUR", 
-                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)
-                                    ),
-                                    const Spacer(),
-                                    if (trip.status == 'departed')
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: TranSenColors.primaryGreen.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: const Text("EN COURSE", style: TextStyle(color: TranSenColors.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Flexible(child: Text(driverName, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.5), overflow: TextOverflow.ellipsis)),
-                                    const SizedBox(width: 5),
-                                    if (userSnapshot.hasData && (userSnapshot.data!.data() as Map<String, dynamic>?)?['isVerified'] == true)
-                                      const Icon(Icons.verified, color: Colors.blue, size: 18),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 8, height: 8,
-                                      decoration: BoxDecoration(
-                                        color: trip.status == 'departed' ? TranSenColors.primaryGreen : Colors.amber,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      trip.status == 'departed' ? "En déplacement" : "Arrive vers vous", 
-                                      style: TextStyle(color: trip.status == 'departed' ? TranSenColors.primaryGreen : Colors.amber.shade700, fontSize: 12, fontWeight: FontWeight.w600)
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Consumer(builder: (context, ref, child) {
-                                      final ratingAsync = ref.watch(driverRatingProvider(trip.driverId ?? ''));
-                                      return ratingAsync.when(
-                                        data: (rating) => InkWell(
-                                          onTap: () => DriverReviewsSheet.show(context, trip.driverId!, driverName),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                                              const SizedBox(width: 2),
-                                              Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                            ],
-                                          ),
-                                        ),
-                                        loading: () => const SizedBox.shrink(),
-                                        error: (_, __) => const SizedBox.shrink(),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ],
-                            ),
+                          Text(
+                            '${trip.price.toInt()} FCFA',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.green),
                           ),
                         ],
                       ),
-                      
-                      if (driverPhone.isNotEmpty && trip.driverId != ref.watch(authProvider)?.userId) ...[
-                        const SizedBox(height: 15),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // --- SECTION ACTIONS RAPIDES ---
+                  if (driverPhone.isNotEmpty)
+                    _SectionCard(
+                      children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
@@ -729,86 +634,103 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                           ],
                         ),
                       ],
+                    ),
 
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Divider(height: 1, thickness: 0.5),
-                      ),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 12),
+
+                  // --- SECTION PASSAGERS (SI COVOITURAGE) ---
+                  if (trip.passengerDetails != null && trip.passengerDetails!.isNotEmpty) ...[
+                    const Text("Passagers", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    ...trip.passengerDetails!.entries.map((entry) {
+                      final pData = entry.value as Map<String, dynamic>;
+                      final pName = pData['name'] ?? "Passager";
+                      final pPhone = pData['phone'] as String?;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _SectionCard(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  "Paiement sécurisé",
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
-                                ),
-                                const Text(
-                                  "ESPÈCES AU CHAUFFEUR",
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen),
-                                ),
+                                Text(pName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                if (pPhone != null)
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: () => DeviceUtils.launchWhatsApp(pPhone),
+                                        icon: const Icon(Icons.message, color: Colors.green, size: 18),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        onPressed: () => DeviceUtils.launchPhoneCall(pPhone),
+                                        icon: const Icon(Icons.phone, color: Colors.blue, size: 18),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                    ],
+                                  ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-
-                      if ((trip.clientId == ref.watch(authProvider)?.userId || 
-                          (trip.passengerDetails != null && trip.passengerDetails!.containsKey(ref.watch(authProvider)?.userId))) 
-                          && trip.driverId != null) ...[
-                        const SizedBox(height: 15),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            try {
-                              final myId = ref.read(authProvider)?.userId;
-                              if (myId == null) return;
-                              await ref.read(favoritesRepositoryProvider).addFavoriteDriver(
-                                myId,
-                                trip.driverId!,
-                                trip.driverName ?? "Chauffeur",
-                                trip.driverPhone ?? "",
-                              );
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Chauffeur ajouté aux favoris !"), backgroundColor: Colors.blue),
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Erreur: $e"), backgroundColor: Colors.red),
-                                );
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.favorite, size: 18),
-                          label: const Text("AJOUTER LE CHAUFFEUR AUX FAVORIS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.redAccent,
-                            side: const BorderSide(color: Colors.redAccent),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            minimumSize: const Size(double.infinity, 40),
-                          ),
+                          ],
                         ),
-                      ],
-                    ],
-                  ),
-                  
-                  const Divider(height: 35),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildDetailItem(Icons.payments, "${(trip.price).toInt()} FCFA"),
-                      _buildDetailItem(Icons.timer, trip.status == 'departed' ? "Arrivée bientôt" : "5-10 min"),
-                      TextButton(
-                        onPressed: () => _cancelTrip(trip),
-                        style: TextButton.styleFrom(foregroundColor: Colors.red),
-                        child: const Text("ANNULER", style: TextStyle(fontWeight: FontWeight.bold)),
+                      );
+                    }),
+                  ],
+
+                  const SizedBox(height: 12),
+
+                  // --- BOUTON AJOUTER AUX FAVORIS ---
+                  if (trip.driverId != null)
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        try {
+                          final myId = ref.read(authProvider)?.userId;
+                          if (myId == null) return;
+                          await ref.read(favoritesRepositoryProvider).addFavoriteDriver(
+                            myId,
+                            trip.driverId!,
+                            trip.driverName ?? "Chauffeur",
+                            trip.driverPhone ?? "",
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Chauffeur ajouté aux favoris !"), backgroundColor: Colors.blue),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Erreur: $e"), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.favorite, size: 18),
+                      label: const Text("AJOUTER LE CHAUFFEUR AUX FAVORIS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        side: const BorderSide(color: Colors.redAccent),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        minimumSize: const ui.Size(double.infinity, 40),
                       ),
-                    ],
+                    ),
+
+                  const SizedBox(height: 12),
+
+                  // --- BOUTON ANNULER ---
+                  OutlinedButton.icon(
+                    onPressed: () => _cancelTrip(trip),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text("ANNULER LA DEMANDE", style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    ),
                   ),
                 ],
               ),
@@ -822,15 +744,6 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
   }
 
 
-  Widget _buildDetailItem(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.grey, size: 20),
-        const SizedBox(width: 8),
-        Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
 
   Widget _buildCompletedView(TripModel trip) {
     return Center(
@@ -839,12 +752,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            lottie.Lottie.network(
-              'https://assets10.lottiefiles.com/packages/lf20_mbye9igt.json',
-              width: 200,
-              height: 200,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.check_circle, size: 80, color: Colors.green),
-            ),
+            const Icon(Icons.check_circle, size: 80, color: Colors.green),
             const SizedBox(height: 20),
             const Text(
               "Course Terminée ! 🏁",
@@ -901,54 +809,6 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     );
   }
 
-  Widget _buildTripProgress(TripModel trip) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("DÉPART", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
-                Text(trip.departure.split(',').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const Text("DESTINATION", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
-                Text(trip.destination.split(',').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Stack(
-          children: [
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(seconds: 1),
-              height: 4,
-              width: MediaQuery.of(context).size.width * (trip.status == 'departed' ? 0.6 : 0.2),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [TranSenColors.primaryGreen, Colors.blueAccent],
-                ),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildActionButton({required IconData icon, required Color color, required String label, required VoidCallback onTap}) {
     return InkWell(
@@ -966,5 +826,63 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
       ),
     );
   }
+}
 
+class _SectionCard extends StatelessWidget {
+  final List<Widget> children;
+  const _SectionCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  const _InfoRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: iconColor, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }

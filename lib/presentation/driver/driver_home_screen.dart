@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart' as geo;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_core/transen_core.dart';
@@ -48,12 +48,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  static const CameraPosition _initialPosition = CameraPosition(
-    target: LatLng(14.7167, -17.4677),
+  final CameraViewportState _initialPosition = CameraViewportState(
+    center: Point(coordinates: Position(-17.4677, 14.7167)),
     zoom: 13.0,
   );
 
-  GoogleMapController? _mapController;
+  MapboxMap? _mapController;
   bool _isOnline = false;
   Timer? _locationTimer;
   String? _currentDriverId;
@@ -106,9 +106,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
 
   Future<void> _initInitialPosition() async {
     try {
-      Position position = await Geolocator.getCurrentPosition();
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+      geo.Position position = await geo.Geolocator.getCurrentPosition();
+      _mapController?.setCamera(
+        CameraOptions(
+          center: Point(coordinates: Position(position.longitude, position.latitude)),
+          zoom: 13.0,
+        ),
       );
     } catch (_) {}
   }
@@ -132,7 +135,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     _currentDriverId = driverId;
     if (val) {
       // 1. Vérifier si le service de localisation est activé
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -145,12 +148,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       }
 
       // 2. Vérifier les permissions
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+      geo.LocationPermission permission = await geo.Geolocator.checkPermission();
+      if (permission == geo.LocationPermission.denied) {
+        permission = await geo.Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.deniedForever) {
+      if (permission == geo.LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -161,8 +164,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
         return;
       }
 
-      if (permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse) {
+      if (permission == geo.LocationPermission.always ||
+          permission == geo.LocationPermission.whileInUse) {
         // Récupérer les infos du profil une seule fois
         final userDoc = await FirebaseFirestore.instanceFor(
                 app: Firebase.app(), databaseId: 'transen')
@@ -195,7 +198,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   void _startLocationUpdates(String driverId, String name, String phone) {
     _locationTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
-        Position position = await Geolocator.getCurrentPosition();
+        geo.Position position = await geo.Geolocator.getCurrentPosition();
         await FirebaseFirestore.instanceFor(
                 app: Firebase.app(), databaseId: 'transen')
             .collection('active_drivers')
@@ -480,16 +483,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
               color: isDark ? const Color(0xFF121212) : Colors.white,
               child: Stack(
                 children: [
-                  GoogleMap(
-                    initialCameraPosition: _initialPosition,
-                    onMapCreated: (GoogleMapController controller) {
-                      _mapController = controller;
+                  MapWidget(
+                    viewport: _initialPosition,
+                    onMapCreated: (MapboxMap mapboxMap) {
+                      _mapController = mapboxMap;
                       _initInitialPosition();
                     },
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: false,
-                    compassEnabled: false,
-                    zoomControlsEnabled: false,
                   ),
                   Positioned(
                     bottom: 20,
@@ -497,11 +496,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                     child: FloatingActionButton(
                       onPressed: () async {
                         try {
-                          Position position =
-                              await Geolocator.getCurrentPosition();
-                          _mapController?.animateCamera(
-                            CameraUpdate.newLatLng(
-                                LatLng(position.latitude, position.longitude)),
+                          geo.Position position = await geo.Geolocator.getCurrentPosition();
+                          _mapController?.setCamera(
+                            CameraOptions(
+                              center: Point(coordinates: Position(position.longitude, position.latitude)),
+                              zoom: 13.0,
+                            ),
                           );
                         } catch (e) {
                           debugPrint("Erreur recentrage: $e");
