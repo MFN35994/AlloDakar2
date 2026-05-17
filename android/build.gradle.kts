@@ -24,6 +24,7 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+    extra["MAPBOX_DOWNLOADS_TOKEN"] = "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
 }
 subprojects {
     project.evaluationDependsOn(":app")
