@@ -1,11 +1,14 @@
 import 'dart:math' as math;
+import 'dart:convert';
 import "package:flutter/foundation.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:http/http.dart' as http;
 
 class TripRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
@@ -15,61 +18,26 @@ class TripRepository {
 
   // 1. ACTIONS COVOITURAGE (POOL)
   Future<void> acceptPool(String poolId, String driverId, [double commission = 0]) async {
-    final poolRef = _firestore.collection('pools').doc(poolId);
-    final driverDoc = await _firestore.collection('users').doc(driverId).get();
-    
-    if (!driverDoc.exists) throw Exception("Chauffeur introuvable");
-    final subService = SubscriptionService();
-    final subInfo = await subService.checkSubscription(driverId);
-    
-    final poolSnap = await poolRef.get();
-    final poolData = poolSnap.data() ?? {};
-    final poolPrice = (poolData['price'] ?? 10000).toDouble();
-    final calculatedCommission = commission > 0 ? commission : (poolPrice * 0.01);
+    // 1. Obtenir le token ID de l'utilisateur actuel pour sécuriser l'appel
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("Utilisateur non connecté");
+    final token = await user.getIdToken();
 
-    final driverData = driverDoc.data()!;
-    final balance = (driverData['walletBalance'] ?? 0).toDouble();
+    // 2. Appeler le backend pour accepter le covoiturage
+    final response = await http.post(
+      Uri.parse("https://transen-api.onrender.com/api/pools/accept"),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'poolId': poolId,
+      }),
+    );
 
-    if (!subInfo.isActive && balance < calculatedCommission && calculatedCommission > 0) {
-      throw Exception("Solde insuffisant pour la commission ($calculatedCommission F)");
-    }
-
-    await _firestore.runTransaction((transaction) async {
-      if (!subInfo.isActive && calculatedCommission > 0) {
-        transaction.update(_firestore.collection('users').doc(driverId), {
-          'walletBalance': FieldValue.increment(-calculatedCommission),
-        });
-
-        final transRef = _firestore.collection('users').doc(driverId).collection('transactions').doc();
-        transaction.set(transRef, {
-          'description': 'Commission Covoiturage : $poolId',
-          'amount': -calculatedCommission,
-          'date': FieldValue.serverTimestamp(),
-          'type': 'commission',
-          'status': 'completed',
-        });
-      }
-
-      transaction.update(poolRef, {
-        'status': 'accepted',
-        'driverId': driverId,
-        'driverName': driverData['name'],
-        'driverPhone': driverData['phone'],
-        'acceptedAt': FieldValue.serverTimestamp(),
-        'commissionDeducted': !subInfo.isActive && calculatedCommission > 0,
-      });
-    });
-
-    if (!subInfo.isActive && calculatedCommission > 0) {
-      _paymentRepo.recordCommission(calculatedCommission, poolId, "Covoiturage");
-    }
-
-    try {
-      await _firestore.collection('active_drivers').doc(driverId).set({
-        'activePoolId': poolId,
-      }, SetOptions(merge: true));
-    } catch (e) {
-      debugPrint("Erreur active_drivers: $e");
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? "Erreur lors de l'acceptation";
+      throw Exception(error);
     }
   }
 
@@ -185,62 +153,27 @@ class TripRepository {
   }
 
   Future<void> acceptTrip(String tripId, String driverId) async {
-    final tripRef = _firestore.collection('trips').doc(tripId);
-    final driverDoc = await _firestore.collection('users').doc(driverId).get();
-    
-    if (!driverDoc.exists) throw Exception("Chauffeur introuvable");
-    
-    final subService = SubscriptionService();
-    final subInfo = await subService.checkSubscription(driverId);
-    
-    final tripSnap = await tripRef.get();
-    final tripPrice = (tripSnap.data()?['price'] ?? 0).toDouble();
-    final commission = (tripPrice * 0.01);
+    // 1. Obtenir le token ID de l'utilisateur actuel pour sécuriser l'appel
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("Utilisateur non connecté");
+    final token = await user.getIdToken();
 
-    final driverData = driverDoc.data()!;
-    final balance = (driverData['walletBalance'] ?? 0).toDouble();
+    // 2. Appeler le backend pour accepter la course
+    final response = await http.post(
+      Uri.parse("https://transen-api.onrender.com/api/trips/accept"),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'tripId': tripId,
+      }),
+    );
 
-    if (!subInfo.isActive && balance < commission) {
-      throw Exception("Solde insuffisant pour la commission ($commission F)");
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? "Erreur lors de l'acceptation";
+      throw Exception(error);
     }
-
-    await _firestore.runTransaction((transaction) async {
-        if (!subInfo.isActive) {
-          transaction.update(_firestore.collection('users').doc(driverId), {
-            'walletBalance': FieldValue.increment(-commission),
-          });
-          
-          final transRef = _firestore.collection('users').doc(driverId).collection('transactions').doc();
-          transaction.set(transRef, {
-            'description': 'Commission Course : $tripId',
-            'amount': -commission,
-            'date': FieldValue.serverTimestamp(),
-            'type': 'commission',
-            'status': 'completed',
-          });
-        }
-
-        transaction.update(tripRef, {
-          'status': 'accepted',
-          'driverId': driverId,
-          'driverName': driverData['name'],
-          'driverPhone': driverData['phone'],
-          'acceptedAt': FieldValue.serverTimestamp(),
-          'commissionDeducted': !subInfo.isActive,
-        });
-      });
-
-      if (!subInfo.isActive) {
-        _paymentRepo.recordCommission(commission, tripId, "Course/Yobanté");
-      }
-      
-      try {
-        await _firestore.collection('active_drivers').doc(driverId).set({
-          'activeTripId': tripId,
-        }, SetOptions(merge: true));
-      } catch (e) {
-        debugPrint("Erreur active_drivers: $e");
-      }
   }
 
   Future<void> completeTrip(String tripId, {double? currentLat, double? currentLng}) async {
@@ -306,7 +239,7 @@ class TripRepository {
   }
 
   Future<void> cancelTrip(String tripId, String userId) async {
-    await _firestore.collection('trips').doc(tripId).delete().catchError((_) {});
+    await _firestore.collection('trips').doc(tripId).update({'status': 'cancelled'}).catchError((_) {});
     final poolDoc = await _firestore.collection('pools').doc(tripId).get();
     if (poolDoc.exists) {
       final passengerIds = List<String>.from(poolDoc.data()?['passengerIds'] ?? []);
@@ -381,7 +314,7 @@ class TripRepository {
   Stream<List<TripModel>> watchUserTrips(String userId) {
     return _firestore.collection('trips')
         .where('clientId', isEqualTo: userId)
-        .where('status', isEqualTo: 'completed')
+        .where('status', whereIn: ['completed', 'cancelled'])
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => TripModel.fromFirestore(doc)).toList());
   }

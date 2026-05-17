@@ -519,7 +519,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           Expanded(
             flex: 6,
             child: Container(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF121212) : Colors.white,
               child: ScrollConfiguration(
                 behavior:
                     ScrollConfiguration.of(context).copyWith(scrollbars: false),
@@ -1819,9 +1819,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       useSafeArea: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF1A1A1A) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           padding: EdgeInsets.only(
             left: 24, right: 24, top: 20,

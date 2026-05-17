@@ -21,6 +21,7 @@ dependencies:
   url_launcher: ^6.3.1
   flutter_polyline_points: ^3.1.0
   rxdart: ^0.28.0
+  http: ^1.2.0
   transen_core:
     path: ../../core
   transen_auth:

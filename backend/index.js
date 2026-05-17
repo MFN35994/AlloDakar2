@@ -534,6 +534,185 @@ app.post('/api/admin/award-referral-reward', verifyFirebaseToken, async (req, re
     }
 });
 
+app.post('/api/trips/accept', verifyFirebaseToken, async (req, res) => {
+    const { tripId } = req.body;
+    const driverId = req.user.uid;
+
+    if (!tripId) return res.status(400).send({ error: "ID de trajet manquant" });
+
+    try {
+        const tripRef = db.collection('trips').doc(tripId);
+        const userRef = db.collection('users').doc(driverId);
+        const activeDriverRef = db.collection('active_drivers').doc(driverId);
+        const statsRef = db.collection('system_stats').doc('earnings');
+
+        await db.runTransaction(async (t) => {
+            const tripDoc = await t.get(tripRef);
+            if (!tripDoc.exists) throw new Error("Trajet introuvable");
+            
+            const tripData = tripDoc.data();
+            if (tripData.status !== 'pending') throw new Error("Trajet déjà accepté ou expiré");
+
+            const driverDoc = await t.get(userRef);
+            if (!driverDoc.exists) throw new Error("Profil chauffeur introuvable");
+
+            const driverData = driverDoc.data();
+            
+            // Vérifier l'abonnement
+            const planStr = driverData.subscriptionPlan;
+            const expiresRaw = driverData.subscriptionExpires;
+            let isActive = false;
+            
+            if (planStr && expiresRaw) {
+                const expiresAt = expiresRaw.toDate();
+                if (new Date() < expiresAt) {
+                    isActive = true;
+                }
+            }
+
+            const price = tripData.price || 0;
+            const commission = price * 0.01; // 1%
+
+            if (!isActive) {
+                const balance = driverData.walletBalance || 0;
+                if (balance < commission) throw new Error("Solde insuffisant pour la commission");
+
+                // Déduire la commission
+                t.update(userRef, { walletBalance: balance - commission });
+
+                // Créer la transaction
+                const transRef = userRef.collection('transactions').doc();
+                t.set(transRef, {
+                    amount: -commission,
+                    description: `Commission Course : ${tripId}`,
+                    date: admin.firestore.FieldValue.serverTimestamp(),
+                    type: 'commission',
+                    status: 'completed'
+                });
+
+                // Mettre à jour les stats plateforme
+                t.set(statsRef, {
+                    totalCommissions: admin.firestore.FieldValue.increment(Number(commission)),
+                    lastUpdate: admin.firestore.FieldValue.serverTimestamp(),
+                    lastTripId: tripId,
+                    lastTripType: tripData.type || 'Course/Yobanté'
+                }, { merge: true });
+            }
+
+            // Accepter le trajet
+            t.update(tripRef, {
+                status: 'accepted',
+                driverId: driverId,
+                driverName: driverData.name || 'Chauffeur',
+                driverPhone: driverData.phone || '',
+                acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+                commissionDeducted: !isActive
+            });
+
+            // Mettre à jour le chauffeur actif
+            t.set(activeDriverRef, {
+                activeTripId: tripId
+            }, { merge: true });
+        });
+
+        console.log(`[Trips] Trajet ${tripId} accepté par le chauffeur ${driverId}`);
+        res.status(200).send({ success: true });
+
+    } catch (error) {
+        console.error(`[Trips] Erreur acceptation trajet ${tripId}:`, error.message);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/pools/accept', verifyFirebaseToken, async (req, res) => {
+    const { poolId } = req.body;
+    const driverId = req.user.uid;
+
+    if (!poolId) return res.status(400).send({ error: "ID de trajet manquant" });
+
+    try {
+        const poolRef = db.collection('pools').doc(poolId);
+        const userRef = db.collection('users').doc(driverId);
+        const statsRef = db.collection('system_stats').doc('earnings');
+
+        await db.runTransaction(async (t) => {
+            const poolDoc = await t.get(poolRef);
+            if (!poolDoc.exists) throw new Error("Trajet introuvable");
+            
+            const poolData = poolDoc.data();
+            if (poolData.status !== 'pending') throw new Error("Trajet déjà accepté ou expiré");
+
+            const driverDoc = await t.get(userRef);
+            if (!driverDoc.exists) throw new Error("Profil chauffeur introuvable");
+
+            const driverData = driverDoc.data();
+            
+            // Vérifier l'abonnement
+            const planStr = driverData.subscriptionPlan;
+            const expiresRaw = driverData.subscriptionExpires;
+            let isActive = false;
+            
+            if (planStr && expiresRaw) {
+                const expiresAt = expiresRaw.toDate();
+                if (new Date() < expiresAt) {
+                    isActive = true;
+                }
+            }
+
+            const price = poolData.price || 10000;
+            const commission = price * 0.01; // 1%
+
+            if (!isActive && commission > 0) {
+                const balance = driverData.walletBalance || 0;
+                if (balance < commission) throw new Error("Solde insuffisant pour la commission");
+
+                // Déduire la commission
+                t.update(userRef, { walletBalance: balance - commission });
+
+                // Créer la transaction
+                const transRef = userRef.collection('transactions').doc();
+                t.set(transRef, {
+                    amount: -commission,
+                    description: `Commission Covoiturage : ${poolId}`,
+                    date: admin.firestore.FieldValue.serverTimestamp(),
+                    type: 'commission',
+                    status: 'completed'
+                });
+
+                // Mettre à jour les stats plateforme
+                t.set(statsRef, {
+                    totalCommissions: admin.firestore.FieldValue.increment(Number(commission)),
+                    lastUpdate: admin.firestore.FieldValue.serverTimestamp(),
+                    lastTripId: poolId,
+                    lastTripType: 'Covoiturage'
+                }, { merge: true });
+            }
+
+            // Accepter le trajet
+            t.update(poolRef, {
+                status: 'accepted',
+                driverId: driverId,
+                driverName: driverData.name || 'Chauffeur',
+                driverPhone: driverData.phone || '',
+                acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+                commissionDeducted: !isActive && commission > 0
+            });
+
+            // Mettre à jour le chauffeur actif
+            t.set(db.collection('active_drivers').doc(driverId), {
+                activePoolId: poolId
+            }, { merge: true });
+        });
+
+        console.log(`[Pools] Trajet ${poolId} accepté par le chauffeur ${driverId}`);
+        res.status(200).send({ success: true });
+
+    } catch (error) {
+        console.error(`[Pools] Erreur acceptation trajet ${poolId}:`, error.message);
+        res.status(400).json({ error: error.message });
+    }
+});
+
 app.get('/api/payment/payout-status/:internalId', async (req, res) => {
     try {
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts/${req.params.internalId}`, {
