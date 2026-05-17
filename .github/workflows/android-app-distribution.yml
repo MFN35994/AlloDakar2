@@ -43,7 +43,7 @@ jobs:
       - name: Setup Mapbox Downloads Token
         run: |
           mkdir -p ~/.gradle
-          echo "MAPBOX_DOWNLOADS_TOKEN=${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}" >> ~/.gradle/gradle.properties
+          echo "MAPBOX_DOWNLOADS_TOKEN=sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw" >> ~/.gradle/gradle.properties
 
       - name: Build APK
         run: flutter build apk --release --split-per-abi
